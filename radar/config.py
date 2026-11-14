@@ -65,6 +65,8 @@ DEFAULTS = {
     "telegram_bot_token": "",
     "telegram_chat_id": "",
     "desktop_notifications": True,
+    "meme_strategy": True,         # estrategia de memecoins (señales + seguimiento en práctica)
+    "meme_list": [],               # vacío = lista por defecto de memecoins de Binance
     "port": int(os.environ.get("PORT", 8777)),
 }
 

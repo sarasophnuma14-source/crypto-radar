@@ -16,7 +16,7 @@ function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt
 
 document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>show(b.dataset.tab));
 function show(t){document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on",s.id==="tab-"+t));
- ({alerts:loadAlerts,positions:loadPositions,journal:loadJournal,settings:loadSettings})[t]?.();
+ ({alerts:loadAlerts,positions:loadPositions,memes:loadMemes,journal:loadJournal,settings:loadSettings})[t]?.();
  if(t==="alerts"){localStorageSet("seenAlert",new Date().toISOString());lastAlertSeen=new Date().toISOString();$("#alertCount").classList.add("hidden")}}
 
 $("#scanBtn").onclick=async()=>{const r=await post("/api/scan");if(!r.ok)alert(r.msg);refresh()};
@@ -156,6 +156,22 @@ async function loadPositions(){
 }
 $("#posForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),b=Object.fromEntries(f);b.paper=e.target.paper.checked;
   const r=await post("/api/positions",b);if(r.error)alert(r.error);else{e.target.reset();e.target.paper.checked=true;loadPositions()}};
+
+function kpis(arr){return arr.map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("")}
+async function loadMemes(){
+  const m=await api("/api/memes"),r=m.rule,b=m.backtest,s=m.stats;
+  $("#memeRule").innerHTML=`<b>Señal</b> (al cierre diario, 7 pm hora Colombia): volumen ≥ ${r.vol_mult}× su promedio de ${r.lookback} días y cierre sobre el máximo de ${r.lookback} días, sin que la vela haya subido más de +${r.max_day_gain*100}% ese día. <b>Compra</b> a la apertura siguiente. <b>Salida</b>: lo primero entre +${r.take_profit*100}%, −${r.stop_loss*100}% o ${r.max_days} días. <b>Tamaño</b>: ${r.size_pct}% del capital, máx. ${r.max_open} a la vez. Vigila: ${m.memes.join(", ")}.`;
+  $("#memeBT").innerHTML=kpis([["Backtest acierto",b.acierto_pct+"%"],["Backtest retorno",pct(b.retorno_pct)],["Peor caída",pct(b.max_dd_pct)],["Gana por $1 perdido","$"+b.profit_factor],["Operaciones",b.operaciones]]);
+  $("#memeStats").innerHTML=kpis([["Señales en vivo",s.signals],["Abiertas",s.open],["Cerradas",s.closed],["Acierto en vivo",s.win_rate!=null?s.win_rate+"%":"—"],["Gana por $1 perdido",s.profit_factor!=null?"$"+s.profit_factor:"—"],["Resultado cartera",s.closed?pct(s.portfolio_pct):"—"]]);
+  const st=m.status;$("#memeStatus").textContent=(st.checking?"Revisando… ":"")+"Última revisión: "+ago(st.last_check)+(st.last_error?" · "+st.last_error:"");
+  $("#memeOpen").innerHTML=`<thead><tr><th>Token</th><th>Señal</th><th>Entrada</th><th>Actual</th><th>Resultado</th><th>Stop</th><th>Objetivo</th><th>Vence</th></tr></thead><tbody>`+
+   (m.open.map(t=>`<tr><td class="sym">${esc(t.symbol)}</td><td>${t.signal_day}</td><td>${px(t.entry)}</td><td>${px(t.last)}</td><td>${pct((t.last/t.entry-1)*100)}</td><td>${px(t.stop)}</td><td>${px(t.target)}</td><td>${when(t.expires)}</td></tr>`).join("")||`<tr><td colspan="8" class="muted">Sin operaciones abiertas. Las señales son poco frecuentes: solo aparecen cuando una memecoin explota en volumen.</td></tr>`)+"</tbody>";
+  $("#memeSig").innerHTML=`<thead><tr><th>Cierre</th><th>Token</th><th>Volumen</th><th>Subida del día</th><th>Entrada</th><th>Stop</th><th>Objetivo</th><th>Práctica</th></tr></thead><tbody>`+
+   (m.signals.map(x=>`<tr><td>${x.signal_day}</td><td class="sym">${esc(x.symbol)}</td><td>${x.vol_x}×</td><td>${pct(x.day_gain_pct)}</td><td>${px(x.entry)}</td><td>${px(x.stop)}</td><td>${px(x.target)}</td><td>${x.paper?"Sí":"Sin cupo"}</td></tr>`).join("")||`<tr><td colspan="8" class="muted">Aún no hay señales.</td></tr>`)+"</tbody>";
+  $("#memeClosed").innerHTML=`<thead><tr><th>Token</th><th>Señal</th><th>Entrada</th><th>Salida</th><th>Motivo</th><th>Resultado</th></tr></thead><tbody>`+
+   (m.closed.map(t=>`<tr><td class="sym">${esc(t.symbol)}</td><td>${t.signal_day}</td><td>${px(t.entry)}</td><td>${px(t.exit)}</td><td>${t.reason}</td><td>${pct(t.pnl_pct)}</td></tr>`).join("")||`<tr><td colspan="6" class="muted">Aún no hay operaciones cerradas.</td></tr>`)+"</tbody>";
+}
+$("#memeCheck").onclick=async(ev)=>{const b=ev.currentTarget;b.disabled=true;const r=await post("/api/memes/check");if(!r.ok)alert(r.msg);setTimeout(()=>{loadMemes();b.disabled=false},8000)};
 
 async function loadJournal(){
   const j=await api("/api/journal"),s=j.stats;

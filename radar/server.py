@@ -12,10 +12,11 @@ import traceback
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
-from . import storage, scanner, backtest, alerts, __version__
+from . import storage, scanner, backtest, alerts, memes, __version__
 from .config import WEB_DIR, load_settings, save_settings
 
 WATCH_EVERY_S = 15 * 60
+MEME_EVERY_S = 60 * 60   # memecoins: revisar cada hora (la señal sale al cierre diario 00:00 UTC)
 _bt_cache = {}
 
 
@@ -47,8 +48,12 @@ def keepalive():
 
 def scheduler():
     last_watch = 0.0
+    last_meme = 0.0
     while True:
         try:
+            if time.time() - last_meme >= MEME_EVERY_S and load_settings().get("meme_strategy", True) and not scanner.status["scanning"]:
+                last_meme = time.time()
+                memes.run()
             if now() >= next_scan_time() and not scanner.status["scanning"]:
                 print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
                 scanner.run_scan()
@@ -141,6 +146,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, list(reversed(storage.read("alerts.json", []) or []))[:300])
         if p == "/api/positions":
             return self._send(200, storage.read("positions.json", []) or [])
+        if p == "/api/memes":
+            return self._send(200, memes.state())
         if p == "/api/journal":
             j = storage.read("journal.json", []) or []
             closed = [x for x in j if x["status"] == "CLOSED" and x["r_multiple"] is not None]
@@ -178,6 +185,11 @@ class Handler(BaseHTTPRequestHandler):
             return
         p = urlparse(self.path).path
         b = self._body()
+        if p == "/api/memes/check":
+            if memes.status["checking"]:
+                return self._send(200, {"ok": False, "msg": "Ya se están revisando las memecoins"})
+            threading.Thread(target=memes.run, daemon=True).start()
+            return self._send(200, {"ok": True})
         if p == "/api/scan":
             if scanner.status["scanning"]:
                 return self._send(200, {"ok": False, "msg": "Ya hay un escaneo en curso"})

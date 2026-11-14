@@ -14,6 +14,7 @@
     <button data-tab="assets">Todos los activos</button>
     <button data-tab="alerts">Alertas <span id="alertCount" class="pill hidden"></span></button>
     <button data-tab="positions">Mis posiciones</button>
+    <button data-tab="memes">Memecoins 🐸</button>
     <button data-tab="journal">Rendimiento</button>
     <button data-tab="backtest">Backtest</button>
     <button data-tab="settings">Ajustes</button>
@@ -77,6 +78,23 @@
     </div>
     <div class="card"><h3>Posiciones abiertas</h3><div class="tablewrap"><table id="posTable"></table></div></div>
     <div class="card"><h3>Posiciones cerradas</h3><div class="tablewrap"><table id="posClosed"></table></div></div>
+  </section>
+
+  <section id="tab-memes" class="tab">
+    <div class="card">
+      <div class="row gap" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
+        <h3 style="margin:0">Estrategia de memecoins: ruptura con volumen</h3>
+        <button id="memeCheck" class="primary">Revisar ahora</button>
+      </div>
+      <p class="muted small" id="memeRule"></p>
+      <div id="memeBT" class="grid kpis"></div>
+      <p class="muted small">Arriba: resultado del backtest en la prueba a ciegas (2025→hoy). Abajo: lo que la estrategia está haciendo <b>en vivo, en modo práctica</b> (la app no compra nada; te avisa por Telegram).</p>
+      <div id="memeStats" class="grid kpis"></div>
+      <p class="muted small" id="memeStatus"></p>
+    </div>
+    <div class="card"><h3>Operaciones abiertas (práctica)</h3><div class="tablewrap"><table id="memeOpen"></table></div></div>
+    <div class="card"><h3>Señales recientes</h3><div class="tablewrap"><table id="memeSig"></table></div></div>
+    <div class="card"><h3>Operaciones cerradas</h3><div class="tablewrap"><table id="memeClosed"></table></div></div>
   </section>
 
   <section id="tab-journal" class="tab">
