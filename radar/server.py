@@ -31,6 +31,20 @@ def next_scan_time():
     return dt.datetime.fromisoformat(last) + dt.timedelta(hours=float(s["scan_every_hours"]))
 
 
+def keepalive():
+    """En Render gratis el servicio se duerme tras 15 min sin visitas: se visita a sí mismo cada 10 min."""
+    import urllib.request
+    url = (os.environ.get("RENDER_EXTERNAL_URL") or "").rstrip("/")
+    if not url:
+        return
+    while True:
+        time.sleep(600)
+        try:
+            urllib.request.urlopen(url + "/healthz", timeout=20).read()
+        except Exception:
+            pass
+
+
 def scheduler():
     last_watch = 0.0
     while True:
@@ -226,6 +240,8 @@ def serve(port=None, host=None, schedule=True):
         raise SystemExit("Por seguridad, define CRYPTO_RADAR_PASSWORD antes de exponer el panel a internet.")
     if schedule:
         threading.Thread(target=scheduler, daemon=True).start()
+    if os.environ.get("KEEPALIVE") == "1":
+        threading.Thread(target=keepalive, daemon=True).start()
     httpd = ThreadingHTTPServer((host, port), Handler)
     print(f"Crypto Radar {__version__} en http://localhost:{port}  (Ctrl+C para detener)", flush=True)
     httpd.serve_forever()

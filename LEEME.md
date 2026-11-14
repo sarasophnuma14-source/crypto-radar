@@ -52,8 +52,11 @@ python3 main.py scan           # un escaneo ahora en la terminal
 python3 main.py backtest SOL   # backtest rápido
 ```
 
-## Desplegar en Render (24/7 sin tu Mac)
+## Desplegar en Render gratis (24/7 sin tu Mac)
 1. En Render: **New → Blueprint** y elige este repositorio. Render lee `render.yaml`.
-2. Escribe una contraseña en `CRYPTO_RADAR_PASSWORD` (la pedirá el panel; usuario: cualquiera).
-3. Confirma. Queda en Frankfurt (Binance bloquea EE. UU.), plan Starter con 1 GB de disco para guardar historial, alertas y posiciones.
-Las notificaciones de escritorio no aplican en el servidor: activa Telegram en Ajustes para recibir alertas.
+2. Escribe la contraseña del panel en `CRYPTO_RADAR_PASSWORD` (usuario: cualquiera). Opcional: `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` para alertas al celular.
+3. Confirma. Queda en Frankfurt (Binance bloquea EE. UU.).
+
+Plan gratis: el servicio se visita a sí mismo cada 10 min para no dormirse (usa ~720 de las 750 horas gratis al mes;
+no despliegues otro servicio gratis en la misma cuenta). El disco se borra al reiniciar o redesplegar: se pierden el
+historial, las posiciones y el diario de señales; el siguiente escaneo se hace solo. Las alertas importantes llegan por Telegram.

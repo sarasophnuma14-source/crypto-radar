@@ -1,23 +1,26 @@
-# Despliegue en Render (Blueprint). Un solo servicio: panel web + escáner cada 4 h + vigilancia de precio cada 15 min.
+# Despliegue en Render (Blueprint), plan GRATIS.
+# Un solo servicio: panel web + escáner cada 4 h + vigilancia de precio cada 15 min.
+# Limitaciones del plan gratis: el disco se borra en cada reinicio/despliegue (historial, posiciones y diario
+# se pierden); por eso Telegram y los ajustes clave van como variables de entorno.
 services:
   - type: web
     name: crypto-radar
     runtime: python
-    region: frankfurt          # Binance bloquea IPs de EE. UU.; Frankfurt sí tiene acceso
-    plan: starter              # el plan gratis se duerme y borra los datos; starter + disco los mantiene
+    region: frankfurt          # Binance bloquea IPs de EE. UU.
+    plan: free
     buildCommand: "echo sin dependencias"
     startCommand: "python main.py serve"
     healthCheckPath: /healthz
     envVars:
       - key: CRYPTO_RADAR_HOST
         value: 0.0.0.0
-      - key: CRYPTO_RADAR_DATA
-        value: /var/data
       - key: PYTHON_VERSION
         value: 3.12.7
+      - key: KEEPALIVE
+        value: "1"             # se visita a sí mismo cada 10 min para que Render no lo duerma
       - key: CRYPTO_RADAR_PASSWORD
-        sync: false            # Render te la pide al crear el servicio
-    disk:
-      name: radar-data
-      mountPath: /var/data
-      sizeGB: 1
+        sync: false            # contraseña del panel (Render te la pide)
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false            # opcional: alertas al celular
+      - key: TELEGRAM_CHAT_ID
+        sync: false

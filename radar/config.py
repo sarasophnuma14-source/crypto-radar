@@ -69,13 +69,26 @@ DEFAULTS = {
 }
 
 
+ENV_OVERRIDES = {"TELEGRAM_BOT_TOKEN": "telegram_bot_token", "TELEGRAM_CHAT_ID": "telegram_chat_id",
+                 "CAPITAL_USD": "capital_usd", "RISK_PER_TRADE_PCT": "risk_per_trade_pct"}
+
+
 def load_settings() -> dict:
     s = dict(DEFAULTS)
+    for env, key in ENV_OVERRIDES.items():
+        if os.environ.get(env):
+            s[key] = type(DEFAULTS[key])(os.environ[env]) if not isinstance(DEFAULTS[key], str) else os.environ[env]
     if SETTINGS_FILE.exists():
         try:
-            s.update(json.loads(SETTINGS_FILE.read_text("utf-8")))
+            saved = json.loads(SETTINGS_FILE.read_text("utf-8"))
+            for env, key in ENV_OVERRIDES.items():
+                if os.environ.get(env) and not saved.get(key):
+                    saved.pop(key, None)
+            s.update(saved)
         except Exception:
             pass
+    if os.environ.get("RENDER"):
+        s["desktop_notifications"] = False
     return s
 
 
