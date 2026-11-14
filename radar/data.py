@@ -75,8 +75,17 @@ def get_json(url, params=None, timeout=20, retries=2):
                 _blocked[host] = time.time() + wait
                 raise RateLimited(host, e.code, wait)
             if e.code == 429:
-                time.sleep(15 * (attempt + 1))
-                continue
+                # CoinGecko u otra API limitada: esperar lo que pide (máx. 60 s) y reintentar una vez;
+                # si sigue, poner el host en espera 10 min para no bloquear el escaneo entero
+                try:
+                    wait = min(float(e.headers.get("Retry-After") or 20), 60)
+                except (TypeError, ValueError):
+                    wait = 20
+                if attempt == 0:
+                    time.sleep(wait)
+                    continue
+                _blocked[host] = time.time() + 600
+                raise RateLimited(host, 429, 600)
             if e.code in (451, 403, 404, 400):
                 raise
         except (ssl.SSLError, urllib.error.URLError) as e:
@@ -198,6 +207,45 @@ def ticker_prices(quote="USDT"):
         pass
     r = get_json(OKX + "/api/v5/market/tickers", {"instType": "SPOT"}, retries=1)
     return {x["instId"].split("-")[0]: float(x["last"]) for x in r["data"] if x["instId"].endswith("-" + quote)}
+
+
+STABLE_BASES = {"USDT", "USDC", "FDUSD", "TUSD", "BUSD", "USDP", "DAI", "EUR", "AEUR", "EURI", "USDE", "PAXG",
+                "WBTC", "WBETH", "BFUSD", "USD1", "XUSD", "RLUSD", "BNSOL", "XAUT", "GBP", "TRY", "BRL", "USDS", "PYUSD"}
+
+
+def exchange_markets(quote="USDT", n=150):
+    """Respaldo del universo cuando CoinGecko no responde: los N pares más negociados en 24 h
+    (Binance → Bybit → OKX). Sin capitalización (queda N/D; nunca se inventa)."""
+    rows, src = None, None
+    try:
+        r = _binance("/api/v3/ticker/24hr")
+        rows = [(x["symbol"][:-len(quote)], float(x["lastPrice"]), float(x["quoteVolume"]), float(x["priceChangePercent"]))
+                for x in r if x["symbol"].endswith(quote)]
+        src = "binance"
+    except Exception:
+        pass
+    if rows is None:
+        try:
+            r = get_json(BYBIT + "/v5/market/tickers", {"category": "spot"}, retries=1)
+            rows = [(x["symbol"][:-len(quote)], float(x["lastPrice"]), float(x.get("turnover24h") or 0),
+                     float(x.get("price24hPcnt") or 0) * 100) for x in r["result"]["list"] if x["symbol"].endswith(quote)]
+            src = "bybit"
+        except Exception:
+            pass
+    if rows is None:
+        r = get_json(OKX + "/api/v5/market/tickers", {"instType": "SPOT"}, retries=1)
+        rows = []
+        for x in r["data"]:
+            if x["instId"].endswith("-" + quote):
+                last, op = float(x["last"]), float(x.get("sodUtc0") or x.get("open24h") or 0)
+                rows.append((x["instId"].split("-")[0], last, float(x.get("volCcy24h") or 0), (last / op - 1) * 100 if op else 0))
+        src = "okx"
+    rows = [r for r in rows if r[0] and r[0] not in STABLE_BASES and "USD" not in r[0]
+            and not r[0].endswith(("UP", "DOWN", "BULL", "BEAR"))]
+    rows.sort(key=lambda r: -r[2])
+    source_used["markets"] = src
+    return [{"symbol": b.lower(), "id": b.lower(), "name": b, "current_price": px, "total_volume": qv,
+             "price_change_percentage_24h": chg, "market_cap": None} for b, px, qv, chg in rows[:n]]
 
 
 def binance_symbols(quote="USDT"):
