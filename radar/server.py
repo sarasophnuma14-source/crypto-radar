@@ -133,7 +133,14 @@ class Handler(BaseHTTPRequestHandler):
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         p = u.path
         if p == "/healthz":
-            return self._send(200, {"ok": True})
+            # diagnóstico mínimo sin datos privados: si el escaneo corre, cuándo terminó y el último error
+            rep = storage.read("latest.json", {}) or {}
+            err = scanner.status.get("last_error")
+            return self._send(200, {"ok": True, "scanning": scanner.status.get("scanning"),
+                                    "progress": scanner.status.get("progress"),
+                                    "last_scan": rep.get("generated_at") or rep.get("at"),
+                                    "last_error": (str(err)[:300] if err else None),
+                                    "sources": rep.get("sources")})
         if p in ("/", "/index.html"):
             return self._static("index.html")
         if p.startswith("/static/"):
