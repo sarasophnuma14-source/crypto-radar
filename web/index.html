@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crypto Radar</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="dot"></span>CRYPTO RADAR <small>AI</small></div>
+  <nav id="tabs">
+    <button data-tab="radar" class="on">Radar</button>
+    <button data-tab="assets">Todos los activos</button>
+    <button data-tab="alerts">Alertas <span id="alertCount" class="pill hidden"></span></button>
+    <button data-tab="positions">Mis posiciones</button>
+    <button data-tab="journal">Rendimiento</button>
+    <button data-tab="backtest">Backtest</button>
+    <button data-tab="settings">Ajustes</button>
+  </nav>
+  <div class="scanbox">
+    <div id="scanInfo" class="muted">—</div>
+    <button id="scanBtn" class="primary">Escanear ahora</button>
+  </div>
+</header>
+
+<main>
+  <section id="tab-radar" class="tab on">
+    <div id="empty" class="card hidden">
+      <h2>Aún no hay escaneos</h2>
+      <p>Pulsa <b>Escanear ahora</b>. El primer escaneo tarda unos minutos (analiza ~150 criptomonedas en 1D, 4H y 1W).</p>
+    </div>
+    <div id="verdict" class="verdict"></div>
+    <div id="market" class="grid kpis"></div>
+    <div class="card"><h3>Panorama del mercado</h3><p id="outlook" class="outlook"></p></div>
+    <div class="card">
+      <div class="row between"><h3>Ranking · Top 10 oportunidades</h3><span class="muted small">Haz clic en un activo para ver su plan completo</span></div>
+      <div class="tablewrap"><table id="rankTable"></table></div>
+    </div>
+    <div id="extra" class="grid cards3"></div>
+  </section>
+
+  <section id="tab-assets" class="tab">
+    <div class="card">
+      <div class="row between wrap">
+        <h3>Todos los activos analizados</h3>
+        <div class="row wrap gap">
+          <input id="fSearch" placeholder="Buscar símbolo…">
+          <select id="fPhase"><option value="">Todas las fases</option></select>
+          <select id="fCat"><option value="">Todas las categorías</option></select>
+        </div>
+      </div>
+      <div class="tablewrap"><table id="assetTable"></table></div>
+      <details class="muted small"><summary>Activos descartados del análisis</summary><div id="skipped"></div></details>
+    </div>
+  </section>
+
+  <section id="tab-alerts" class="tab">
+    <div class="card"><h3>Alertas</h3><div id="alertList"></div></div>
+  </section>
+
+  <section id="tab-positions" class="tab">
+    <div class="card">
+      <h3>Registrar una posición</h3>
+      <p class="muted small">Registra compras reales o simuladas (paper trading). El radar vigila el precio cada 15 minutos y te avisa de TP, stop y señales de salida. Si dejas stop/TP vacíos se usan los del plan del radar.</p>
+      <form id="posForm" class="row wrap gap">
+        <input name="symbol" placeholder="Símbolo (ej. SOL)" required>
+        <input name="entry" placeholder="Precio de entrada" required inputmode="decimal">
+        <input name="qty" placeholder="Cantidad (opcional)" inputmode="decimal">
+        <input name="stop" placeholder="Stop" inputmode="decimal">
+        <input name="tp1" placeholder="TP1" inputmode="decimal">
+        <input name="tp2" placeholder="TP2" inputmode="decimal">
+        <input name="tp3" placeholder="TP3" inputmode="decimal">
+        <label class="chk"><input type="checkbox" name="paper" checked> Simulada</label>
+        <button class="primary">Añadir</button>
+      </form>
+    </div>
+    <div class="card"><h3>Posiciones abiertas</h3><div class="tablewrap"><table id="posTable"></table></div></div>
+    <div class="card"><h3>Posiciones cerradas</h3><div class="tablewrap"><table id="posClosed"></table></div></div>
+  </section>
+
+  <section id="tab-journal" class="tab">
+    <div class="card">
+      <h3>Rendimiento real del radar</h3>
+      <p class="muted small">Cada vez que el radar marca <b>COMPRAR EN ZONA</b>, la señal se guarda y se sigue automáticamente con velas de 1 hora: 40% en TP1 (stop a la entrada), 35% en TP2 y 25% en TP3. Así puedes comprobar si el sistema funciona antes de arriesgar dinero. "R" = múltiplos del riesgo asumido.</p>
+      <div id="jStats" class="grid kpis"></div>
+      <div class="tablewrap"><table id="jTable"></table></div>
+    </div>
+  </section>
+
+  <section id="tab-backtest" class="tab">
+    <div class="card">
+      <h3>Backtest de las reglas</h3>
+      <p class="muted small">Simula las reglas técnicas del radar sobre hasta 1000 días de velas diarias de Binance. No incluye fundamentales históricos. Resultados pasados no garantizan resultados futuros.</p>
+      <form id="btForm" class="row wrap gap">
+        <input name="symbol" placeholder="Símbolo (ej. ETH)" value="ETH" required>
+        <select name="min_score"><option>60</option><option selected>70</option><option>80</option></select>
+        <button class="primary">Ejecutar</button>
+      </form>
+      <div id="btOut"></div>
+    </div>
+  </section>
+
+  <section id="tab-settings" class="tab">
+    <form id="setForm" class="card">
+      <h3>Ajustes</h3>
+      <div class="grid form2">
+        <label>Escanear cada (horas)<input name="scan_every_hours" type="number" min="1" max="24"></label>
+        <label>Nº de criptos a analizar (top por capitalización)<input name="universe_size" type="number" min="20" max="500"></label>
+        <label>Volumen mínimo 24h (USD)<input name="min_volume_usd" type="number"></label>
+        <label>Capitalización mínima (USD)<input name="min_mcap_usd" type="number"></label>
+        <label>Tu capital (USD) para calcular tamaño de posición<input name="capital_usd" type="number"></label>
+        <label>% del capital arriesgado por operación<input name="risk_per_trade_pct" type="number" step="0.1"></label>
+        <label>% máximo por activo<input name="max_position_pct" type="number" step="1"></label>
+        <label>R:R mínimo<input name="min_risk_reward" type="number" step="0.1"></label>
+        <label class="chk"><input name="include_memecoins" type="checkbox"> Incluir memecoins</label>
+        <label class="chk"><input name="desktop_notifications" type="checkbox"> Notificaciones en el computador</label>
+      </div>
+      <label>Watchlist (símbolos separados por coma, se analizan siempre)<input name="watchlist"></label>
+      <label>Excluir siempre (separados por coma)<input name="exclude"></label>
+      <label>Catalizadores verificables (uno por línea: SÍMBOLO: descripción y fuente)<textarea name="catalysts" rows="3" placeholder="ONDO: lanzamiento mainnet 2026-12-01 (blog oficial)"></textarea></label>
+      <h3>Alertas por Telegram (opcional)</h3>
+      <ol class="muted small">
+        <li>En Telegram abre <b>@BotFather</b>, envía <code>/newbot</code> y copia el <b>token</b>.</li>
+        <li>Escríbele cualquier mensaje a tu nuevo bot.</li>
+        <li>Abre <b>@userinfobot</b> y copia tu <b>Id</b> (chat id).</li>
+        <li>Pégalos aquí, guarda y pulsa "Probar Telegram".</li>
+      </ol>
+      <div class="grid form2">
+        <label>Token del bot<input name="telegram_bot_token" autocomplete="off"></label>
+        <label>Chat id<input name="telegram_chat_id"></label>
+      </div>
+      <div class="row gap"><button class="primary">Guardar</button><button type="button" id="tgTest">Probar Telegram</button><span id="setMsg" class="muted"></span></div>
+    </form>
+  </section>
+</main>
+
+<div id="modal" class="modal hidden"><div class="modal-body"><button class="close" id="modalClose">✕</button><div id="modalContent"></div></div></div>
+
+<footer>Crypto Radar · solo análisis cuantitativo, no es asesoría financiera. Spot, sin apalancamiento. Datos: CoinGecko, Binance, alternative.me. Nunca se inventan datos: lo no verificable se muestra como N/D.</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

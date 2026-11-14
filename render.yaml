@@ -1,0 +1,23 @@
+# Despliegue en Render (Blueprint). Un solo servicio: panel web + escáner cada 4 h + vigilancia de precio cada 15 min.
+services:
+  - type: web
+    name: crypto-radar
+    runtime: python
+    region: frankfurt          # Binance bloquea IPs de EE. UU.; Frankfurt sí tiene acceso
+    plan: starter              # el plan gratis se duerme y borra los datos; starter + disco los mantiene
+    buildCommand: "echo sin dependencias"
+    startCommand: "python main.py serve"
+    healthCheckPath: /healthz
+    envVars:
+      - key: CRYPTO_RADAR_HOST
+        value: 0.0.0.0
+      - key: CRYPTO_RADAR_DATA
+        value: /var/data
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: CRYPTO_RADAR_PASSWORD
+        sync: false            # Render te la pide al crear el servicio
+    disk:
+      name: radar-data
+      mountPath: /var/data
+      sizeGB: 1
