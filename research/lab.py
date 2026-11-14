@@ -307,7 +307,7 @@ def rebuild(P, D, fam, params, warm="2020-06-01"):
 
 
 
-def study(panel_path, out_dir, log=print):
+def study(panel_path, out_dir, log=print, holdout=False):
     out = Path(out_dir); out.mkdir(parents=True, exist_ok=True)
     P = load_panel(panel_path); D = derived(P)
     res = grid(P, D, log=log)
@@ -324,6 +324,11 @@ def study(panel_path, out_dir, log=print):
         best["familia_sharpe_mediana"] = sh[len(sh) // 2]
         best["configs_probadas"] = len(rs)
         chosen[f] = best
+    if not holdout:
+        summary = {"configs_totales": len(res), "elegidas": chosen}
+        (out / "diseño.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1, default=float))
+        (out / "todas_las_configs.json").write_text(json.dumps(res, ensure_ascii=False, indent=1, default=float))
+        return summary
     # prueba a ciegas: una sola vez por familia
     for f, r in chosen.items():
         eq, tr = rebuild(P, D, f, r["params"])
@@ -343,5 +348,24 @@ def study(panel_path, out_dir, log=print):
 
 
 if __name__ == "__main__":
-    s = study(sys.argv[1], sys.argv[2])
-    print(json.dumps({f: {k: r[k] for k in ("params", "diseño", "prueba_2025_hoy")} for f, r in s["elegidas"].items()}, ensure_ascii=False, indent=1, default=float))
+    s = study(sys.argv[1], sys.argv[2], holdout=len(sys.argv) > 3 and sys.argv[3] == "holdout")
+    print(json.dumps({f: {k: r.get(k) for k in ("params", "diseño", "familia_sharpe_mediana", "prueba_2025_hoy")} for f, r in s["elegidas"].items()}, ensure_ascii=False, indent=1, default=float))
+
+
+def vol_target(eq_btc_w, P, D, target=0.5, lb=30):
+    """Escala la exposición de BTC para apuntar a una volatilidad anual fija (máx. 100 %, sin apalancamiento)."""
+    r = D["ret"]["BTC"]
+    vol = r.rolling(lb).std() * math.sqrt(365)
+    scale = (target / vol).clip(upper=1.0).fillna(0)
+    W = eq_btc_w.copy(); W["BTC"] = W["BTC"] * scale
+    return W
+
+
+def blend(curves, weights, monthly_cost=0.002):
+    """Cartera que reparte el capital entre estrategias y se rebalancea cada mes (con costo)."""
+    df = pd.concat(curves, axis=1).dropna()
+    rets = df.pct_change().fillna(0)
+    port = (rets * weights).sum(axis=1)
+    month_start = df.index.to_series().dt.is_month_start
+    port = port - month_start.astype(float) * monthly_cost * 0.25   # ~25 % del capital se mueve al rebalancear
+    return (1 + port).cumprod()
