@@ -24,3 +24,14 @@ services:
         sync: false            # opcional: alertas al celular
       - key: TELEGRAM_CHAT_ID
         sync: false
+
+  # Web de ventas: sitio estático gratis (no se duerme ni consume las 750 h del plan gratis).
+  - type: web
+    name: crypto-radar-ventas
+    runtime: static
+    buildCommand: "echo sitio estatico"
+    staticPublishPath: ./ventas
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
