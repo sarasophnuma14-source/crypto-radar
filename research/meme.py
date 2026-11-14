@@ -20,7 +20,10 @@ MEMES = ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK", "WIF", "BOME", "MEME", "1000SA
 
 
 def simulate(P, D, mode="ruptura", vmult=3, n=20, tp=0.3, sl=0.12, hold=10, btc_sma=0, size=0.10, max_pos=8,
-             start="2021-01-01"):
+             start="2021-01-01", close_pos=0.0, max_gain=0.0, partial=0.0, partial_frac=0.5):
+    """close_pos: el cierre debe estar en la parte alta de la vela (0.75 = último 25 %).
+    max_gain: no entrar si la vela de señal ya subió más que esto (evita perseguir).
+    partial: vender `partial_frac` al +partial y mover el stop a la entrada (protege la operación)."""
     syms = [s for s in MEMES if s in P["c"].columns]
     c, o, h, l, v = (P[k][syms] for k in "cohlv")
     vavg = v.rolling(20, min_periods=15).mean().shift(1)
@@ -31,6 +34,11 @@ def simulate(P, D, mode="ruptura", vmult=3, n=20, tp=0.3, sl=0.12, hold=10, btc_
         sig = vol_ok & (c > hh)
     else:
         sig = vol_ok & green & (c <= hh) & (c >= hh * 0.90)
+    if close_pos:
+        rng = (h - l).replace(0, np.nan)
+        sig = sig & (((c - l) / rng) >= close_pos)
+    if max_gain:
+        sig = sig & ((c / c.shift(1) - 1) <= max_gain)
     if btc_sma:
         b = P["c"]["BTC"]; sig = sig & (b > b.rolling(btc_sma).mean()).values[:, None]
     slip = D["slip"][syms]
@@ -46,7 +54,18 @@ def simulate(P, D, mode="ruptura", vmult=3, n=20, tp=0.3, sl=0.12, hold=10, btc_
             if np.isnan(cl):
                 exit_px, why = p["last"], "sin datos"
             elif lo <= p["stop"]:
-                exit_px, why = min(op, p["stop"]), "stop"
+                exit_px, why = min(op, p["stop"]), ("stop en entrada" if p.get("half") else "stop")
+            elif partial and not p.get("half") and hi >= p["cost"] * (1 + partial):
+                # toma parcial: vende una parte al objetivo corto y sube el stop a la entrada
+                ppx = max(op, p["cost"] * (1 + partial)) * (1 - slip.at[d, s]); qq = p["q"] * partial_frac
+                cash += qq * ppx * (1 - lab.FEE); p["q"] -= qq; p["half"] = True
+                p["realized"] = qq * ppx * (1 - lab.FEE); p["stop"] = max(p["stop"], p["cost"])
+                if lo <= p["stop"]:
+                    exit_px, why = p["stop"], "stop en entrada"
+                elif hi >= p["tp"]:
+                    exit_px, why = p["tp"], "objetivo"
+                elif p["days"] >= hold:
+                    exit_px, why = cl, "tiempo"
             elif hi >= p["tp"]:
                 exit_px, why = max(op, p["tp"]), "objetivo"
             elif p["days"] >= hold:
@@ -54,8 +73,10 @@ def simulate(P, D, mode="ruptura", vmult=3, n=20, tp=0.3, sl=0.12, hold=10, btc_
             if exit_px is not None:
                 px = exit_px * (1 - slip.at[d, s])
                 cash += p["q"] * px * (1 - lab.FEE)
+                got = p.get("realized", 0.0) + p["q"] * px * (1 - lab.FEE)
+                pnl = got / p["q0"] / p["cost"] - 1
                 trades.append({**p["info"], "salida": nd, "precio_salida": round(px, 10), "motivo": why,
-                               "dias": p["days"], "pnl_pct": round((px * (1 - lab.FEE) / p["cost"] - 1) * 100, 2)})
+                               "parcial": bool(p.get("half")), "dias": p["days"], "pnl_pct": round(pnl * 100, 2)})
                 del pos[s]
             else:
                 p["last"] = cl
@@ -77,7 +98,7 @@ def simulate(P, D, mode="ruptura", vmult=3, n=20, tp=0.3, sl=0.12, hold=10, btc_
             if spend < val * 0.02:
                 break
             q = spend / (px * (1 + lab.FEE)); cash -= spend
-            pos[s] = {"q": q, "cost": px * (1 + lab.FEE), "last": op, "days": 0,
+            pos[s] = {"q": q, "q0": q, "cost": px * (1 + lab.FEE), "last": op, "days": 0,
                       "stop": px * (1 - sl), "tp": px * (1 + tp),
                       "info": {"simbolo": s, "señal": nd, "entrada": n2, "precio_entrada": round(px, 10),
                                "stop": round(px * (1 - sl), 10), "objetivo": round(px * (1 + tp), 10)}}
