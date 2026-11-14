@@ -74,10 +74,34 @@ def scheduler():
 
 
 def _f(v, default=None):
+    """Número finito o `default` (rechaza nan, inf y texto)."""
     try:
-        return float(v) if v not in (None, "") else default
+        x = float(v) if v not in (None, "") else default
     except (TypeError, ValueError):
         return default
+    if x is None or x != x or x in (float("inf"), float("-inf")):
+        return default
+    return x
+
+
+MAX_BODY = 64 * 1024
+SECURITY_HEADERS = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    "Referrer-Policy": "same-origin",
+    "Content-Security-Policy": ("default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' "
+                                "https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
+                                "script-src 'self'; connect-src 'self'; frame-ancestors 'none'"),
+}
+_auth_fail = {}          # ip -> [marcas de tiempo de intentos fallidos]
+AUTH_MAX_FAILS, AUTH_WINDOW_S = 10, 15 * 60
+
+
+def _too_many_fails(ip):
+    t = time.time()
+    fails = [x for x in _auth_fail.get(ip, []) if t - x < AUTH_WINDOW_S]
+    _auth_fail[ip] = fails
+    return len(fails) >= AUTH_MAX_FAILS
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -93,15 +117,38 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", ctype)
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store")
+        for k, v in SECURITY_HEADERS.items():
+            self.send_header(k, v)
         self.end_headers()
         self.wfile.write(body)
 
+    def _client_ip(self):
+        fwd = self.headers.get("X-Forwarded-For", "")
+        return (fwd.split(",")[0].strip() if fwd else self.client_address[0]) or "?"
+
+    def _same_origin(self):
+        """Defensa CSRF: las peticiones que cambian datos deben venir de esta misma web y en JSON."""
+        ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
+        if int(self.headers.get("Content-Length") or 0) and ctype != "application/json":
+            return False
+        origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
+        if not origin:
+            return True          # clientes no navegador (curl, pruebas); los navegadores siempre envían Origin en POST
+        host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or ""
+        return urlparse(origin).netloc == host
+
     def _body(self):
-        n = int(self.headers.get("Content-Length") or 0)
+        try:
+            n = int(self.headers.get("Content-Length") or 0)
+        except ValueError:
+            return None
+        if n > MAX_BODY:
+            return None
         if not n:
             return {}
         try:
-            return json.loads(self.rfile.read(n).decode("utf-8"))
+            b = json.loads(self.rfile.read(n).decode("utf-8"))
+            return b if isinstance(b, dict) else {}
         except Exception:
             return {}
 
@@ -115,14 +162,19 @@ class Handler(BaseHTTPRequestHandler):
         pw = os.environ.get("CRYPTO_RADAR_PASSWORD")
         if not pw or self.path == "/healthz":
             return True
+        ip = self._client_ip()
+        if _too_many_fails(ip):
+            self._send(429, {"error": "demasiados intentos; espera 15 minutos"})
+            return False
         h = self.headers.get("Authorization", "")
         if h.startswith("Basic "):
             try:
                 user_pw = base64.b64decode(h[6:]).decode("utf-8")
-                if hmac.compare_digest(user_pw.split(":", 1)[-1], pw):
+                if hmac.compare_digest(user_pw.split(":", 1)[-1].encode(), pw.encode()):
                     return True
             except Exception:
                 pass
+            _auth_fail.setdefault(ip, []).append(time.time())
         self.send_response(401)
         self.send_header("WWW-Authenticate", 'Basic realm="Crypto Radar"')
         self.send_header("Content-Length", "0")
@@ -186,7 +238,11 @@ class Handler(BaseHTTPRequestHandler):
         if not self._authorized():
             return
         p = urlparse(self.path).path
+        if not self._same_origin():
+            return self._send(403, {"error": "origen no permitido"})
         b = self._body()
+        if b is None:
+            return self._send(413, {"error": "petición demasiado grande"})
         if p == "/api/memes/check":
             if memes.status["checking"]:
                 return self._send(200, {"ok": False, "msg": "Ya se están revisando las memecoins"})

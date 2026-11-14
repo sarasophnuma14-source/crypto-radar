@@ -135,8 +135,8 @@ def run_scan(settings=None):
                 universe.append({"symbol": sym.lower(), "id": sym.lower(), "name": sym})
         # BTC primero
         _progress("Analizando Bitcoin y régimen de mercado…")
-        btc_d1 = data.klines("BTC" + settings["quote"], "1d", 400)
-        btc_t = technicals(btc_d1, data.klines("BTC" + settings["quote"], "4h", 200), weekly_from_daily(btc_d1))
+        btc_d1 = data.klines("BTC" + settings["quote"], "1d", 400, closed=True)   # solo velas cerradas
+        btc_t = technicals(btc_d1, data.klines("BTC" + settings["quote"], "4h", 200, closed=True), weekly_from_daily(btc_d1))
         btc_30 = btc_t["chg_30d"]
         cache = {}
         for i, m in enumerate(universe):
@@ -144,10 +144,10 @@ def run_scan(settings=None):
             _progress(f"Analizando {sym} ({i + 1}/{len(universe)})…")
             try:
                 pair = sym + settings["quote"]
-                d1 = btc_d1 if sym == "BTC" else data.klines(pair, "1d", 400)
+                d1 = btc_d1 if sym == "BTC" else data.klines(pair, "1d", 400, closed=True)
                 if len(d1["c"]) < 60:
                     skipped.append({"symbol": sym, "reason": "historial < 60 días"}); continue
-                h4 = data.klines(pair, "4h", 200)
+                h4 = data.klines(pair, "4h", 200, closed=True)
                 cache[sym] = (m, d1, h4)
                 time.sleep(0.08)
             except Exception as e:

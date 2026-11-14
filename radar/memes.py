@@ -168,7 +168,7 @@ def stats(st=None):
     losses = [-t["pnl_pct"] for t in closed if t["pnl_pct"] <= 0]
     return {"signals": len(st["signals"]), "open": sum(t["status"] == "OPEN" for t in st["trades"]),
             "closed": len(closed), "win_rate": round(len(wins) / len(closed) * 100, 1) if closed else None,
-            "profit_factor": round(sum(wins) / sum(losses), 2) if losses else (None if not wins else 99.0),
+            "profit_factor": round(sum(wins) / sum(losses), 2) if losses and sum(losses) > 0 else None,  # sin pérdidas aún: N/D
             "avg_pnl_pct": round(sum(t["pnl_pct"] for t in closed) / len(closed), 2) if closed else None,
             # cada operación usa 10 % del capital
             "portfolio_pct": round(sum(t["pnl_pct"] for t in closed) * RULE["size_pct"] / 100, 2)}

@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 from .config import DATA_DIR
 
-_lock = threading.Lock()
+_lock = threading.RLock()
 
 
 def path(name) -> Path:
@@ -31,7 +31,17 @@ def write(name, data):
 
 
 def append_list(name, items, keep=2000):
+    """Añade elementos de forma atómica (lectura y escritura bajo el mismo candado)."""
     with _lock:
         cur = read(name, []) or []
-    cur.extend(items)
-    write(name, cur[-keep:])
+        cur.extend(items)
+        write(name, cur[-keep:])
+
+
+def update(name, fn, default=None):
+    """Lectura-modificación-escritura atómica: fn(valor_actual) -> nuevo valor."""
+    with _lock:
+        cur = read(name, default)
+        new = fn(cur)
+        write(name, new)
+        return new
