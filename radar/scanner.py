@@ -71,15 +71,22 @@ def run_scan(settings=None):
         fng = data.fear_greed(); sources["fear_greed"] = "OK" if fng else "N/D"
         _progress("Leyendo universo de criptomonedas…")
         n = int(settings["universe_size"])
-        markets = []
-        for page in range(1, (n - 1) // 250 + 2):
-            markets += data.cg_markets(min(250, n), page)
-            if len(markets) >= n:
-                break
-            time.sleep(3)
-        markets = markets[:n]
-        sources["coingecko_markets"] = f"OK ({len(markets)})"
-        cats = category_map()
+        markets, cg_ok = [], True
+        try:
+            for page in range(1, (n - 1) // 250 + 2):
+                markets += data.cg_markets(min(250, n), page)
+                if len(markets) >= n:
+                    break
+                time.sleep(3)
+            markets = markets[:n]
+            sources["coingecko_markets"] = f"OK ({len(markets)})"
+        except Exception as e:
+            # CoinGecko limita mucho las IPs compartidas (Render): usar los pares más negociados del exchange
+            cg_ok = False
+            markets = data.exchange_markets(settings["quote"], n)
+            sources["coingecko_markets"] = (f"CoinGecko no respondió ({e}); universo = {len(markets)} pares más negociados en "
+                                            f"{data.source_used.get('markets', '?').capitalize()} (capitalización N/D)")
+        cats = category_map() if cg_ok else (storage.read("categories_cache.json", {}) or {}).get("map", {})
         try:
             tradable = data.binance_symbols(settings["quote"])
             src = data.source_used.get("symbols", "binance")
@@ -98,11 +105,11 @@ def run_scan(settings=None):
             if sym in seen: continue
             seen.add(sym)
             reason = None
-            if m["symbol"].lower() in STABLES or m["id"].startswith(("wrapped", "bridged", "staked")): reason = "stable/envuelto"
+            if m["symbol"].lower() in STABLES or (m.get("id") or "").startswith(("wrapped", "bridged", "staked")): reason = "stable/envuelto"
             elif sym in excl: reason = "excluido por ti"
             elif sym not in tradable: reason = f"sin par {settings['quote']} en Binance"
             elif sym not in must and (m.get("total_volume") or 0) < settings["min_volume_usd"]: reason = "liquidez insuficiente"
-            elif sym not in must and (m.get("market_cap") or 0) < settings["min_mcap_usd"]: reason = "capitalización baja"
+            elif sym not in must and cg_ok and (m.get("market_cap") or 0) < settings["min_mcap_usd"]: reason = "capitalización baja"
             elif not settings.get("include_memecoins", True) and "MEMECOINS" in cats.get(sym, []): reason = "memecoin (desactivadas)"
             if reason and sym not in must:
                 skipped.append({"symbol": sym, "reason": reason}); continue
