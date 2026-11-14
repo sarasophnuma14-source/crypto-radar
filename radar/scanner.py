@@ -81,9 +81,11 @@ def run_scan(settings=None):
         sources["coingecko_markets"] = f"OK ({len(markets)})"
         cats = category_map()
         try:
-            tradable = data.binance_symbols(settings["quote"]); sources["binance_spot"] = f"OK ({len(tradable)} pares)"
+            tradable = data.binance_symbols(settings["quote"])
+            src = data.source_used.get("symbols", "binance")
+            sources["binance_spot"] = f"OK ({len(tradable)} pares)" if src == "binance" else f"Binance no respondió; usando {src.capitalize()} ({len(tradable)} pares)"
         except Exception as e:
-            raise RuntimeError(f"No se pudo leer Binance spot ({e}). Revisa tu conexión a internet.")
+            raise RuntimeError(f"No se pudo leer la lista de pares en Binance, Bybit ni OKX ({e}).")
         funding = data.funding_rates(); sources["binance_funding"] = "OK" if funding else "N/D"
         excl = {s.upper() for s in settings.get("exclude", [])}
         watch = {s.upper() for s in settings.get("watchlist", [])}
@@ -350,8 +352,7 @@ def evaluate_journal(settings):
             continue
         try:
             start = int(dt.datetime.fromisoformat(x["at"]).timestamp() * 1000)
-            rows = data._binance("/api/v3/klines", {"symbol": x["symbol"] + settings["quote"], "interval": "1h",
-                                                    "startTime": start, "limit": 1000})
+            rows = data.kline_rows(x["symbol"] + settings["quote"], "1h", 1000, start)
         except Exception:
             continue
         R = x["entry"] - x["stop"]
@@ -390,12 +391,10 @@ def evaluate_journal(settings):
 def price_watch(settings=None):
     settings = settings or load_settings()
     try:
-        rows = data._binance("/api/v3/ticker/price")
+        prices = data.ticker_prices(settings["quote"])
     except Exception as e:
         status["last_error"] = f"Vigilancia de precio: {e}"
         return
-    q = settings["quote"]
-    prices = {r["symbol"][:-len(q)]: float(r["price"]) for r in rows if r["symbol"].endswith(q)}
     status["last_watch"] = now().isoformat()
     update_positions({}, settings, prices)
     rep = storage.read("latest.json", {}) or {}

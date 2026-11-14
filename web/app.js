@@ -183,6 +183,8 @@ $("#setForm").onsubmit=async e=>{e.preventDefault();const f=e.target,b={};
   for(const el of f.elements){if(!el.name)continue;b[el.name]=el.type==="checkbox"?el.checked:el.value}
   const cat={};(b.catalysts||"").split("\n").forEach(l=>{const i=l.indexOf(":");if(i>0)cat[l.slice(0,i).trim().toUpperCase()]=l.slice(i+1).trim()});b.catalysts=cat;
   await post("/api/settings",b);$("#setMsg").textContent="Guardado ✓ (se aplica en el próximo escaneo)";setTimeout(()=>$("#setMsg").textContent="",4000)};
-$("#tgTest").onclick=async()=>{const r=await post("/api/telegram/test");$("#setMsg").textContent=r.ok?"Mensaje enviado a Telegram ✓":"Telegram: "+r.msg};
+$("#tgTest").onclick=async(ev)=>{const b=ev.currentTarget;if(b.disabled)return;b.disabled=true;$("#setMsg").textContent="Enviando…";
+  try{const r=await post("/api/telegram/test");$("#setMsg").textContent=r.ok?"Mensaje enviado a Telegram ✓":"Telegram: "+r.msg}
+  catch(e){$("#setMsg").textContent="No se pudo contactar el servidor"} finally{setTimeout(()=>b.disabled=false,5000)}};
 
 refresh(); setInterval(refresh, 15000);

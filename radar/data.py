@@ -1,6 +1,8 @@
 """Fuentes de datos públicas y gratuitas (sin claves):
 - CoinGecko: universo, capitalización, FDV, supply, categorías, dominancia BTC.
-- Binance spot: velas OHLCV (1D, 4H, 1W). Si Binance está bloqueado en tu país se usa data-api.binance.vision.
+- Binance spot: velas OHLCV (1D, 4H, 1W). Primero data-api.binance.vision (espejo público de datos de mercado),
+  luego api.binance.com. Si Binance bloquea la IP (HTTP 418/429, típico en servidores compartidos como Render),
+  se respeta el tiempo de espera que pide y se usan Bybit u OKX como respaldo con los mismos pares USDT.
 - Binance futuros: funding rate y open interest (solo como dato de sentimiento, la app nunca opera con apalancamiento).
 - alternative.me: índice Fear & Greed.
 Si una fuente falla, el dato queda como N/D. Nunca se inventan valores.
@@ -15,8 +17,21 @@ import urllib.parse
 import urllib.request
 
 UA = "CryptoRadar/1.0"
-BINANCE_BASES = ["https://api.binance.com", "https://data-api.binance.vision", "https://api1.binance.com"]
+BINANCE_BASES = ["https://data-api.binance.vision", "https://api.binance.com", "https://api-gcp.binance.com"]
 _binance_base = None
+_blocked = {}          # host -> timestamp hasta el que no se le debe preguntar (baneo / límite de peso)
+_last_call = {}        # host -> último request (para espaciar peticiones)
+MIN_GAP = 0.15         # segundos mínimos entre peticiones al mismo host
+
+
+class RateLimited(Exception):
+    def __init__(self, host, code, wait):
+        super().__init__(f"{host} limitó las peticiones (HTTP {code}); se reintenta en {int(wait)} s")
+        self.host, self.code, self.wait = host, code, wait
+
+
+def _host(url):
+    return urllib.parse.urlsplit(url).netloc
 _ssl_ctx = None
 
 
@@ -34,14 +49,31 @@ def _context():
 def get_json(url, params=None, timeout=20, retries=2):
     if params:
         url += ("&" if "?" in url else "?") + urllib.parse.urlencode(params)
+    host = _host(url)
+    until = _blocked.get(host, 0)
+    if until > time.time():
+        raise RateLimited(host, "espera", until - time.time())
     last_err = None
     for attempt in range(retries + 1):
+        gap = MIN_GAP - (time.time() - _last_call.get(host, 0))
+        if gap > 0:
+            time.sleep(gap)
+        _last_call[host] = time.time()
         try:
             req = urllib.request.Request(url, headers={"User-Agent": UA, "Accept": "application/json"})
             with urllib.request.urlopen(req, timeout=timeout, context=_context()) as r:
                 return json.loads(r.read().decode("utf-8"))
         except urllib.error.HTTPError as e:
             last_err = e
+            if e.code == 418 or (e.code == 429 and "binance" in host):
+                # Baneo/límite de Binance: NO insistir (insistir alarga el baneo). Respetar Retry-After.
+                try:
+                    wait = float(e.headers.get("Retry-After") or 0)
+                except (TypeError, ValueError):
+                    wait = 0
+                wait = wait or (600 if e.code == 418 else 60)
+                _blocked[host] = time.time() + wait
+                raise RateLimited(host, e.code, wait)
             if e.code == 429:
                 time.sleep(15 * (attempt + 1))
                 continue
@@ -78,32 +110,125 @@ def cg_global():
 
 # ---------------------------------------------------------------- Binance
 def _binance(path, params=None):
+    """Prueba los hosts de Binance empezando por el último que funcionó; salta los que están en espera."""
     global _binance_base
-    bases = [_binance_base] if _binance_base else BINANCE_BASES
+    bases = ([_binance_base] if _binance_base else []) + [b for b in BINANCE_BASES if b != _binance_base]
     err = None
     for b in bases:
         try:
-            r = get_json(b + path, params)
+            r = get_json(b + path, params, retries=1)
             _binance_base = b
             return r
         except Exception as e:
             err = e
-    if _binance_base:
-        _binance_base = None
-    raise err
+    _binance_base = None
+    raise err or RuntimeError("Binance no disponible")
+
+
+# ---------------------------------------------------------------- respaldo: Bybit y OKX (spot, públicos)
+BYBIT = "https://api.bybit.com"
+OKX = "https://www.okx.com"
+_BYBIT_IV = {"1h": "60", "4h": "240", "1d": "D", "1w": "W"}
+_OKX_IV = {"1h": "1H", "4h": "4H", "1d": "1Dutc", "1w": "1Wutc"}
+source_used = {"klines": "binance"}
+
+
+def _split(symbol, quotes=("USDT", "USDC", "FDUSD", "BTC", "ETH")):
+    for q in quotes:
+        if symbol.endswith(q):
+            return symbol[: -len(q)], q
+    return symbol, ""
+
+
+def _bybit_klines(symbol, interval, limit, start=None):
+    p = {"category": "spot", "symbol": symbol, "interval": _BYBIT_IV[interval], "limit": min(limit, 1000)}
+    if start:
+        p["start"] = start
+    r = get_json(BYBIT + "/v5/market/kline", p, retries=1)
+    if r.get("retCode") != 0:
+        raise RuntimeError(f"Bybit: {r.get('retMsg')}")
+    rows = sorted(r["result"]["list"], key=lambda x: int(x[0]))   # Bybit entrega de más nuevo a más viejo
+    # [start, open, high, low, close, volume, turnover] -> mismo orden que Binance; turnover = volumen en USDT
+    return [[int(x[0]), x[1], x[2], x[3], x[4], x[5], 0, x[6]] for x in rows]
+
+
+def _okx_klines(symbol, interval, limit):
+    base, q = _split(symbol)
+    r = get_json(OKX + "/api/v5/market/candles", {"instId": f"{base}-{q}", "bar": _OKX_IV[interval], "limit": min(limit, 300)}, retries=1)
+    if r.get("code") != "0":
+        raise RuntimeError(f"OKX: {r.get('msg')}")
+    rows = sorted(r["data"], key=lambda x: int(x[0]))
+    # [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]; se descarta la vela sin cerrar solo si no es la última
+    return [[int(x[0]), x[1], x[2], x[3], x[4], x[5], 0, x[7]] for x in rows]
+
+
+def kline_rows(symbol, interval="1d", limit=365, start=None):
+    """Filas tipo Binance desde la primera fuente que responda: Binance → Bybit → OKX."""
+    errs = []
+    p = {"symbol": symbol, "interval": interval, "limit": limit}
+    if start:
+        p["startTime"] = start
+    try:
+        rows = _binance("/api/v3/klines", p); source_used["klines"] = "binance"; return rows
+    except Exception as e:
+        errs.append(f"Binance: {e}")
+    try:
+        rows = _bybit_klines(symbol, interval, limit, start); source_used["klines"] = "bybit"; return rows
+    except Exception as e:
+        errs.append(f"Bybit: {e}")
+    if not start:
+        try:
+            rows = _okx_klines(symbol, interval, limit); source_used["klines"] = "okx"; return rows
+        except Exception as e:
+            errs.append(f"OKX: {e}")
+    raise RuntimeError(" | ".join(errs))
+
+
+def ticker_prices(quote="USDT"):
+    """{BASE: último precio} desde Binance, o Bybit/OKX si Binance no responde."""
+    try:
+        rows = _binance("/api/v3/ticker/price")
+        return {r["symbol"][:-len(quote)]: float(r["price"]) for r in rows if r["symbol"].endswith(quote)}
+    except Exception:
+        pass
+    try:
+        r = get_json(BYBIT + "/v5/market/tickers", {"category": "spot"}, retries=1)
+        return {x["symbol"][:-len(quote)]: float(x["lastPrice"]) for x in r["result"]["list"] if x["symbol"].endswith(quote)}
+    except Exception:
+        pass
+    r = get_json(OKX + "/api/v5/market/tickers", {"instType": "SPOT"}, retries=1)
+    return {x["instId"].split("-")[0]: float(x["last"]) for x in r["data"] if x["instId"].endswith("-" + quote)}
 
 
 def binance_symbols(quote="USDT"):
-    info = _binance("/api/v3/exchangeInfo", {"permissions": "SPOT"})
-    out = set()
-    for s in info.get("symbols", []):
-        if s.get("quoteAsset") == quote and s.get("status") == "TRADING":
-            out.add(s["baseAsset"])
-    return out
+    """Pares spot operables. Si Binance no responde, usa la lista de Bybit u OKX (source_used['symbols'])."""
+    errs = []
+    try:
+        info = _binance("/api/v3/exchangeInfo", {"permissions": "SPOT"})
+        out = {s["baseAsset"] for s in info.get("symbols", []) if s.get("quoteAsset") == quote and s.get("status") == "TRADING"}
+        if out:
+            source_used["symbols"] = "binance"; return out
+    except Exception as e:
+        errs.append(f"Binance: {e}")
+    try:
+        r = get_json(BYBIT + "/v5/market/instruments-info", {"category": "spot", "limit": 1000}, retries=1)
+        out = {x["baseCoin"] for x in r["result"]["list"] if x.get("quoteCoin") == quote and x.get("status") == "Trading"}
+        if out:
+            source_used["symbols"] = "bybit"; return out
+    except Exception as e:
+        errs.append(f"Bybit: {e}")
+    try:
+        r = get_json(OKX + "/api/v5/public/instruments", {"instType": "SPOT"}, retries=1)
+        out = {x["baseCcy"] for x in r["data"] if x.get("quoteCcy") == quote and x.get("state") == "live"}
+        if out:
+            source_used["symbols"] = "okx"; return out
+    except Exception as e:
+        errs.append(f"OKX: {e}")
+    raise RuntimeError(" | ".join(errs))
 
 
-def klines(symbol, interval="1d", limit=365):
-    rows = _binance("/api/v3/klines", {"symbol": symbol, "interval": interval, "limit": limit})
+def klines(symbol, interval="1d", limit=365, start=None):
+    rows = kline_rows(symbol, interval, limit, start)
     # [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...]
     return {
         "t": [int(r[0]) for r in rows],
