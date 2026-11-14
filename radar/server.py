@@ -29,7 +29,9 @@ def next_scan_time():
     s = load_settings()
     last = (storage.read("latest.json", {}) or {}).get("at")
     if not last:
-        return now()
+        # sin escaneos previos: escanear ya (fecha en el pasado; antes devolvía now() y la
+        # comparación now() >= now() fallaba por microsegundos, así que nunca arrancaba)
+        return now() - dt.timedelta(seconds=1)
     return dt.datetime.fromisoformat(last) + dt.timedelta(hours=float(s["scan_every_hours"]))
 
 
