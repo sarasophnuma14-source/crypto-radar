@@ -9,7 +9,8 @@ from .analysis import analyze, technicals, EXPOSURE, MIN_BUY_SCORE
 from .config import CATEGORIES, STABLES, load_settings
 from .regime import detect
 
-status = {"scanning": False, "progress": "", "last_error": None, "last_watch": None}
+status = {"scanning": False, "progress": "", "last_error": None, "last_watch": None, "fail_streak": 0}
+ALERT_AFTER_FAILS = 3   # avisar por Telegram solo si falla 3 veces seguidas (~1 h), no por un bloqueo pasajero
 
 
 def now():
@@ -71,7 +72,7 @@ def run_scan(settings=None):
         fng = data.fear_greed(); sources["fear_greed"] = "OK" if fng else "N/D"
         _progress("Leyendo universo de criptomonedas…")
         n = int(settings["universe_size"])
-        markets, cg_ok = [], True
+        markets, cg_ok, cg_err = [], True, None
         try:
             for page in range(1, (n - 1) // 250 + 2):
                 markets += data.cg_markets(min(250, n), page)
@@ -80,19 +81,34 @@ def run_scan(settings=None):
                 time.sleep(3)
             markets = markets[:n]
             sources["coingecko_markets"] = f"OK ({len(markets)})"
+            storage.write("markets_cache.json", {"at": time.time(), "markets": markets})
         except Exception as e:
-            # CoinGecko limita mucho las IPs compartidas (Render): usar los pares más negociados del exchange
-            cg_ok = False
-            markets = data.exchange_markets(settings["quote"], n)
-            sources["coingecko_markets"] = (f"CoinGecko no respondió ({e}); universo = {len(markets)} pares más negociados en "
+            # CoinGecko limita mucho las IPs compartidas (Render): último universo bueno (<24 h) o pares del exchange
+            cg_err = e
+            cached = storage.read("markets_cache.json", {}) or {}
+            if cached.get("markets") and time.time() - cached.get("at", 0) < 86400:
+                markets = cached["markets"]
+                sources["coingecko_markets"] = f"CoinGecko no respondió ({e}); usando el universo guardado hace {int((time.time() - cached['at']) / 60)} min"
+                cg_ok = True
+            else:
+                cg_ok = False
+                markets = data.exchange_markets(settings["quote"], n)
+        if not cg_ok:
+            sources["coingecko_markets"] = (f"CoinGecko no respondió ({cg_err}); universo = {len(markets)} pares más negociados en "
                                             f"{data.source_used.get('markets', '?').capitalize()} (capitalización N/D)")
         cats = category_map() if cg_ok else (storage.read("categories_cache.json", {}) or {}).get("map", {})
         try:
             tradable = data.binance_symbols(settings["quote"])
             src = data.source_used.get("symbols", "binance")
             sources["binance_spot"] = f"OK ({len(tradable)} pares)" if src == "binance" else f"Binance no respondió; usando {src.capitalize()} ({len(tradable)} pares)"
+            storage.write("pairs_cache.json", {"at": time.time(), "pairs": sorted(tradable)})
         except Exception as e:
-            raise RuntimeError(f"No se pudo leer la lista de pares en Binance, Bybit ni OKX ({e}).")
+            pc = storage.read("pairs_cache.json", {}) or {}
+            if pc.get("pairs") and time.time() - pc.get("at", 0) < 86400:
+                tradable = set(pc["pairs"])
+                sources["binance_spot"] = f"Exchanges limitados ({e}); usando la lista de pares guardada"
+            else:
+                raise RuntimeError(f"No se pudo leer la lista de pares en Binance, Bybit ni OKX ({e}).")
         funding = data.funding_rates(); sources["binance_funding"] = "OK" if funding else "N/D"
         excl = {s.upper() for s in settings.get("exclude", [])}
         watch = {s.upper() for s in settings.get("watchlist", [])}
@@ -195,11 +211,16 @@ def run_scan(settings=None):
         storage.append_list("scans.json", [{k: report[k] for k in ("scan_id", "at", "verdict", "analyzed", "duration_s")} | {
             "regime": reg["regime"], "top": [x["symbol"] for x in report["ranking"][:5]]}], keep=500)
         _progress("")
+        status["fail_streak"] = 0
         return report
     except Exception as e:
         status["last_error"] = f"{e}"
+        status["fail_streak"] += 1
         traceback.print_exc()
-        alerts.emit(settings, "SYSTEM", "RADAR", f"El escaneo falló: {e}", dedupe_hours=6)
+        if status["fail_streak"] >= ALERT_AFTER_FAILS:
+            alerts.emit(settings, "SYSTEM", "RADAR",
+                        f"El escaneo falló {status['fail_streak']} veces seguidas: {str(e).rstrip('.')}. Se sigue reintentando cada 20 min.",
+                        dedupe_hours=6)
         return None
     finally:
         status["scanning"] = False
