@@ -36,6 +36,12 @@ def main():
         s = r["summary"]
         print(json.dumps({k: v for k, v in s.items() if k not in ("mejor_operacion", "peor_operacion")}, indent=1, ensure_ascii=False))
         print("Informe:", out / "informe.html")
+    elif cmd == "altcoins":
+        from radar import alt_study
+        from radar.config import DATA_DIR
+        comp = alt_study.main(DATA_DIR / "backtest_altcoins")
+        print(json.dumps(comp, indent=1, ensure_ascii=False))
+        print("Informe:", DATA_DIR / "backtest_altcoins" / "informe_altcoins.html")
     elif cmd == "backtest":
         print(json.dumps({k: v for k, v in backtest.run(sys.argv[2]).items() if k not in ("list", "equity")}, indent=1, ensure_ascii=False))
     else:

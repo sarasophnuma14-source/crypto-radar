@@ -55,6 +55,7 @@ def technicals(d1, h4=None, w1=None):
     t["breakout"] = price > hh30
     t["breakout_volume"] = t["breakout"] and t["vol_ratio"] >= 1.3
     t["breakout_no_volume"] = t["breakout"] and t["vol_ratio"] < 1.1
+    t["breakout_confirmed"] = n > 33 and price > hh30 and c[-2] > max(h[-32:-2])
     t["failed_breakout"] = (not t["breakout"]) and max(h[-5:]) > hh30 and price < hh30 * 0.98
     t["chg_7d"] = _pct(price, c[-8]) if n > 8 else None
     t["chg_30d"] = _pct(price, c[-31]) if n > 31 else None
@@ -185,7 +186,7 @@ def trade_plan(t, settings, regime="LATERAL"):
     ideal = min(price, support + 0.3 * a)
     lows_below = [x for x in t["pivot_lows"] if support - 2 * a < x < support]
     stop = (min(lows_below) - 0.3 * a) if lows_below else support - 1.0 * a
-    stop = min(stop, ideal - 0.8 * a)
+    stop = min(stop, ideal - float(settings.get("stop_atr_min", 0.8)) * a)
     if stop <= 0:
         stop = ideal * 0.85
     R = ideal - stop
@@ -337,6 +338,8 @@ def analyze(symbol, d1, h4=None, w1=None, market=None, ctx=None, settings=None, 
         action = "VIGILAR (R:R < %.1f)" % min_rr
     elif sc < min_buy:
         action = "WATCHLIST"
+    elif settings.get("confirm_breakout") and ph == "RUPTURA INICIAL" and not (t["breakout_confirmed"] and t["vol_ratio"] >= 1.5):
+        action = "ESPERAR CONFIRMACIÓN"
     elif price <= plan["entry_zone_high"]:
         action = "COMPRAR EN ZONA"
     elif ph == "ACUMULACIÓN" and price < t["hh30"]:

@@ -55,11 +55,32 @@ def day(ms):
     return dt.datetime.fromtimestamp(ms / 1000, dt.timezone.utc).strftime("%Y-%m-%d")
 
 
+MAJORS = {"BTC", "ETH", "BNB", "SOL", "XRP", "ADA", "DOGE", "TRX", "TON", "AVAX", "LINK", "DOT", "LTC", "BCH", "SHIB",
+          "XLM", "ETC", "XMR", "USDC", "FDUSD", "TUSD", "BUSD", "USDP", "DAI", "EUR", "AEUR", "EURI", "USDE", "PAXG",
+          "WBTC", "WBETH", "BFUSD", "USD1", "XUSD", "RLUSD", "BNSOL", "WLFI"}
+
+
+def alt_universe(quote="USDT"):
+    """Todos los pares spot USDT de Binance (activos y retirados/pausados) salvo grandes, stablecoins y tokens apalancados."""
+    info = data._binance("/api/v3/exchangeInfo")
+    out = []
+    for s in info.get("symbols", []):
+        b = s.get("baseAsset", "")
+        if s.get("quoteAsset") != quote or s.get("status") not in ("TRADING", "BREAK", "HALT"):
+            continue
+        if b in MAJORS or b.endswith(("UP", "DOWN", "BULL", "BEAR")) or "USD" in b:
+            continue
+        out.append((b, s.get("status")))
+    return out
+
+
 def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_000.0, risk_pct=1.0,
         max_pos_pct=20.0, max_positions=5, fee=0.001, slippage=0.0005, min_rr=3.0, limit_days=3,
-        max_hold=120, out_dir=None, log=print, histories=None):
+        max_hold=120, out_dir=None, log=print, histories=None, rules=None, min_liq_usd=0.0,
+        test_to=None, trade_btc=True):
     universe = universe or DEFAULT_UNIVERSE
     settings = {"min_risk_reward": min_rr, "capital_usd": capital, "risk_per_trade_pct": risk_pct, "max_position_pct": 100}
+    settings.update(rules or {})
     t_start = dt.datetime.fromisoformat(start).replace(tzinfo=dt.timezone.utc)
     hist = {}
     if histories:
@@ -81,6 +102,9 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
     days = sorted({t for h in hist.values() for t in h["t"]})
     tf = int(dt.datetime.fromisoformat(test_from).replace(tzinfo=dt.timezone.utc).timestamp() * 1000)
     days = [d for d in days if d >= tf]
+    if test_to:
+        tt = int(dt.datetime.fromisoformat(test_to).replace(tzinfo=dt.timezone.utc).timestamp() * 1000)
+        days = [d for d in days if d <= tt]
 
     cash, positions, pending = capital, {}, {}
     orders, trades, equity_curve = [], [], []
@@ -198,6 +222,9 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
             i = idx[s].get(d)
             if i is None or i < 220:
                 continue
+            if s != "BTC" and min_liq_usd and s not in positions:
+                if sum(hist[s]["v"][i - 19:i + 1]) / 20 < min_liq_usd:
+                    continue
             t = technicals(slc(s, i))
             tech_cache[s] = t
             if s != "BTC" and t["ema50"]:
@@ -225,6 +252,8 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
                     p["exit_next_open"] = "SALIDA FINAL: cierre diario bajo EMA50"
                 continue
             if s in pending or len(positions) + len(pending) >= max_positions:
+                continue
+            if s == "BTC" and not trade_btc:
                 continue
             if a["action"] == "COMPRAR EN ZONA" and a["score"] >= min_buy and a["plan"]["rr"] >= min_rr:
                 if s != "BTC" and alt_exposure >= expo_cap * (equity_curve[-1][1]):
