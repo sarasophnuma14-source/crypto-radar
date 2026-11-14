@@ -1,0 +1,10 @@
+{
+  "name": "Crypto Radar",
+  "short_name": "Radar",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#07141A",
+  "theme_color": "#07141A",
+  "lang": "es",
+  "icons": [{"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+}

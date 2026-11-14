@@ -193,8 +193,10 @@ def run(settings=None):
 
 def state():
     st = _load()
-    return {"rule": RULE, "backtest": BACKTEST, "status": status, "stats": stats(st),
-            "signals": list(reversed(st["signals"][-60:])),
+    # El panel no expone la regla, el backtest ni la lista de monedas vigiladas:
+    # solo resultados (señal, niveles y desenlace), para que la estrategia no se pueda copiar.
+    hidden = {"vol_x", "day_gain_pct"}
+    signals = [{k: v for k, v in s.items() if k not in hidden} for s in reversed(st["signals"][-60:])]
+    return {"status": status, "stats": stats(st), "signals": signals,
             "open": [t for t in st["trades"] if t["status"] == "OPEN"],
-            "closed": list(reversed([t for t in st["trades"] if t["status"] == "CLOSED"]))[:200],
-            "memes": load_settings().get("meme_list") or MEMES}
+            "closed": list(reversed([t for t in st["trades"] if t["status"] == "CLOSED"]))[:200]}

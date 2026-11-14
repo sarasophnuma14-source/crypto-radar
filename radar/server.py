@@ -5,6 +5,8 @@ import base64
 import hmac
 import json
 import mimetypes
+mimetypes.add_type("application/manifest+json", ".webmanifest")
+mimetypes.add_type("image/svg+xml", ".svg")
 import os
 import threading
 import time
@@ -12,12 +14,11 @@ import traceback
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
-from . import storage, scanner, backtest, alerts, memes, __version__
+from . import storage, scanner, alerts, memes, __version__
 from .config import WEB_DIR, load_settings, save_settings
 
 WATCH_EVERY_S = 15 * 60
 MEME_EVERY_S = 60 * 60   # memecoins: revisar cada hora (la señal sale al cierre diario 00:00 UTC)
-_bt_cache = {}
 
 
 def now():
@@ -166,6 +167,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, {"stats": stats, "items": list(reversed(j))[:300]})
         if p == "/api/settings":
             s = load_settings()
+            s.pop("meme_list", None)
             s["telegram_bot_token"] = ("•••" + s["telegram_bot_token"][-4:]) if s.get("telegram_bot_token") else ""
             return self._send(200, s)
         if p == "/api/candles":
@@ -175,16 +177,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (storage.read("history.json", {}) or {}).get(q.get("symbol", "").upper(), []))
         if p == "/api/scans":
             return self._send(200, list(reversed(storage.read("scans.json", []) or []))[:100])
-        if p == "/api/backtest":
-            sym = q.get("symbol", "BTC").upper()
-            key = (sym, q.get("min_score", "70"), now().strftime("%Y%m%d"))
-            if key not in _bt_cache:
-                try:
-                    _bt_cache[key] = backtest.run(sym, load_settings()["quote"], min_score=float(q.get("min_score", 70)),
-                                                  settings=load_settings() | {"max_position_pct": 100})
-                except Exception as e:
-                    return self._send(200, {"symbol": sym, "error": str(e)})
-            return self._send(200, _bt_cache[key])
+        # /api/backtest se retiró del panel: el backtest solo corre en local (python -m radar.backtest).
         return self._send(404, {"error": "ruta desconocida"})
 
     def do_POST(self):
