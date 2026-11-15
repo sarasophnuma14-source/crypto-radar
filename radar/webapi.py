@@ -6,6 +6,7 @@ Los datos de mercado (escaneo) son comunes; el plan decide cuánto se muestra.
 """
 from __future__ import annotations
 import hmac
+import os
 import json
 import re
 from urllib.parse import urlparse, parse_qs
@@ -52,7 +53,8 @@ def handle(h, method):
             m = rep.get("market") or {}
             return h._send(200, {"version": __version__, "last_scan": rep.get("at"), "regime": m.get("regime"),
                                  "regime_label": m.get("regime_label"), "verdict": rep.get("verdict"),
-                                 "accounts": True, "billing": billing.status()})
+                                 "accounts": True, "billing": billing.status(),
+                                 "sales_url": os.environ.get("SALES_URL")})
         if p == "/api/billing/status":
             return h._send(200, billing.status())
         if not user:

@@ -26,6 +26,7 @@ DEFAULTS = {
     "order_expiry_days": 3, "universe_size": 150, "min_bars": 120, "min_avg_volume_usd": 1_000_000,
     "min_score_offset": 0, "min_risk_reward": 2.5, "partials": (0.33, 0.33), "use_exit_intelligence": True,
     "limits": {}, "max_hold_days": None,
+    "dd_cooldown_days": 30,   # tras tocar la protección por drawdown: pausa y luego el máximo se reinicia al capital actual
 }
 NOT_ALT = {"BTC"}
 
@@ -149,6 +150,7 @@ def simulate(mk, sig, start=None, end=None, cfg=None, policy=None):
     cash, peak = c["capital"], c["capital"]
     pos, orders, trades, curve, expo, fills_log = {}, {}, [], [], [], []
     fees_total, ambiguous, cancelled, rejected = 0.0, 0, 0, {}
+    pause_until, dd_pauses = None, 0
     btc0 = None
     bench = []
 
@@ -259,6 +261,12 @@ def simulate(mk, sig, start=None, end=None, cfg=None, policy=None):
         reserved = sum(od["value"] * (1 + fee) for od in orders.values())
         eq = cash + inv
         peak = max(peak, eq)
+        # protección por drawdown sin bloqueo permanente: al tocar el límite se pausa N días y luego se toma
+        # el capital de ese momento como nuevo máximo (si no, sin operaciones nunca se recuperaría)
+        if pause_until is None and peak and (1 - eq / peak) * 100 >= L["dd_stop_pct"]:
+            pause_until = t + c["dd_cooldown_days"] * DAY_MS; dd_pauses += 1
+        elif pause_until is not None and t >= pause_until:
+            pause_until = None; peak = eq
         curve.append((day(t), eq)); expo.append(inv / eq * 100 if eq else 0)
         bi = mk.i("BTC", t)
         if bi is not None:
@@ -325,7 +333,7 @@ def simulate(mk, sig, start=None, end=None, cfg=None, policy=None):
         if curve:
             curve[-1] = (curve[-1][0], cash)
     m = metrics.compute(trades, curve, c["capital"], fees_total, expo, bench)
-    m.update({"ambiguous_bars": ambiguous, "orders_cancelled": cancelled, "orders_rejected_by_limits": rejected})
+    m.update({"drawdown_pauses": dd_pauses, "ambiguous_bars": ambiguous, "orders_cancelled": cancelled, "orders_rejected_by_limits": rejected})
     return {"metrics": m, "trades": trades, "curve": curve, "benchmark": bench, "config": {k: v for k, v in c.items()}}
 
 

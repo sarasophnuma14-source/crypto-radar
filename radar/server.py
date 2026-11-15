@@ -289,6 +289,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, list(reversed(storage.read("scans.json", []) or []))[:100])
         if p == "/api/backtest/results":
             return self._send(200, backtest_results())
+        if p == "/api/public/status":
+            return self._send(200, {"version": __version__, "accounts": False, "sales_url": os.environ.get("SALES_URL")})
         if p == "/api/memes/radar":
             from . import meme_radar
             return self._send(200, meme_radar.state())
