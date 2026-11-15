@@ -1,0 +1,65 @@
+{
+ "frozen_at": "2026-11-15T03:55:03+00:00",
+ "selection": {
+  "A": {
+   "chosen": "A_tsmom_L28_btcf1",
+   "dev_sharpe": 1.65,
+   "val": {
+    "net_return_pct": 1.84,
+    "profit_factor": 1.08,
+    "sharpe": 0.19,
+    "trades": 145,
+    "max_drawdown_pct": -8.35
+   },
+   "passes_validation": false
+  },
+  "B": {
+   "chosen": "B_donchian_N20_trail3",
+   "dev_sharpe": 1.067,
+   "val": {
+    "net_return_pct": -0.05,
+    "profit_factor": 0.998,
+    "sharpe": 0.042,
+    "trades": 100,
+    "max_drawdown_pct": -9.11
+   },
+   "passes_validation": false
+  },
+  "C": {
+   "chosen": "C_early_p35_trail3",
+   "dev_sharpe": 0.679,
+   "val": {
+    "net_return_pct": -2.74,
+    "profit_factor": 0.852,
+    "sharpe": -0.186,
+    "trades": 73,
+    "max_drawdown_pct": -10.63
+   },
+   "passes_validation": false
+  },
+  "D": {
+   "chosen": "D_volmom_L28",
+   "dev_sharpe": 0.941,
+   "val": {
+    "net_return_pct": 19.63,
+    "profit_factor": 1.69,
+    "sharpe": 0.898,
+    "trades": 78,
+    "max_drawdown_pct": -13.51
+   },
+   "passes_validation": true
+  },
+  "E": {
+   "chosen": "E_hybrid_N20_trail2.5",
+   "dev_sharpe": 1.048,
+   "val": {
+    "net_return_pct": -0.27,
+    "profit_factor": 0.991,
+    "sharpe": 0.04,
+    "trades": 103,
+    "max_drawdown_pct": -14.19
+   },
+   "passes_validation": false
+  }
+ }
+}
