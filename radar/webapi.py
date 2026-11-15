@@ -77,6 +77,9 @@ def handle(h, method):
             return h._send(200, memes.state())
         if p == "/api/backtest/results":
             return h._send(200, backtest_results())
+        if p == "/api/paper/report":
+            from .server import paper_report
+            return h._send(200, paper_report(q.get("name")))
         if p == "/api/activity":
             rows = db.all_("SELECT at, action, detail, ip FROM activity WHERE user_id = ? ORDER BY at DESC LIMIT 100", (user["id"],))
             return h._send(200, rows)

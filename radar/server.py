@@ -290,6 +290,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, list(reversed(storage.read("scans.json", []) or []))[:100])
         if p == "/api/backtest/results":
             return self._send(200, backtest_results())
+        if p == "/api/paper/report":
+            return self._send(200, paper_report(q.get("name")))
         if p == "/api/public/status":
             return self._send(200, {"version": __version__, "accounts": False, "sales_url": os.environ.get("SALES_URL")})
         if p == "/api/memes/radar":
@@ -377,6 +379,34 @@ def backtest_results():
     return {"available": False, "note": "Aún no hay resultados: ejecuta python3 research/backtest_pro_run.py"}
 
 
+def paper_report(name=None):
+    """Informe del paper trading (solo lectura del diario; sin órdenes reales)."""
+    try:
+        from .paper_trading import report
+        return report.build(name or os.environ.get("PAPER_TRADING_NAME", "principal"))
+    except Exception as e:
+        return {"available": False, "note": f"Paper trading no disponible: {str(e)[:200]}"}
+
+
+def paper_scheduler():
+    """Con PAPER_TRADING=1: procesa cada día, a las 00:20 UTC, el día que acaba de cerrar. Nunca envía órdenes."""
+    from .paper_trading import engine, report
+    name = os.environ.get("PAPER_TRADING_NAME", "principal")
+    while True:
+        n = dt.datetime.now(dt.timezone.utc)
+        nxt = n.replace(hour=0, minute=20, second=0, microsecond=0)
+        if nxt <= n:
+            nxt += dt.timedelta(days=1)
+        time.sleep((nxt - n).total_seconds())
+        try:
+            from .paper_trading import storage as ps
+            if not ps.open_store(name).read_json("spec.json"):
+                engine.init(name)
+            engine.step_live(name, log=None); report.write(name)
+        except BaseException as e:                                         # SystemExit incluido: se registra y se sigue
+            print("paper trading:", e, flush=True)
+
+
 def serve(port=None, host=None, schedule=True):
     s = load_settings()
     port = int(port or os.environ.get("PORT") or s["port"])
@@ -395,6 +425,8 @@ def serve(port=None, host=None, schedule=True):
             telegram_bot.start()
     if schedule:
         threading.Thread(target=scheduler, daemon=True).start()
+    if os.environ.get("PAPER_TRADING") == "1":
+        threading.Thread(target=paper_scheduler, daemon=True).start()
     if os.environ.get("KEEPALIVE") == "1":
         threading.Thread(target=keepalive, daemon=True).start()
     httpd = ThreadingHTTPServer((host, port), Handler)
