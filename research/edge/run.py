@@ -3,6 +3,8 @@
   python3 research/edge/run.py devval     # Desarrollo + Validación, congela la selección
   python3 research/edge/run.py holdout    # Holdout final: UNA sola vez (se niega si ya existe el candado)
 Resultados en data/research/edge/ (JSON y CSV)."""
+import os
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1"); os.environ.setdefault("OMP_NUM_THREADS", "1")
 import csv, datetime as dt, json, sys, time
 from pathlib import Path
 import pandas as pd
@@ -25,8 +27,12 @@ def log(*a):
     print(f"[{time.time() - T0:6.0f}s]", *a, flush=True)
 
 
-def load():
-    P = data.build(); F = features.compute(P); U = features.universe(F)
+def load(v2=False):
+    """v2=True quita las monedas estables que se colaron en el panel (B11). El holdout v1 se reproduce sin quitarlas."""
+    P = data.build()
+    if v2:
+        P = data.drop_stables(P)
+    F = features.compute(P); U = features.universe(F)
     S = strategies.build_all(P, F, U); M = manip.score(P, F)
     return P, F, U, S, M
 
@@ -75,9 +81,16 @@ def devval():
 
 
 def holdout():
+    """Evaluación final pre-registrada. Bloqueo permanente: si el registro ya tiene un final_holdout, el intento se
+    registra como rechazado y no se ejecuta nada. No existe opción para forzarlo."""
+    from radar.edge import ledger
+    prior = ledger.final_holdout()
     lock = OUT / "HOLDOUT_EXECUTED.lock"
-    if lock.exists() and "--force" not in sys.argv:
-        raise SystemExit("El holdout ya se ejecutó (" + lock.read_text().strip() + "). No se repite.")
+    if prior or lock.exists():
+        ledger.append("holdout_attempt_refused", argv=sys.argv, reason="el holdout original ya se ejecutó",
+                      original_run=(prior or {}).get("run_id"))
+        raise SystemExit("El holdout ya se ejecutó (" + ((prior or {}).get("at") or lock.read_text().strip()) +
+                         "). El intento quedó registrado y no se repite.")
     sel = json.loads((OUT / "selection_frozen.json").read_text())["selection"]
     lock.write_text(dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"))
     P, F, U, S, M = load()
@@ -157,7 +170,50 @@ def holdout():
     write_trades(OUT / "holdout_trades.csv", trades)
     pd.DataFrame(curves).to_csv(OUT / "holdout_curves.csv")
     log("veredictos:", {f: v["verdict"] for f, v in res["frozen"].items()})
+    ledger.append("final_holdout", period=HOLD, selection=sel, verdicts={f: v["verdict"] for f, v in res["frozen"].items()},
+                  results_file="data/research/edge/holdout_results.json")
+
+
+def reproduce():
+    """Re-ejecuta EXACTAMENTE el simulador v1 sobre el holdout para las 5 configuraciones congeladas y compara con lo
+    registrado. Es una comprobación de reproducibilidad, no una evaluación independiente."""
+    from radar.edge import ledger, sim_v1
+    reg = json.loads((ROOT / "research" / "edge" / "results" / "holdout_results.json").read_text())
+    P, F, U, S, M = load()
+    out = {}
+    for fam, v in reg["frozen"].items():
+        s = next(x for x in S if x.name == v["strategy"])
+        m = metrics.summarize(sim_v1.simulate(P, F, s, *HOLD, "base", manip=M))
+        r0 = reg["all"][s.name]["base"]
+        out[s.name] = {"registrado": r0["net_return_pct"], "reproducido": m["net_return_pct"],
+                       "operaciones": [r0["trades"], m["trades"]], "identico": r0["net_return_pct"] == m["net_return_pct"] and r0["trades"] == m["trades"]}
+    e = ledger.append("reproduction", period=HOLD, simulator="v1", results=out,
+                      note="Re-ejecución para comprobar reproducibilidad; no es un holdout independiente")
+    log(json.dumps(out, ensure_ascii=False)); return e
+
+
+def explore():
+    """Experimento EXPLORATORIO (no evidencia independiente). Uso: run.py explore <dev|val|holdout> <v1|v2> [nombre]"""
+    from radar.edge import ledger, sim_v1, sim as sim_v2
+    per = sys.argv[2]; ver = sys.argv[3]; only = sys.argv[4] if len(sys.argv) > 4 else None
+    rng = {"dev": DEV, "val": VAL, "holdout": HOLD}[per]
+    simf = (sim_v1 if ver == "v1" else sim_v2).simulate
+    P, F, U, S, M = load(v2=(ver == "v2"))
+    res = {}
+    for s in S:
+        if only and s.name != only:
+            continue
+        r = {sc: metrics.summarize(simf(P, F, s, *rng, sc)) for sc in ("base", "elevated", "stress")}
+        res[s.name] = r
+    e = ledger.append("exploratory", period=rng, simulator=ver, strategies=list(res),
+                      summary={k: {sc: {m: v[sc][m] for m in ("net_return_pct", "sharpe", "profit_factor", "trades", "max_drawdown_pct")}
+                                   for sc in v} for k, v in res.items()},
+                      note="EXPLORATORIO: no es evidencia independiente" + (" (usa el periodo del holdout ya visto)" if per == "holdout" else ""))
+    d = OUT / "exploratory" / e["run_id"]; d.mkdir(parents=True, exist_ok=True)
+    (d / "results.json").write_text(json.dumps({"ledger": e, "results": res}, indent=1, default=_js, ensure_ascii=False))
+    log("EXPLORATORIO", e["run_id"], json.dumps(e["summary"], default=_js, ensure_ascii=False)[:2000])
+    return e
 
 
 if __name__ == "__main__":
-    {"devval": devval, "holdout": holdout}[sys.argv[1]]()
+    {"devval": devval, "holdout": holdout, "reproduce": reproduce, "explore": explore}[sys.argv[1]]()

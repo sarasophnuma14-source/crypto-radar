@@ -8,6 +8,11 @@ ROOT = Path(__file__).resolve().parents[2]
 RESEARCH = ROOT / "data" / "research"
 GAP_DAYS = 7
 EXCLUDE = {"WBTC", "WBETH", "BNSOL", "PAXG", "XAUT"}
+# Auditoría (B11): dos monedas estables se colaron en el panel porque su ticker no contiene "USD": PAX (Paxos, 2020-21)
+# y U (2026). build() se deja como estaba para que el holdout v1 sea reproducible; el simulador v2 y el paper trading
+# las quitan con drop_stables().
+STABLE_EXTRA = {"PAX", "U", "USD1", "RLUSD", "XUSD", "BFUSD", "USDE", "USDP", "TUSD", "FDUSD", "USDC", "EURI", "AEUR",
+                "EUR", "PYUSD", "USDS", "USDD", "USDTB", "USDF", "USD0"}
 
 
 def _is_stock_token(sym, rec):
@@ -55,3 +60,30 @@ def build(include_delisted=True):
     P["status"] = {s: v.get("status") for s, v in raw.items()}
     P["split_log"] = log
     return P
+
+
+def drop_stables(P):
+    """Copia del panel sin monedas estables (usado por el simulador v2 y el paper trading)."""
+    keep = [c for c in P["c"].columns if c.split("~")[0] not in STABLE_EXTRA]
+    out = {k: P[k][keep] for k in "ohlcv"}
+    out["status"] = {s: v for s, v in P["status"].items() if s in keep}
+    out["split_log"] = P.get("split_log", [])
+    return out
+
+
+def panel_from_raw(raw):
+    """Panel (fecha × símbolo) a partir de velas {sym: {t,o,h,l,c,v}}; misma limpieza que build() (huecos, ceros)."""
+    raw = split_gaps({k: v for k, v in raw.items() if k not in EXCLUDE and v.get("t")})
+    cols = {k: {} for k in "ohlcv"}
+    for s, v in raw.items():
+        idx = pd.to_datetime(v["t"], unit="ms").normalize()
+        for k in "ohlcv":
+            cols[k][s] = pd.Series(np.asarray(v[k], float), index=idx)
+    P = {k: pd.DataFrame(d).sort_index() for k, d in cols.items()}
+    full = pd.date_range(P["c"].index.min(), P["c"].index.max(), freq="D")
+    P = {k: df[~df.index.duplicated()].reindex(full) for k, df in P.items()}
+    for k in "ohlc":
+        P[k] = P[k].where(P[k] > 0)
+    P["status"] = {s: v.get("status") for s, v in raw.items()}
+    P["split_log"] = []
+    return drop_stables(P)
