@@ -1,0 +1,13 @@
+periodo,referencia,net_return_pct,cagr_pct,sharpe,max_drawdown_pct
+desarrollo,BTC comprar y mantener,129.73,31.92,0.757,-76.63
+desarrollo,ETH comprar y mantener,814.68,108.99,1.256,-79.3
+desarrollo,Equiponderada top 50,28.79,8.79,0.571,-90.69
+desarrollo,Efectivo,0.0,0.0,0.0,0.0
+validacion,BTC comprar y mantener,277.76,142.75,2.095,-20.13
+validacion,ETH comprar y mantener,186.43,101.82,1.593,-29.1
+validacion,Equiponderada top 50,67.71,41.2,0.843,-52.06
+validacion,Efectivo,0.0,0.0,0.0,0.0
+holdout,BTC comprar y mantener,1.99,0.83,0.243,-52.97
+holdout,ETH comprar y mantener,-48.6,-24.44,-0.071,-67.55
+holdout,Equiponderada top 50,-85.49,-55.63,-0.69,-91.2
+holdout,Efectivo,0.0,0.0,0.0,0.0

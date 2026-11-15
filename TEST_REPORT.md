@@ -26,6 +26,9 @@ TEST_DATABASE_URL=postgresql://usuario@host/db python3 tests/test_suite.py -v   
 Además se ejecutaron los scripts de humo existentes `tests/run_fake.py` y `tests/run_portfolio_fake.py` (mercado simulado
 de extremo a extremo): ambos terminan sin errores.
 
+Además, `tests/test_edge.py` (laboratorio de ventaja, `radar/edge`): 29 pruebas, todas aprobadas el 2026-11-15
+(ejecución en D+1, costes, stops con hueco, liquidez, límites de riesgo, retiradas, causalidad, bootstrap, Holm y candado del holdout).
+
 ## Qué cubre cada bloque
 
 | Bloque | Pruebas | Qué verifica |

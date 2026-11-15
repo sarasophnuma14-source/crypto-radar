@@ -146,7 +146,10 @@ positiva sería sobreajuste a menos que se valide en un periodo nuevo.
 ## Limitaciones
 
 - **Sesgo de supervivencia residual**: las monedas que Binance eliminó por completo de la API no están en el panel.
-  Probablemente eran perdedoras, así que el resultado real sería algo peor.
+  Al revisarlo con el archivo público de Binance (2026-11-15) solo faltaban 30 pares USDT, casi todos acciones
+  tokenizadas de 2026, así que este sesgo es pequeño.
+- **Tickers reutilizados**: 6 series tienen huecos de más de 7 días (LUNA antigua y nueva, canjes de STRAX y VIDT).
+  Este backtest no las separa; se comprobó que ninguna operación cruzó esos huecos.
 - Velas diarias: dentro del día no se sabe qué tocó primero; se asume lo peor.
 - Liquidez: no se modela el impacto en el libro de órdenes más allá del deslizamiento fijo.
 - Los datos de manipulación del libro de órdenes y on-chain no existen en histórico; el backtest usa solo la parte de precio y volumen.
