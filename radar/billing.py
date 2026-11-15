@@ -89,8 +89,10 @@ def _grant(pay, raw):
     """Marca el pago verificado y extiende el plan. Idempotente: un pago verificado no se aplica dos veces."""
     if pay["verified"]:
         return False
-    db.execute("UPDATE payments SET status = 'APPROVED', verified = 1, raw = ?, updated_at = ? WHERE reference = ? AND verified = 0",
-               (json.dumps(raw)[:8000], time.time(), pay["reference"]))
+    cur = db.execute("UPDATE payments SET status = 'APPROVED', verified = 1, raw = ?, updated_at = ? WHERE reference = ? "
+                     "AND verified = 0", (json.dumps(raw)[:8000], time.time(), pay["reference"]))
+    if cur.rowcount != 1:      # otra entrega del mismo webhook ya lo marcó: no se extiende el plan dos veces
+        return False
     u = db.one("SELECT plan, plan_until FROM users WHERE id = ?", (pay["user_id"],))
     base = max(time.time(), (u["plan_until"] or 0) if u and u["plan"] == pay["plan"] else 0)
     until = base + DAYS[pay["period"]] * 86400
@@ -184,7 +186,11 @@ def admin_grant(admin, email, plan, days, reason):
     """Concesión manual (cortesía, soporte): solo administradores y siempre queda en el registro de actividad."""
     if not admin.get("is_admin"):
         raise auth.AuthError("Solo administradores", 403)
-    if plan not in ("free", "pro", "elite") or not 0 <= int(days) <= 400 or not str(reason).strip():
+    try:
+        days = int(days)
+    except (TypeError, ValueError):
+        raise auth.AuthError("Datos no válidos (plan, días 0-400 y motivo obligatorio)")
+    if plan not in ("free", "pro", "elite") or not 0 <= days <= 400 or not str(reason).strip():
         raise auth.AuthError("Datos no válidos (plan, días 0-400 y motivo obligatorio)")
     u = db.one("SELECT id FROM users WHERE email = ?", (str(email).strip().lower(),))
     if not u:

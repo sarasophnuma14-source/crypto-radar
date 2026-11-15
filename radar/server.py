@@ -8,6 +8,7 @@ import mimetypes
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 mimetypes.add_type("image/svg+xml", ".svg")
 import os
+import re
 import threading
 import time
 import traceback
@@ -114,6 +115,7 @@ def _too_many_fails(ip):
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "CryptoRadar/" + __version__
+    timeout = 30            # conexiones lentas u ociosas se cierran (antes quedaban abiertas para siempre)
 
     def log_message(self, *a):
         pass
@@ -149,7 +151,7 @@ class Handler(BaseHTTPRequestHandler):
     def _same_origin(self):
         """Defensa CSRF: las peticiones que cambian datos deben venir de esta misma web y en JSON."""
         ctype = (self.headers.get("Content-Type") or "").split(";")[0].strip().lower()
-        if int(self.headers.get("Content-Length") or 0) and ctype != "application/json":
+        if self._content_length() != 0 and ctype != "application/json":
             return False
         origin = self.headers.get("Origin") or self.headers.get("Referer") or ""
         if not origin:
@@ -157,12 +159,16 @@ class Handler(BaseHTTPRequestHandler):
         host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host") or ""
         return urlparse(origin).netloc == host
 
-    def _body(self):
-        try:
-            n = int(self.headers.get("Content-Length") or 0)
-        except ValueError:
+    def _content_length(self):
+        """Longitud declarada; None si es inválida o negativa (read(-1) leería sin límite hasta cerrar)."""
+        raw = (self.headers.get("Content-Length") or "0").strip()
+        if not raw.isdigit():
             return None
-        if n > MAX_BODY:
+        return int(raw)
+
+    def _body(self):
+        n = self._content_length()
+        if n is None or n > MAX_BODY:
             return None
         if not n:
             return {}
@@ -397,6 +403,9 @@ def backtest_results():
 
 def paper_report(name=None):
     """Informe del paper trading (solo lectura del diario; sin órdenes reales)."""
+    name = name or os.environ.get("PAPER_TRADING_NAME", "principal")
+    if not re.match(r"^[A-Za-z0-9_-]{1,40}$", str(name)):
+        return {"available": False, "note": "Nombre de evaluación no válido"}
     try:
         from .paper_trading import report
         return report.build(name or os.environ.get("PAPER_TRADING_NAME", "principal"))

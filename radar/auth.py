@@ -143,10 +143,15 @@ def validate_credentials(email, pw):
 
 def _create(username, pw, status, plan="free", plan_until=None, is_admin=0, contact=None, note=None, by=None):
     uid = uuid.uuid4().hex
-    db.execute("INSERT INTO users(id, email, pw_hash, created_at, plan, plan_until, is_admin, status, contact, "
-               "request_note, approved_at, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-               (uid, username, hash_password(pw), time.time(), plan, plan_until, is_admin, status, contact, note,
-                time.time() if status == "active" else None, by))
+    try:
+        db.execute("INSERT INTO users(id, email, pw_hash, created_at, plan, plan_until, is_admin, status, contact, "
+                   "request_note, approved_at, approved_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                   (uid, username, hash_password(pw), time.time(), plan, plan_until, is_admin, status, contact, note,
+                    time.time() if status == "active" else None, by))
+    except Exception as e:     # dos solicitudes simultáneas con el mismo usuario: la base (UNIQUE) decide
+        if db.one("SELECT id FROM users WHERE email = ?", (username,)):
+            raise AuthError("Ese usuario no está disponible; elige otro", 409) from e
+        raise
     return uid
 
 
@@ -325,6 +330,9 @@ def login(email, pw, ip=None, ua=None):
     u = db.one("SELECT * FROM users WHERE email = ?", (email,))
     if not u:
         verify_password(pw or "", "scrypt$16384$8$1$" + "00" * 16 + "$" + "00" * 32)   # mismo tiempo exista o no
+        # mismo bloqueo aparente que una cuenta real tras LOCK_AFTER fallos: el 429 no revela si el usuario existe
+        if rate_limited(f"lockname:{email}", LOCK_AFTER, LOCK_S):
+            raise AuthError("Cuenta bloqueada temporalmente por intentos fallidos; espera 15 minutos", 429)
         raise AuthError("Usuario o contraseña incorrectos", 401)
     if u["locked_until"] and u["locked_until"] > time.time():
         raise AuthError("Cuenta bloqueada temporalmente por intentos fallidos; espera 15 minutos", 429)

@@ -1170,6 +1170,10 @@ class T15_TelegramMemes(unittest.TestCase):
         auth.reset_rate_limits()
         u = auth.register(f"tg{random.randint(0, 10**9)}@example.com", "clave muy segura 123")
         code = telegram_bot.new_link_code(u["id"])
+        # una cuenta pendiente no puede vincular Telegram (A-03); tras aprobarla, sí
+        self.assertIn("no válido", telegram_bot.handle({"chat": {"id": 4242}, "text": f"/start {code}"}))
+        self.assertIsNone(auth.get_user(u["id"])["telegram_chat_id"])
+        db.execute("UPDATE users SET status = 'active' WHERE id = ?", (u["id"],))
         reply = telegram_bot.handle({"chat": {"id": 4242}, "text": f"/start {code}"})
         self.assertIn("vinculado", reply)
         self.assertEqual(auth.get_user(u["id"])["telegram_chat_id"], "4242")
@@ -1620,6 +1624,177 @@ class T19_ServeAdminObligatorio(unittest.TestCase):
         self.assertRegex(out, r"Administrador: pgserve · (creado|verificado)"); self.assertIn("SERVING", out)
 
 
+# ================================================================== 20. Auditoría previa a producción (hallazgos A-01…A-08)
+class T20_AuditoriaProduccion(T13_SaaS):
+    def setUp(self):
+        auth.reset_rate_limits()
+
+    def raw(self, head, body=b"", wait=10):
+        import socket
+        port = self.httpd.server_address[1]
+        s = socket.create_connection(("127.0.0.1", port), timeout=wait)
+        try:                     # el servidor puede responder 413 y cerrar antes de leer el cuerpo: es lo correcto
+            s.sendall(head + body[:1024]); s.shutdown(socket.SHUT_WR)
+        except OSError:
+            pass
+        out = b""
+        while True:
+            try:
+                d = s.recv(65536)
+            except ConnectionResetError:
+                break
+            if not d:
+                break
+            out += d
+        s.close()
+        return out.split(b"\r\n")[0].decode()
+
+    # A-01: Content-Length negativo o inválido saltaba el límite de 64 KB
+    def test_a01_negative_or_invalid_content_length_rejected(self):
+        big = json.dumps({"username": "x" * 10, "password": "y" * 200000}).encode()
+        for cl in (b"-1", b"abc", b"+5", b" -10"):
+            st = self.raw(b"POST /api/auth/login HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: " + cl + b"\r\n\r\n", big)
+            self.assertIn(" 413 ", st, cl)
+        st = self.raw(b"POST /api/auth/login HTTP/1.0\r\nContent-Type: application/json\r\nContent-Length: %d\r\n\r\n" % len(big), big)
+        self.assertIn(" 413 ", st)
+
+    # A-02: conexiones ociosas quedaban abiertas para siempre
+    def test_a02_idle_connections_time_out(self):
+        import socket
+        from radar import server
+        self.assertEqual(server.Handler.timeout, 30)
+        old = server.Handler.timeout
+        server.Handler.timeout = 1
+        try:
+            s = socket.create_connection(("127.0.0.1", self.httpd.server_address[1]), timeout=8)
+            t = time.time()
+            self.assertEqual(s.recv(10), b"")                 # el servidor cierra la conexión ociosa
+            self.assertLess(time.time() - t, 6)
+            s.close()
+        finally:
+            server.Handler.timeout = old
+
+    # A-03: Telegram entregaba datos a chats sin cuenta y a cuentas desactivadas
+    def test_a03_telegram_only_serves_active_linked_accounts(self):
+        from radar import storage, multiuser
+        storage.write("latest.json", {"ranking": [{"rank": 1, "symbol": "AAA", "phase_label": "x", "score": 70, "action": "COMPRAR",
+                                                   "entry_low": 1, "entry_high": 2, "stop": 0.9, "tp1": 3}],
+                                      "market": {"regime": "R", "btc_price": 1, "policy": {}}, "verdict": "V",
+                                      "verdict_text": "t", "at": "2026-11-15T00:00"})
+        for cmd in ("/top", "/estado", "/regimen", "/cartera"):
+            r = telegram_bot.handle({"chat": {"id": 99001}, "text": cmd})
+            self.assertNotIn("AAA", r); self.assertIn("no está vinculado", r)
+        name = f"tg{random.randint(0, 10**9)}"
+        uid = auth.request_access(name, "clave muy segura 123", ip="10.3.3.3")
+        auth.admin_set_status(self.admin, uid, "approve", "pro", 30)
+        multiuser.add_position(uid, {"symbol": "SOL", "entry": 100.0})
+        code = telegram_bot.new_link_code(uid)
+        self.assertIn("vinculado", telegram_bot.handle({"chat": {"id": 99002}, "text": "/start " + code}))
+        self.assertIn("SOL", telegram_bot.handle({"chat": {"id": 99002}, "text": "/cartera"}))     # activo: sí
+        auth.admin_set_status(self.admin, uid, "disable")
+        for cmd in ("/cartera", "/top"):
+            r = telegram_bot.handle({"chat": {"id": 99002}, "text": cmd})
+            self.assertNotIn("SOL", r); self.assertNotIn("AAA", r)
+        auth.admin_set_status(self.admin, uid, "enable")
+        code = telegram_bot.new_link_code(uid)
+        auth.admin_set_status(self.admin, uid, "reject")                                         # código emitido y luego rechazado
+        self.assertIn("no válido", telegram_bot.handle({"chat": {"id": 99003}, "text": "/start " + code}))
+        self.assertFalse(telegram_bot.active(auth.get_user(uid)))
+
+    # A-04: dos entregas simultáneas del mismo webhook duplicaban el plan
+    def test_a04_concurrent_webhook_grants_plan_once(self):
+        name = f"pago{random.randint(0, 10**9)}"
+        uid = auth.request_access(name, "clave muy segura 123", ip="10.4.4.4"); auth.admin_set_status(self.admin, uid, "approve")
+        ref = billing._new_payment(uid, "wompi", "pro", "month", 100, "COP")
+        pay = db.one("SELECT * FROM payments WHERE reference = ?", (ref,))
+        self.assertTrue(billing._grant(dict(pay), {}))
+        self.assertFalse(billing._grant(dict(pay), {}))                 # misma fila leída antes de la primera escritura
+        days = (db.one("SELECT plan_until FROM users WHERE id = ?", (uid,))["plan_until"] - time.time()) / 86400
+        self.assertAlmostEqual(days, 30, delta=0.1)
+        self.assertEqual(sum(1 for a in db.all_("SELECT action FROM activity WHERE user_id = ?", (uid,))
+                             if a["action"] == "plan_granted"), 1)
+
+    # A-05: el nombre del informe de paper trading se usaba como ruta sin validar
+    def test_a05_paper_report_name_validated(self):
+        from radar import server
+        for bad in ("../../etc", "a/b", "x" * 41, "..", "nombre con espacios"):
+            self.assertEqual(server.paper_report(bad), {"available": False, "note": "Nombre de evaluación no válido"}, bad)
+        self.assertNotEqual(server.paper_report("principal").get("note"), "Nombre de evaluación no válido")
+
+    # A-06: el mensaje de bloqueo revelaba qué usuarios existen
+    def test_a06_lockout_message_does_not_reveal_existence(self):
+        name = f"real{random.randint(0, 10**9)}"
+        auth.admin_create(self.admin, name, "clave muy segura 123")
+        def last(u):
+            out = None
+            for i in range(6):
+                out = self.call(self.client(), "/api/auth/login", {"username": u, "password": f"mala clave 1234{i}"})
+            return out[0], out[1]["error"]
+        self.assertEqual(last(name), last(f"fantasma{random.randint(0, 10**9)}"))
+
+    # A-07: días no numéricos en la concesión manual daban error 500
+    def test_a07_admin_grant_invalid_days(self):
+        with self.assertRaises(auth.AuthError) as cm:
+            billing.admin_grant(self.admin, "admin", "pro", "muchos", "cortesía")
+        self.assertEqual(cm.exception.code, 400)
+
+    # A-08: dos solicitudes simultáneas con el mismo usuario daban 500 (UNIQUE) en vez de 409
+    def test_a08_duplicate_username_race_returns_409(self):
+        name = f"carrera{random.randint(0, 10**9)}"
+        auth._create(name, "clave muy segura 123", "pending")
+        with self.assertRaises(auth.AuthError) as cm:
+            auth._create(name, "otra clave segura 45", "pending")
+        self.assertEqual(cm.exception.code, 409)
+
+    # Comprobaciones generales de la auditoría
+    def test_every_api_route_requires_session_unless_public(self):
+        from radar import server
+        src = (ROOT / "radar" / "webapi.py").read_text("utf-8")
+        routes = set(re.findall(r'"(/api/[a-z_/]+)"', src))
+        public = set(server.PUBLIC_GET) | set(server.PUBLIC_POST)
+        self.assertGreater(len(routes), 25)
+        for r in sorted(routes - public):
+            st, _, _ = self.call(self.client(), r)
+            self.assertIn(st, (401, 404), f"GET {r}")
+            st, _, _ = self.call(self.client(), r, {})
+            self.assertIn(st, (401, 404), f"POST {r}")
+
+    def test_session_token_and_passwords_never_stored_in_clear(self):
+        op, csrf, u = self.signup()
+        jar = [h for h in op.handlers if hasattr(h, "cookiejar")][0].cookiejar
+        tok = next(c.value for c in jar if c.name == "cr_session")
+        self.assertIsNone(db.one("SELECT token_hash FROM sessions WHERE token_hash = ?", (tok,)))
+        self.assertIsNotNone(db.one("SELECT token_hash FROM sessions WHERE token_hash = ?", (hashlib.sha256(tok.encode()).hexdigest(),)))
+        row = db.one("SELECT pw_hash FROM users WHERE email = ?", (u,))
+        self.assertTrue(row["pw_hash"].startswith("scrypt$")); self.assertNotIn("clave muy segura", row["pw_hash"])
+
+    def test_privilege_fields_in_requests_are_ignored(self):
+        name = f"listo{random.randint(0, 10**9)}"
+        st, _, _ = self.call(self.client(), "/api/auth/request", {"username": name, "password": "clave muy segura 123",
+                                                                  "is_admin": 1, "status": "active", "plan": "elite",
+                                                                  "plan_until": 9e12})
+        self.assertEqual(st, 200)
+        row = db.one("SELECT is_admin, status, plan, plan_until FROM users WHERE email = ?", (name,))
+        self.assertEqual((row["is_admin"], row["status"], row["plan"], row["plan_until"]), (0, "pending", "free", None))
+        op, csrf, u = self.signup()
+        self.call(op, "/api/me/settings", {"is_admin": 1, "plan": "elite", "plan_until": 9e12}, {"X-CSRF-Token": csrf})
+        row = db.one("SELECT is_admin, plan, plan_until FROM users WHERE email = ?", (u,))
+        self.assertEqual((row["is_admin"], row["plan"], row["plan_until"]), (0, "free", None))
+        self.assertEqual(self.call(op, "/api/admin/grant", {"email": u, "plan": "elite", "days": 30, "reason": "x"},
+                                   {"X-CSRF-Token": csrf})[0], 403)
+
+    def test_no_real_order_execution_code(self):
+        pat = re.compile(r"api/v3/order|create_order|place_order|X-MBX-APIKEY|ccxt|newOrder", re.I)
+        hits = [str(f) for d in ("radar", "research") for f in (ROOT / d).rglob("*.py") if pat.search(f.read_text("utf-8", "ignore"))]
+        self.assertEqual(hits, [])
+        self.assertFalse(auth.PLANS["elite"].get("real_orders", False))
+
+
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T20_AuditoriaProduccion.__dict__:
+        setattr(T20_AuditoriaProduccion, _n, None)
+
+
 # ================================================================== 17. PostgreSQL (opcional, real)
 @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
 class T17_Postgres(unittest.TestCase):
@@ -1670,6 +1845,17 @@ auth.admin_reset_password(adm, u["id"], "clave restablecida 55")
 assert auth.session(tok) is None
 tok, csrf, _ = auth.login("pg@example.com", "clave restablecida 55")
 auth.logout(tok); assert auth.session(tok) is None
+# A-04 en PostgreSQL: dos entregas del mismo pago solo conceden el plan una vez
+from radar import billing
+ref = billing._new_payment(u["id"], "wompi", "pro", "month", 100, "COP")
+pay = db.one("SELECT * FROM payments WHERE reference = ?", (ref,))
+assert billing._grant(dict(pay), {}) is True and billing._grant(dict(pay), {}) is False
+assert abs((db.one("SELECT plan_until FROM users WHERE id = ?", (u["id"],))["plan_until"] - time.time()) / 86400 - 30) < 0.1
+# A-08 en PostgreSQL: nombre duplicado en carrera -> 409
+try:
+    auth._create("pg@example.com", "clave muy segura 123", "pending"); raise SystemExit("debió dar 409")
+except auth.AuthError as e:
+    assert e.code == 409
 storage.write("latest.json", {"a": [1, 2]}); assert storage.read("latest.json") == {"a": [1, 2]}
 p = multiuser.add_position(u["id"], {"symbol": "SOL", "entry": 1.0})
 assert multiuser.list_positions(u["id"])[0]["id"] == p["id"]
