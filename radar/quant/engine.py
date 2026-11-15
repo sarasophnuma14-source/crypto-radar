@@ -8,8 +8,9 @@ from .regime import POLICY
 MANIP_BLOCK = 60      # riesgo de manipulación desde el que no se recomienda entrar
 
 
-def action_for(ev, pl, manip, regime_name, settings):
-    pol = POLICY.get(regime_name, POLICY["NEUTRAL"])
+def action_for(ev, pl, manip, regime_name, settings, policy=None):
+    pols = policy or POLICY
+    pol = pols.get(regime_name, pols["NEUTRAL"])
     phase, score, p = ev["phase"], ev["score"], pl.get("_price")
     min_rr = float(settings.get("min_risk_reward", 2.5))
     if phase == "REJECTED":
