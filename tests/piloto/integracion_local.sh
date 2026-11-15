@@ -18,7 +18,7 @@ regress() {
 }
 echo "base|$(git rev-parse --short HEAD)"; regress 0_main
 i=1
-for ref in "PR3:2d72a2b" "PR4:8476715" "PR5:fedb3a1" "PR6:f79b24c" "CIERRE:claude/cierre-riesgos"; do
+for ref in "PR3:2d72a2b" "PR4:8476715" "PR5:fedb3a1" "PR6:f79b24c" "PR7:27f23e3" "PREPARACION:claude/preparacion-piloto"; do
   n=${ref%%:*}; c=${ref#*:}
   if git merge --no-ff -q -m "Integración local de $n" $c > $OUT/merge_$n.log 2>&1; then
     echo "merge|$n|$(git rev-parse --short $c)|ok|conflictos=0|$(git diff --shortstat HEAD^1 HEAD)"

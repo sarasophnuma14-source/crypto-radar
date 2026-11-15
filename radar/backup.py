@@ -27,7 +27,10 @@ from . import db
 
 FORMAT = "crypto-radar-backup/1"
 TABLES = {"users": "id", "activity": "id", "positions": "id", "payments": "id", "telegram_links": "code", "kv": "name",
-          "admin_enroll_tokens": "token_hash"}   # códigos ya usados: tras restaurar siguen sin valer
+          "admin_enroll_tokens": "token_hash",   # códigos ya usados: tras restaurar siguen sin valer
+          # la marca de plataforma 2.1 viaja en la copia: sin ella, el primer arranque sobre la restaurada la tomaría
+          # por una base heredada (y se negaría a arrancar al ver cuentas de 2.1, db.init_platform)
+          "platform_meta": "k", "legacy_archive": "id"}
 SKIPPED = ("sessions", "rate_limits")
 
 

@@ -2,7 +2,9 @@
 
 Con --db también se conecta a DATABASE_URL en modo SOLO LECTURA para comprobar el esquema y el administrador.
 Nunca muestra contraseñas, claves ni la URL completa de la base.
-Salida: 0 si no hay fallos (puede haber avisos), 1 si hay algún fallo.
+Niveles: APROBADO, ADVERTENCIA (no impide el piloto, pero hay que revisarlo) y BLOQUEANTE (no se puede abrir el
+piloto). Salida: 0 si no hay bloqueantes, 1 si hay alguno. Usa las mismas reglas que el arranque (radar/pilot.py):
+lo que impediría arrancar el servidor aparece aquí como BLOQUEANTE.
 """
 from __future__ import annotations
 import os
@@ -53,7 +55,7 @@ def check_env():
         add("fail", "Administrador", "la contraseña tiene menos de 12 caracteres o contiene el usuario")
     else:
         add("ok", "Administrador", "usuario y contraseña definidos (no se muestran)")
-    for k in ("CRYPTO_RADAR_ADMIN_RESET", "CRYPTO_RADAR_ADMIN_TAKEOVER"):
+    for k in ("CRYPTO_RADAR_ADMIN_RESET", "CRYPTO_RADAR_ADMIN_TAKEOVER", "CRYPTO_RADAR_PLATFORM_ADOPT"):
         if _e(k):
             add("fail", "Variables de recuperación", f"{k} sigue definida; quítala después de usarla")
     totp_mode = (_e("CRYPTO_RADAR_ADMIN_TOTP") or "required").lower()
@@ -70,10 +72,30 @@ def check_env():
         add("ok", "Clave de cifrado TOTP", "definida (no se muestra)")
     if tk and bk and tk == bk:
         add("fail", "Claves independientes", "CRYPTO_RADAR_TOTP_KEY y CRYPTO_RADAR_BACKUP_KEY son la misma clave")
+    elif tk and bk:
+        add("ok", "Claves independientes", "la clave TOTP y la de copias son distintas")
+    if not bk:
+        add("warn", "Clave de copias", "CRYPTO_RADAR_BACKUP_KEY no está aquí: es obligatoria en la máquina que hace y "
+            "verifica las copias (no hace falta en Render)")
+    elif len(bk) < 32:
+        add("fail", "Clave de copias", "CRYPTO_RADAR_BACKUP_KEY tiene menos de 32 caracteres")
+    else:
+        add("ok", "Clave de copias", "definida (no se muestra)")
     if _e("CRYPTO_RADAR_TOTP_KEY_OLD"):
         add("warn", "Rotación de clave TOTP", "CRYPTO_RADAR_TOTP_KEY_OLD definida: quítala cuando «secrets status» dé 0 con la clave antigua")
     if _e("CRYPTO_RADAR_ADMIN_ENROLL_TOKEN"):
         add("warn", "Código de alta del administrador", "CRYPTO_RADAR_ADMIN_ENROLL_TOKEN sigue definido: bórralo tras activar el TOTP")
+    from . import pilot
+    add("ok" if pilot.closed() else "warn", "Piloto", "cerrado: registro con aprobación, sin cobros reales"
+        if pilot.closed() else "CRYPTO_RADAR_PILOT=abierto: fuera del alcance aprobado para esta fase")
+    if _e("TELEGRAM_BOT_TOKEN"):
+        add("ok", "Telegram", "TELEGRAM_BOT_TOKEN definido (no se muestra); los avisos salen por la API de Telegram")
+    else:
+        add("warn", "Telegram", "TELEGRAM_BOT_TOKEN no definido: sin avisos por Telegram (el panel funciona igual)")
+    seen = set()
+    for err in pilot.startup_errors(_e("CRYPTO_RADAR_ACCOUNTS") == "1"):
+        if err not in seen:
+            seen.add(err); add("fail", "Arranque", err)
     if _e("MALLOC_ARENA_MAX") != "2" and _e("RENDER"):
         add("warn", "Memoria", "MALLOC_ARENA_MAX no es 2 (pico de 419 MB en vez de 339 MB en la prueba de estrés)")
 
@@ -142,6 +164,17 @@ def check_db():
                     "todas las columnas requeridas existen"))
         if not missing:
             ph = "%s" if pg else "?"
+            meta = dict(c.execute("SELECT k, v FROM platform_meta").fetchall())
+            n_users = c.execute("SELECT count(*) FROM users").fetchone()[0]
+            if meta.get("platform"):
+                out.append(("ok", "Plataforma", f"{meta['platform']} · {meta.get('initialized')} · archivado de 2.0.0: "
+                            f"{meta.get('legacy_archived')}"))
+            else:
+                out.append(("warn", "Plataforma", f"sin marca 2.1: el primer arranque archivará {n_users} cuentas heredadas "
+                            "(o se negará a arrancar si son de 2.1)" if n_users else "base vacía: se marcará como 2.1 al arrancar"))
+            n_adm = c.execute("SELECT count(*) FROM users WHERE is_admin <> 0").fetchone()[0]
+            if n_adm > 1:
+                out.append(("fail", "Administradores", f"hay {n_adm}: el arranque deja solo el del entorno"))
             r = c.execute(f"SELECT is_admin, totp_enabled, disabled FROM users WHERE email = {ph}",
                           (_e("CRYPTO_RADAR_ADMIN_USER").lower(),)).fetchone()
             if not r:
@@ -183,10 +216,11 @@ def _check_db_secrets(c):
 def cli(args=None):
     args = sys.argv[2:] if args is None else args
     res = check_env() + (check_db() if "--db" in args else [])
-    sym = {"ok": "OK  ", "warn": "AVISO", "fail": "FALLO"}
+    sym = {"ok": "APROBADO   ", "warn": "ADVERTENCIA", "fail": "BLOQUEANTE "}
     for level, name, detail in res:
         print(f"[{sym[level]}] {name}: {detail}")
     fails = sum(1 for r in res if r[0] == "fail")
     warns = sum(1 for r in res if r[0] == "warn")
-    print(f"\n{fails} fallos, {warns} avisos. " + ("Listo para producción." if not fails else "NO listo para producción."))
+    print(f"\n{fails} bloqueantes, {warns} advertencias. " +
+          ("Listo para producción (revisa las advertencias)." if not fails else "NO listo para producción."))
     return 1 if fails else 0

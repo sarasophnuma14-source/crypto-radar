@@ -1,0 +1,781 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 60.0,
+  "pausa_s": 1.0,
+  "escaneo_en_s": 5.0,
+  "repetir_escaneo": false,
+  "telegram_por_s": 2.0,
+  "difusion_cada_s": 30.0,
+  "caos": "cortar@30",
+  "datos": "sinteticos",
+  "escaneo_frio": false,
+  "malloc_arena_max": "2",
+  "escaner": "hilo (actual)",
+  "activos_en_informe": 40,
+  "escaneo_inicial_s": 24.85,
+  "escaneo_en_reposo_s": 3.7,
+  "preparacion_s": 32.6,
+  "rss_mb_reposo": 98.4,
+  "limites_render_emulados": null,
+  "rss_mb_final": 133.7,
+  "vmhwm_mb": 348.0
+ },
+ "niveles": [
+  {
+   "usuarios": 1,
+   "login": {
+    "n": 1,
+    "p50_ms": 52.2,
+    "p95_ms": 52.2,
+    "p99_ms": 52.2,
+    "max_ms": 52.2,
+    "codigos": {
+     "200": 1
+    },
+    "segundos_rafaga": 0.05
+   },
+   "panel_total": {
+    "n": 60,
+    "p50_ms": 8.3,
+    "p95_ms": 16.5,
+    "p99_ms": 70.0,
+    "max_ms": 128.7,
+    "codigos": {
+     "200": 50,
+     "402": 10
+    },
+    "rps": 1.0
+   },
+   "panel_durante_escaneo": {
+    "n": 4,
+    "p50_ms": 13.2,
+    "p95_ms": 111.4,
+    "p99_ms": 125.2,
+    "max_ms": 128.7,
+    "codigos": {
+     "200": 3,
+     "402": 1
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 56,
+    "p50_ms": 8.0,
+    "p95_ms": 16.3,
+    "p99_ms": 22.7,
+    "max_ms": 29.3,
+    "codigos": {
+     "200": 47,
+     "402": 9
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 3.73,
+     "error": null,
+     "inicio_s": 5.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 9.4
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 682,
+     "p50": 0.1,
+     "p99": 9.8,
+     "max": 23.73
+    },
+    "fuera_de_escaneo": {
+     "n": 11462,
+     "p50": 0.1,
+     "p99": 0.6,
+     "max": 30.8
+    }
+   },
+   "telegram": {
+    "comandos": 139,
+    "respuesta_durante_escaneo": {
+     "n": 10,
+     "p50_ms": 35.0,
+     "p95_ms": 39.1,
+     "p99_ms": 40.3,
+     "max_ms": 40.6,
+     "codigos": {
+      "200": 10
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 129,
+     "p50_ms": 34.5,
+     "p95_ms": 49.6,
+     "p99_ms": 60.0,
+     "max_ms": 61.4,
+     "codigos": {
+      "200": 129
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794768284.674,
+      "s": 4.63,
+      "enviados": 57,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 57
+   },
+   "rss_mb_max": 99.4,
+   "rss_mb_max_durante_escaneo": 99.4,
+   "rss_mb_final": 99.4,
+   "vmhwm_mb_proceso": 99.4,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 3.0,
+   "cpu_pct_medio_durante_escaneo": 14.5,
+   "cpu_pct_medio_fuera_de_escaneo": 2.2,
+   "hilos_max": 23,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 34,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/237",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 19,
+     "t": 30.0
+    }
+   ],
+   "cgroup_memoria": null,
+   "peticiones_http": 61,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  },
+  {
+   "usuarios": 5,
+   "login": {
+    "n": 5,
+    "p50_ms": 68.6,
+    "p95_ms": 98.2,
+    "p99_ms": 99.5,
+    "max_ms": 99.8,
+    "codigos": {
+     "200": 5
+    },
+    "segundos_rafaga": 0.1
+   },
+   "panel_total": {
+    "n": 300,
+    "p50_ms": 3.6,
+    "p95_ms": 15.1,
+    "p99_ms": 121.3,
+    "max_ms": 183.3,
+    "codigos": {
+     "200": 290,
+     "402": 10
+    },
+    "rps": 5.0
+   },
+   "panel_durante_escaneo": {
+    "n": 20,
+    "p50_ms": 9.8,
+    "p95_ms": 146.9,
+    "p99_ms": 176.0,
+    "max_ms": 183.3,
+    "codigos": {
+     "200": 19,
+     "402": 1
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 280,
+    "p50_ms": 3.4,
+    "p95_ms": 14.8,
+    "p99_ms": 20.2,
+    "max_ms": 21.9,
+    "codigos": {
+     "200": 271,
+     "402": 9
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 3.81,
+     "error": null,
+     "inicio_s": 5.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 4.3
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 676,
+     "p50": 0.1,
+     "p99": 11.2,
+     "max": 25.8
+    },
+    "fuera_de_escaneo": {
+     "n": 11412,
+     "p50": 0.1,
+     "p99": 1.3,
+     "max": 12.74
+    }
+   },
+   "telegram": {
+    "comandos": 108,
+    "respuesta_durante_escaneo": {
+     "n": 9,
+     "p50_ms": 35.0,
+     "p95_ms": 88.4,
+     "p99_ms": 102.4,
+     "max_ms": 105.9,
+     "codigos": {
+      "200": 9
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 99,
+     "p50_ms": 34.3,
+     "p95_ms": 44.0,
+     "p99_ms": 64.4,
+     "max_ms": 71.9,
+     "codigos": {
+      "200": 99
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794768319.308,
+      "s": 4.62,
+      "enviados": 57,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794768353.93,
+      "s": 4.63,
+      "enviados": 57,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 171
+   },
+   "rss_mb_max": 99.4,
+   "rss_mb_max_durante_escaneo": 78.1,
+   "rss_mb_final": 78.4,
+   "vmhwm_mb_proceso": 148.1,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 4.7,
+   "cpu_pct_medio_durante_escaneo": 16.9,
+   "cpu_pct_medio_fuera_de_escaneo": 3.9,
+   "hilos_max": 23,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 19,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/237",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 18,
+     "t": 30.0
+    }
+   ],
+   "cgroup_memoria": null,
+   "peticiones_http": 305,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  },
+  {
+   "usuarios": 10,
+   "login": {
+    "n": 10,
+    "p50_ms": 150.0,
+    "p95_ms": 182.6,
+    "p99_ms": 184.0,
+    "max_ms": 184.4,
+    "codigos": {
+     "200": 10
+    },
+    "segundos_rafaga": 0.19
+   },
+   "panel_total": {
+    "n": 600,
+    "p50_ms": 6.0,
+    "p95_ms": 20.5,
+    "p99_ms": 142.5,
+    "max_ms": 224.4,
+    "codigos": {
+     "200": 562,
+     "402": 38
+    },
+    "rps": 10.0
+   },
+   "panel_durante_escaneo": {
+    "n": 40,
+    "p50_ms": 8.1,
+    "p95_ms": 185.0,
+    "p99_ms": 209.9,
+    "max_ms": 224.4,
+    "codigos": {
+     "200": 38,
+     "402": 2
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 560,
+    "p50_ms": 5.9,
+    "p95_ms": 18.1,
+    "p99_ms": 43.0,
+    "max_ms": 54.9,
+    "codigos": {
+     "200": 524,
+     "402": 36
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 3.83,
+     "error": null,
+     "inicio_s": 5.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 5.6
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 681,
+     "p50": 0.1,
+     "p99": 13.9,
+     "max": 35.87
+    },
+    "fuera_de_escaneo": {
+     "n": 11405,
+     "p50": 0.1,
+     "p99": 2.2,
+     "max": 15.25
+    }
+   },
+   "telegram": {
+    "comandos": 132,
+    "respuesta_durante_escaneo": {
+     "n": 12,
+     "p50_ms": 34.6,
+     "p95_ms": 121.2,
+     "p99_ms": 197.4,
+     "max_ms": 216.5,
+     "codigos": {
+      "200": 12
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 120,
+     "p50_ms": 34.3,
+     "p95_ms": 46.6,
+     "p99_ms": 63.6,
+     "max_ms": 66.9,
+     "codigos": {
+      "200": 120
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794768388.56,
+      "s": 4.78,
+      "enviados": 57,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794768423.338,
+      "s": 4.63,
+      "enviados": 57,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 285
+   },
+   "rss_mb_max": 138.6,
+   "rss_mb_max_durante_escaneo": 138.6,
+   "rss_mb_final": 138.6,
+   "vmhwm_mb_proceso": 232.8,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 7.1,
+   "cpu_pct_medio_durante_escaneo": 18.7,
+   "cpu_pct_medio_fuera_de_escaneo": 6.4,
+   "hilos_max": 23,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 19,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/238",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 18,
+     "t": 30.0
+    }
+   ],
+   "cgroup_memoria": null,
+   "peticiones_http": 610,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  },
+  {
+   "usuarios": 20,
+   "login": {
+    "n": 20,
+    "p50_ms": 296.7,
+    "p95_ms": 323.8,
+    "p99_ms": 332.9,
+    "max_ms": 335.2,
+    "codigos": {
+     "200": 20
+    },
+    "segundos_rafaga": 0.34
+   },
+   "panel_total": {
+    "n": 1200,
+    "p50_ms": 6.8,
+    "p95_ms": 26.1,
+    "p99_ms": 144.0,
+    "max_ms": 235.3,
+    "codigos": {
+     "200": 1160,
+     "402": 40
+    },
+    "rps": 20.0
+   },
+   "panel_durante_escaneo": {
+    "n": 80,
+    "p50_ms": 15.7,
+    "p95_ms": 208.2,
+    "p99_ms": 230.5,
+    "max_ms": 235.3,
+    "codigos": {
+     "200": 78,
+     "402": 2
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 1120,
+    "p50_ms": 6.5,
+    "p95_ms": 20.8,
+    "p99_ms": 35.0,
+    "max_ms": 74.9,
+    "codigos": {
+     "200": 1082,
+     "402": 38
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 3.87,
+     "error": null,
+     "inicio_s": 5.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 4.0
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 675,
+     "p50": 0.1,
+     "p99": 13.9,
+     "max": 33.25
+    },
+    "fuera_de_escaneo": {
+     "n": 11327,
+     "p50": 0.1,
+     "p99": 3.5,
+     "max": 118.71
+    }
+   },
+   "telegram": {
+    "comandos": 132,
+    "respuesta_durante_escaneo": {
+     "n": 9,
+     "p50_ms": 34.2,
+     "p95_ms": 95.2,
+     "p99_ms": 126.6,
+     "max_ms": 134.4,
+     "codigos": {
+      "200": 9
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 123,
+     "p50_ms": 34.8,
+     "p95_ms": 54.6,
+     "p99_ms": 63.2,
+     "max_ms": 63.8,
+     "codigos": {
+      "200": 123
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794768457.968,
+      "s": 4.62,
+      "enviados": 57,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794768492.588,
+      "s": 4.65,
+      "enviados": 57,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 399
+   },
+   "rss_mb_max": 346.5,
+   "rss_mb_max_durante_escaneo": 124.1,
+   "rss_mb_final": 124.4,
+   "vmhwm_mb_proceso": 346.3,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 12.0,
+   "cpu_pct_medio_durante_escaneo": 24.2,
+   "cpu_pct_medio_fuera_de_escaneo": 11.1,
+   "hilos_max": 23,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 19,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/239",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 18,
+     "t": 30.0
+    }
+   ],
+   "cgroup_memoria": null,
+   "peticiones_http": 1220,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  },
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 557.6,
+    "p95_ms": 771.7,
+    "p99_ms": 778.8,
+    "max_ms": 782.6,
+    "codigos": {
+     "200": 50
+    },
+    "segundos_rafaga": 0.8
+   },
+   "panel_total": {
+    "n": 2982,
+    "p50_ms": 7.4,
+    "p95_ms": 35.7,
+    "p99_ms": 265.5,
+    "max_ms": 413.4,
+    "codigos": {
+     "200": 2827,
+     "402": 155
+    },
+    "rps": 49.7
+   },
+   "panel_durante_escaneo": {
+    "n": 200,
+    "p50_ms": 14.4,
+    "p95_ms": 337.0,
+    "p99_ms": 370.7,
+    "max_ms": 413.4,
+    "codigos": {
+     "200": 188,
+     "402": 12
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 2782,
+    "p50_ms": 7.1,
+    "p95_ms": 28.5,
+    "p99_ms": 94.4,
+    "max_ms": 172.0,
+    "codigos": {
+     "200": 2639,
+     "402": 143
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 3.96,
+     "error": null,
+     "inicio_s": 5.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 6.5
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 649,
+     "p50": 0.1,
+     "p99": 20.5,
+     "max": 37.19
+    },
+    "fuera_de_escaneo": {
+     "n": 11080,
+     "p50": 0.1,
+     "p99": 4.8,
+     "max": 114.72
+    }
+   },
+   "telegram": {
+    "comandos": 133,
+    "respuesta_durante_escaneo": {
+     "n": 11,
+     "p50_ms": 34.7,
+     "p95_ms": 152.4,
+     "p99_ms": 234.5,
+     "max_ms": 255.0,
+     "codigos": {
+      "200": 11
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 122,
+     "p50_ms": 34.6,
+     "p95_ms": 50.7,
+     "p99_ms": 68.7,
+     "max_ms": 80.1,
+     "codigos": {
+      "200": 122
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794768527.236,
+      "s": 4.67,
+      "enviados": 57,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794768561.911,
+      "s": 4.65,
+      "enviados": 57,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 513
+   },
+   "rss_mb_max": 348.3,
+   "rss_mb_max_durante_escaneo": 133.7,
+   "rss_mb_final": 133.7,
+   "vmhwm_mb_proceso": 348.0,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 25.8,
+   "cpu_pct_medio_durante_escaneo": 36.5,
+   "cpu_pct_medio_fuera_de_escaneo": 25.1,
+   "hilos_max": 23,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 19,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/242",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 18,
+     "t": 30.0
+    }
+   ],
+   "cgroup_memoria": null,
+   "peticiones_http": 3032,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0,
+ "trazas_en_registro_del_servidor": 0,
+ "registro_servidor_ultimas_lineas": [
+  "Modo cuentas activo · base de datos postgresql · esquema verificado",
+  "Plataforma 2.1 · inicialización: nueva · archivado de 2.0.0: {} · piloto cerrado",
+  "Administrador: jefe.estres · verificado",
+  "Crypto Radar 2.1.0 en http://localhost:49513  (16 hilos; Ctrl+C para detener)"
+ ]
+}

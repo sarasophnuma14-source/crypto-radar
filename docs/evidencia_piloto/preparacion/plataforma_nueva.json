@@ -1,0 +1,210 @@
+{
+ "pasos": [
+  {
+   "paso": "[SQLite] El servidor 2.1 arranca sobre una base con datos de la 2.0.0 y la archiva",
+   "ok": true,
+   "detalle": "Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {\"activity\": 1, \"payments\": 1, \"positions\": 1, \"sessions\": 1, \"telegram_links\": 1, \"users\": 2} · piloto cerrado"
+  },
+  {
+   "paso": "[SQLite] Solo queda el administrador nuevo; ninguna cuenta, sesión, código, pago ni posición de 2.0.0",
+   "ok": true,
+   "detalle": "[('jefe.piloto', 1)]"
+  },
+  {
+   "paso": "[SQLite] Lo histórico queda en legacy_archive, sin contraseñas, tokens de sesión ni códigos",
+   "ok": true,
+   "detalle": "7 filas archivadas"
+  },
+  {
+   "paso": "[SQLite] Los documentos del sistema (kv: informes) se conservan",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "[SQLite] El administrador y el cliente de 2.0.0 no pueden entrar (mismo mensaje que un usuario inexistente)",
+   "ok": true,
+   "detalle": "HTTP 401 / 401"
+  },
+  {
+   "paso": "[SQLite] La cookie de sesión de 2.0.0 se rechaza",
+   "ok": true,
+   "detalle": "HTTP 401"
+  },
+  {
+   "paso": "[SQLite] Telegram: el chat vinculado en 2.0.0 no recibe datos y el código antiguo no vincula",
+   "ok": true,
+   "detalle": "Este chat no está vinculado a una cuenta activa. G | Código no válido o vencido. Genera uno nuevo en el"
+  },
+  {
+   "paso": "[SQLite] Registro nuevo desde cero: queda pendiente, sin rol de administrador ni plan heredado o inyectado",
+   "ok": true,
+   "detalle": "HTTP 200; [('pending', 0, 'free', None)]"
+  },
+  {
+   "paso": "[SQLite] Pendiente: no entra hasta que el administrador apruebe",
+   "ok": true,
+   "detalle": "HTTP 403: Tu solicitud está pendiente de aprobación por el administrador"
+  },
+  {
+   "paso": "[SQLite] Nadie puede pedir el nombre del administrador del entorno",
+   "ok": true,
+   "detalle": "HTTP 409"
+  },
+  {
+   "paso": "[SQLite] Administrador sin TOTP: entra pero no administra",
+   "ok": true,
+   "detalle": "HTTP 200 / 403"
+  },
+  {
+   "paso": "[SQLite] Con TOTP (código de alta de un solo uso) administra; la lista no muestra cuentas de 2.0.0",
+   "ok": true,
+   "detalle": "(200, 200, 200, 200) · ['cliente.antiguo', 'jefe.piloto']"
+  },
+  {
+   "paso": "[SQLite] Aprobado: entra con plan Libre, sin el plan pagado ni los pagos de 2.0.0",
+   "ok": true,
+   "detalle": "plan free; pagos []"
+  },
+  {
+   "paso": "[SQLite] Usuario normal: todas las rutas de administración responden 403",
+   "ok": true,
+   "detalle": "[403, 403, 403, 403, 403, 403, 403]"
+  },
+  {
+   "paso": "[SQLite] El administrador tampoco puede crear otro administrador",
+   "ok": true,
+   "detalle": "administradores: 1"
+  },
+  {
+   "paso": "[SQLite] Reinicio: la plataforma ya está marcada, nada se vuelve a archivar ni a importar, 2.0.0 sigue fuera",
+   "ok": true,
+   "detalle": "Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {\"activity\": 1, \"payments\": 1, \"positions\": 1, \"sessions\": 1, \"telegram_links\": 1, \"users\": 2} · piloto cerrado · Administrador: jefe.piloto · verificado · HTTP 401"
+  },
+  {
+   "paso": "[SQLite] Segundo reinicio: un único administrador (inicialización idempotente)",
+   "ok": true,
+   "detalle": "administradores: 1"
+  },
+  {
+   "paso": "[SQLite] Cambiar el administrador del entorno retira al anterior: nunca hay dos",
+   "ok": true,
+   "detalle": "Administrador: jefe.relevo · creado · 1 administradores anteriores retirados · antiguo: HTTP 403"
+  },
+  {
+   "paso": "[SQLite] Base de 2.1 sin marca: no se archiva nada y el servidor no arranca",
+   "ok": true,
+   "detalle": "No arranco: La base tiene cuentas de 2.1 pero no la marca de plataforma (usuarios_2_1: 4, codigos_de_alta: 1). No se archiva nada. Si es correcto, define CRYPTO"
+  },
+  {
+   "paso": "[SQLite] Con CRYPTO_RADAR_PLATFORM_ADOPT=1 se marca tal como está (y avisa de borrar la variable)",
+   "ok": true,
+   "detalle": "Plataforma 2.1 · inicialización: adoptada · archivado de 2.0.0: {} · piloto cerrado"
+  },
+  {
+   "paso": "[PostgreSQL] El servidor 2.1 arranca sobre una base con datos de la 2.0.0 y la archiva",
+   "ok": true,
+   "detalle": "Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {\"activity\": 1, \"payments\": 1, \"positions\": 1, \"sessions\": 1, \"telegram_links\": 1, \"users\": 2} · piloto cerrado"
+  },
+  {
+   "paso": "[PostgreSQL] Solo queda el administrador nuevo; ninguna cuenta, sesión, código, pago ni posición de 2.0.0",
+   "ok": true,
+   "detalle": "[('jefe.piloto', 1)]"
+  },
+  {
+   "paso": "[PostgreSQL] Lo histórico queda en legacy_archive, sin contraseñas, tokens de sesión ni códigos",
+   "ok": true,
+   "detalle": "7 filas archivadas"
+  },
+  {
+   "paso": "[PostgreSQL] Los documentos del sistema (kv: informes) se conservan",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "[PostgreSQL] El administrador y el cliente de 2.0.0 no pueden entrar (mismo mensaje que un usuario inexistente)",
+   "ok": true,
+   "detalle": "HTTP 401 / 401"
+  },
+  {
+   "paso": "[PostgreSQL] La cookie de sesión de 2.0.0 se rechaza",
+   "ok": true,
+   "detalle": "HTTP 401"
+  },
+  {
+   "paso": "[PostgreSQL] Telegram: el chat vinculado en 2.0.0 no recibe datos y el código antiguo no vincula",
+   "ok": true,
+   "detalle": "Este chat no está vinculado a una cuenta activa. G | Código no válido o vencido. Genera uno nuevo en el"
+  },
+  {
+   "paso": "[PostgreSQL] Registro nuevo desde cero: queda pendiente, sin rol de administrador ni plan heredado o inyectado",
+   "ok": true,
+   "detalle": "HTTP 200; [('pending', 0, 'free', None)]"
+  },
+  {
+   "paso": "[PostgreSQL] Pendiente: no entra hasta que el administrador apruebe",
+   "ok": true,
+   "detalle": "HTTP 403: Tu solicitud está pendiente de aprobación por el administrador"
+  },
+  {
+   "paso": "[PostgreSQL] Nadie puede pedir el nombre del administrador del entorno",
+   "ok": true,
+   "detalle": "HTTP 409"
+  },
+  {
+   "paso": "[PostgreSQL] Administrador sin TOTP: entra pero no administra",
+   "ok": true,
+   "detalle": "HTTP 200 / 403"
+  },
+  {
+   "paso": "[PostgreSQL] Con TOTP (código de alta de un solo uso) administra; la lista no muestra cuentas de 2.0.0",
+   "ok": true,
+   "detalle": "(200, 200, 200, 200) · ['cliente.antiguo', 'jefe.piloto']"
+  },
+  {
+   "paso": "[PostgreSQL] Aprobado: entra con plan Libre, sin el plan pagado ni los pagos de 2.0.0",
+   "ok": true,
+   "detalle": "plan free; pagos []"
+  },
+  {
+   "paso": "[PostgreSQL] Usuario normal: todas las rutas de administración responden 403",
+   "ok": true,
+   "detalle": "[403, 403, 403, 403, 403, 403, 403]"
+  },
+  {
+   "paso": "[PostgreSQL] El administrador tampoco puede crear otro administrador",
+   "ok": true,
+   "detalle": "administradores: 1"
+  },
+  {
+   "paso": "[PostgreSQL] Reinicio: la plataforma ya está marcada, nada se vuelve a archivar ni a importar, 2.0.0 sigue fuera",
+   "ok": true,
+   "detalle": "Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {\"activity\": 1, \"payments\": 1, \"positions\": 1, \"sessions\": 1, \"telegram_links\": 1, \"users\": 2} · piloto cerrado · Administrador: jefe.piloto · verificado · HTTP 401"
+  },
+  {
+   "paso": "[PostgreSQL] Segundo reinicio: un único administrador (inicialización idempotente)",
+   "ok": true,
+   "detalle": "administradores: 1"
+  },
+  {
+   "paso": "[PostgreSQL] Cambiar el administrador del entorno retira al anterior: nunca hay dos",
+   "ok": true,
+   "detalle": "Administrador: jefe.relevo · creado · 1 administradores anteriores retirados · antiguo: HTTP 403"
+  },
+  {
+   "paso": "[PostgreSQL] Base de 2.1 sin marca: no se archiva nada y el servidor no arranca",
+   "ok": true,
+   "detalle": "No arranco: La base tiene cuentas de 2.1 pero no la marca de plataforma (usuarios_2_1: 4, codigos_de_alta: 1). No se archiva nada. Si es correcto, define CRYPTO"
+  },
+  {
+   "paso": "[PostgreSQL] Con CRYPTO_RADAR_PLATFORM_ADOPT=1 se marca tal como está (y avisa de borrar la variable)",
+   "ok": true,
+   "detalle": "Plataforma 2.1 · inicialización: adoptada · archivado de 2.0.0: {} · piloto cerrado"
+  },
+  {
+   "paso": "[PostgreSQL] 4 procesos arrancan a la vez sobre la base heredada: se archiva UNA vez, sin errores",
+   "ok": true,
+   "detalle": "códigos [0, 0, 0, 0]; archivo [('activity', 1), ('payments', 1), ('positions', 1), ('sessions', 1), ('telegram_links', 1), ('users', 2)]; "
+  }
+ ],
+ "resumen": "41 de 41 pasos OK"
+}

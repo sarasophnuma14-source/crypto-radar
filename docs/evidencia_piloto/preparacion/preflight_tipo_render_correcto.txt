@@ -1,0 +1,17 @@
+[APROBADO   ] Modo cuentas: CRYPTO_RADAR_ACCOUNTS=1
+[APROBADO   ] TLS con la base: sslmode=require
+[APROBADO   ] Conexión Neon: endpoint directo (recomendado: ~20 conexiones por instancia)
+[APROBADO   ] Administrador: usuario y contraseña definidos (no se muestran)
+[APROBADO   ] TOTP del administrador: obligatorio
+[APROBADO   ] Clave de cifrado TOTP: definida (no se muestra)
+[APROBADO   ] Claves independientes: la clave TOTP y la de copias son distintas
+[APROBADO   ] Clave de copias: definida (no se muestra)
+[APROBADO   ] Piloto: cerrado: registro con aprobación, sin cobros reales
+[APROBADO   ] Telegram: TELEGRAM_BOT_TOKEN definido (no se muestra); los avisos salen por la API de Telegram
+[APROBADO   ] Pagos: desactivados (off)
+[BLOQUEANTE ] Texto legal privacidad.html: 11 marcas pendientes (COMPLETAR / borrador sin revisión legal)
+[APROBADO   ] Texto legal aviso-de-riesgo.html: completo
+[APROBADO   ] render.yaml: todas las variables secretas son sync: false
+
+1 bloqueantes, 0 advertencias. NO listo para producción.
+rc=1

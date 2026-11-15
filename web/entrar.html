@@ -60,6 +60,7 @@ input::placeholder,textarea::placeholder{color:#5F7880}
 .btn:hover{background:#F6C06A;transform:translateY(-1px)}
 .btn[disabled]{opacity:.6;cursor:wait;transform:none}
 .msg{min-height:1.4em;font-size:.9rem;margin:4px 0 0}
+.pilot{margin:0 0 14px;padding:10px 12px;border-radius:12px;border:1px solid rgba(240,174,69,.45);background:rgba(240,174,69,.08);font-size:.85rem;line-height:1.45}
 .msg.err{color:var(--stop)} .msg.ok{color:var(--gain)}
 .foot{margin-top:26px;color:var(--muted);font-size:.82rem;line-height:1.55;display:grid;gap:8px}
 .foot a{color:var(--fg)}
@@ -102,6 +103,8 @@ label.check a{color:var(--fg)}
       <button type="button" role="tab" id="t-entrar" aria-selected="true" aria-controls="f-entrar">Entrar</button>
       <button type="button" role="tab" id="t-solicitar" aria-selected="false" aria-controls="f-solicitar">Solicitar acceso</button>
     </div>
+
+    <p class="pilot" role="note"><b>Piloto cerrado.</b> Acceso solo con aprobación del administrador, plazas limitadas y sin cobros. Es una herramienta de análisis en pruebas: puede tener fallos y no da recomendaciones de inversión.</p>
 
     <section id="f-entrar" role="tabpanel" aria-labelledby="t-entrar">
       <h2>Bienvenido de nuevo</h2>

@@ -224,7 +224,7 @@ def main(out=None):
         dbl = [x for x in p.stdout.splitlines() if any(k in x for k in ("Esquema", "TOTP del administrador en la base",
                                                                          "Secretos TOTP en la base"))]
         step("`preflight --db` sobre la restaurada: esquema, TOTP del administrador y secretos cifrados",
-             len(dbl) == 3 and all(x.startswith("[OK") for x in dbl), " | ".join(dbl))
+             len(dbl) == 3 and all(x.startswith("[APROBADO") for x in dbl), " | ".join(dbl))
         st, _, _ = login_admin(DST, totp.code(secret, time.time() + 60), {"CRYPTO_RADAR_TOTP_KEY": secrets.token_urlsafe(32)})
         step("Con otra CRYPTO_RADAR_TOTP_KEY el TOTP no se puede leer (503): la clave se guarda aparte", st == 503, f"HTTP {st}")
 

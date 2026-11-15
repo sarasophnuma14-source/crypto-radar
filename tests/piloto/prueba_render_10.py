@@ -106,9 +106,13 @@ def run(base, users, password, minutes):
     R["detenida_por_errores"] = stop.is_set()
     st, ms, data = probe.req("GET", "/healthz")
     R["healthz_despues"] = {"codigo": st, "ms": round(ms, 1), "cuerpo": json.loads(data or b"{}") if st == 200 else None}
+    all_codes = [str(x) for x, _ in samples] + [str(x) for x, _ in logins]
+    R["panel"]["5xx"] = sum(1 for c in all_codes if c.startswith("5") or c.startswith("EXC"))
+    R["panel"]["429"] = sum(1 for c in all_codes if c == "429")
     ok = (not stop.is_set() and R["login"]["ok"] == len(users) and (R["panel"]["p95_ms"] or 1e9) < 1000
-          and R["panel"]["mas_de_2s"] == 0)
-    R["criterio"] = "p95 del panel < 1 s, ningún 5xx, ninguna petición > 2 s y todos los usuarios entran"
+          and R["panel"]["mas_de_2s"] == 0 and R["panel"]["5xx"] == 0 and R["panel"]["429"] == 0)
+    R["criterio"] = ("p95 del panel < 1 s, ningún 5xx ni error de red, ninguna petición > 2 s, todos los usuarios entran "
+                     "y ningún 429 (sin bloqueos de usuarios legítimos)")
     R["resultado"] = "APROBADA" if ok else "NO APROBADA"
     return R
 
