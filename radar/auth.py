@@ -8,8 +8,12 @@
   * El plan de pago SOLO lo cambia billing.py tras un pago verificado con el proveedor (o un admin, registrado).
   * Acceso solo con aprobación: cualquiera puede SOLICITAR una cuenta (usuario y contraseña propios), pero queda
     "pendiente" y no puede entrar hasta que un administrador la apruebe. No hay registro abierto.
-  * El primer administrador se crea desde variables de entorno (CRYPTO_RADAR_ADMIN_USER y
-    CRYPTO_RADAR_ADMIN_PASSWORD), nunca por ser el primero en registrarse.
+  * El administrador se crea desde variables de entorno (CRYPTO_RADAR_ADMIN_USER y CRYPTO_RADAR_ADMIN_PASSWORD),
+    nunca por ser el primero en registrarse. Una cuenta normal que ya tenga ese nombre NUNCA se promueve: el
+    servidor no arranca hasta que se elija otro nombre o se ponga esa cuenta en cuarentena
+    (CRYPTO_RADAR_ADMIN_TAKEOVER=1), y el administrador nace siempre con la contraseña del entorno.
+  * Límites de intentos guardados en la base (tabla rate_limits): sobreviven a reinicios y se comparten entre
+    instancias que usen la misma base. Ventana fija; ver docs/SEGURIDAD.md para sus limitaciones.
 """
 from __future__ import annotations
 import hashlib
@@ -27,6 +31,8 @@ LOCK_AFTER, LOCK_S = 5, 15 * 60
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[a-z]{2,24}$", re.I)
 USER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,31}$")
 MAX_PENDING = 300
+RESERVED = {"admin", "administrador", "administrator", "root", "soporte", "support", "sistema", "system",
+            "cryptoradar", "crypto-radar", "crypto.radar", "moderador", "staff"}
 COMMON_PW = {"1234567890", "contraseña", "contrasena", "password123", "qwertyuiop", "cryptoradar", "bitcoin123",
              "123456789a", "abcdefghij", "iloveyou12", "password12", "contraseña1"}
 PLANS = {
@@ -61,8 +67,7 @@ def verify_password(pw: str, stored: str) -> bool:
         return False
 
 
-def rate_limited(key, limit, window_s):
-    """True si `key` superó `limit` eventos en `window_s` segundos (y registra este evento)."""
+def _rate_mem(key, limit, window_s):
     t = time.time()
     ev = [x for x in _rate.get(key, []) if t - x < window_s]
     blocked = len(ev) >= limit
@@ -70,6 +75,36 @@ def rate_limited(key, limit, window_s):
         ev.append(t)
     _rate[key] = ev
     return blocked
+
+
+def rate_limited(key, limit, window_s):
+    """True si `key` superó `limit` eventos en la ventana actual de `window_s` segundos (y registra este evento).
+
+    Se guarda en la base (tabla rate_limits) con ventana fija: sobrevive a reinicios y vale para todas las
+    instancias que compartan la base. Si la base falla, usa un contador en memoria (nunca deja pasar sin límite).
+    """
+    t = time.time()
+    bucket = int(t // window_s)
+    k = hashlib.sha256(f"{key}|{window_s}|{bucket}".encode()).hexdigest()
+    try:
+        db.execute("INSERT INTO rate_limits(k, n, expires_at) VALUES (?, 1, ?) "
+                   "ON CONFLICT (k) DO UPDATE SET n = rate_limits.n + 1", (k, (bucket + 1) * window_s))
+        n = (db.one("SELECT n FROM rate_limits WHERE k = ?", (k,)) or {}).get("n", 1)
+        if secrets.randbelow(50) == 0:
+            db.execute("DELETE FROM rate_limits WHERE expires_at < ?", (t,))
+        return n > limit
+    except Exception as e:
+        print(f"AVISO: límite de intentos en memoria ({type(e).__name__})", flush=True)
+        return _rate_mem(key, limit, window_s)
+
+
+def reset_rate_limits():
+    """Solo para pruebas y mantenimiento: borra todos los contadores."""
+    _rate.clear()
+    try:
+        db.execute("DELETE FROM rate_limits", ())
+    except Exception:
+        pass
 
 
 def log(user_id, action, detail=None, ip=None):
@@ -124,7 +159,7 @@ def request_access(username, pw, contact=None, note=None, ip=None):
     note = re.sub(r"[\x00-\x1f]", " ", str(note or ""))[:300] or None
     if (db.one("SELECT COUNT(*) AS n FROM users WHERE status = 'pending'", ()) or {}).get("n", 0) >= MAX_PENDING:
         raise AuthError("No se aceptan más solicitudes por ahora", 503)
-    if db.one("SELECT id FROM users WHERE email = ?", (username,)):
+    if is_reserved(username) or db.one("SELECT id FROM users WHERE email = ?", (username,)):
         raise AuthError("Ese usuario no está disponible; elige otro", 409)
     uid = _create(username, pw, "pending", contact=contact, note=note)
     log(uid, "access_requested", {"contact": bool(contact)}, ip)
@@ -136,26 +171,74 @@ def register(email, pw, ip=None):
     return get_user(request_access(email, pw, ip=ip))
 
 
+def is_reserved(username):
+    """Nombres que nadie puede solicitar: los genéricos de administración y el del administrador del entorno."""
+    u = norm_login(username)
+    return u in RESERVED or u.split("@")[0] in RESERVED or u == norm_login(os.environ.get("CRYPTO_RADAR_ADMIN_USER"))
+
+
+class AdminBootstrapError(SystemExit):
+    pass
+
+
 def ensure_admin():
-    """Crea (o asegura) el administrador definido en el entorno. Devuelve su usuario o None si no está definido."""
-    u = norm_login(os.environ.get("CRYPTO_RADAR_ADMIN_USER"))
+    """Arranque seguro del administrador definido en el entorno.
+
+    Devuelve {"user", "result"} o None si no hay administrador configurado. `result` es uno de:
+      creado         · no existía; se crea con la contraseña del entorno
+      verificado     · ya existe y ya era administrador; no se toca su contraseña
+      restablecido   · ya era administrador y CRYPTO_RADAR_ADMIN_RESET=1: contraseña del entorno y sesiones cerradas
+      cuarentena     · una cuenta NORMAL tenía ese nombre y CRYPTO_RADAR_ADMIN_TAKEOVER=1: esa cuenta se renombra,
+                       se rechaza y se cierran sus sesiones; el administrador se crea nuevo con la contraseña del entorno
+    Si una cuenta normal tiene ese nombre y no se pidió la cuarentena, lanza AdminBootstrapError: nunca se promueve
+    una cuenta preexistente ni se conserva una contraseña elegida por otra persona.
+    Cada resultado queda en el registro de actividad (admin_bootstrap_*).
+    """
+    raw_u = norm_login(os.environ.get("CRYPTO_RADAR_ADMIN_USER"))
     pw = os.environ.get("CRYPTO_RADAR_ADMIN_PASSWORD") or ""
-    if not u or not pw:
+    if not raw_u and not pw:
         return None
-    u = validate_username(u)
+    if not raw_u or not pw:
+        raise AdminBootstrapError("Define CRYPTO_RADAR_ADMIN_USER y CRYPTO_RADAR_ADMIN_PASSWORD (las dos).")
+    try:
+        u = validate_username(raw_u)
+    except AuthError as e:
+        raise AdminBootstrapError(f"CRYPTO_RADAR_ADMIN_USER no válido: {e}")
     if len(pw) < 12:
-        raise SystemExit("CRYPTO_RADAR_ADMIN_PASSWORD debe tener al menos 12 caracteres")
-    row = db.one("SELECT id FROM users WHERE email = ?", (u,))
-    if not row:
-        uid = _create(u, pw, "active", is_admin=1, by="entorno")
-        log(uid, "admin_bootstrap", None, None)
-        return u
-    db.execute("UPDATE users SET is_admin = 1, status = 'active', disabled = 0 WHERE id = ?", (row["id"],))
-    if os.environ.get("CRYPTO_RADAR_ADMIN_RESET") == "1":
-        db.execute("UPDATE users SET pw_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?",
-                   (hash_password(pw), row["id"]))
-        logout_all(row["id"]); log(row["id"], "admin_password_reset_env", None, None)
-    return u
+        raise AdminBootstrapError("CRYPTO_RADAR_ADMIN_PASSWORD debe tener al menos 12 caracteres")
+    try:
+        validate_password(u.split("@")[0], pw)
+    except AuthError as e:
+        raise AdminBootstrapError(f"CRYPTO_RADAR_ADMIN_PASSWORD rechazada: {e}")
+    row = db.one("SELECT id, is_admin, status, approved_by, created_at FROM users WHERE email = ?", (u,))
+    if row and row["is_admin"]:
+        if os.environ.get("CRYPTO_RADAR_ADMIN_RESET") == "1":
+            db.execute("UPDATE users SET pw_hash = ?, failed_logins = 0, locked_until = NULL, status = 'active', "
+                       "disabled = 0 WHERE id = ?", (hash_password(pw), row["id"]))
+            logout_all(row["id"])
+            log(row["id"], "admin_bootstrap_password_reset", {"user": u, "source": "entorno"})
+            return {"user": u, "result": "restablecido"}
+        log(row["id"], "admin_bootstrap_verified", {"user": u})
+        return {"user": u, "result": "verificado"}
+    result = "creado"
+    if row:   # alguien reservó el nombre del administrador con una cuenta normal
+        detail = {"user": u, "squatter_id": row["id"], "squatter_status": row["status"],
+                  "squatter_created_at": row["created_at"]}
+        log(row["id"], "admin_bootstrap_conflict", detail)
+        if os.environ.get("CRYPTO_RADAR_ADMIN_TAKEOVER") != "1":
+            raise AdminBootstrapError(
+                f"Ya existe una cuenta normal llamada «{u}» (posible apropiación del nombre del administrador). "
+                "Por seguridad no se promueve. Elige otro CRYPTO_RADAR_ADMIN_USER, o define "
+                "CRYPTO_RADAR_ADMIN_TAKEOVER=1 para ponerla en cuarentena y crear el administrador.")
+        quarantined = f"{u}~cuarentena~{row['id'][:12]}"      # no cumple el formato de usuario: nadie puede pedirlo
+        db.execute("UPDATE users SET email = ?, status = 'rejected', disabled = 1, is_admin = 0 WHERE id = ?",
+                   (quarantined, row["id"]))
+        logout_all(row["id"])
+        log(row["id"], "admin_bootstrap_quarantine", detail | {"renamed_to": quarantined})
+        result = "cuarentena"
+    uid = _create(u, pw, "active", is_admin=1, by="entorno")
+    log(uid, "admin_bootstrap_created", {"user": u, "after_quarantine": result == "cuarentena"})
+    return {"user": u, "result": result}
 
 
 # ---------------------------------------------------------------- administración de cuentas
@@ -174,7 +257,7 @@ def admin_set_status(admin, uid, action, plan="free", days=0, ip=None):
     t = _admin_target(admin, uid)
     if t["id"] == admin["id"]:
         raise AuthError("No puedes cambiar tu propia cuenta desde aquí")
-    if t["is_admin"] and action != "approve":
+    if t["is_admin"]:
         raise AuthError("No se puede modificar a otro administrador desde el panel", 403)
     if action == "approve":
         plan = plan if plan in PLANS else "free"
@@ -205,8 +288,8 @@ def admin_create(admin, username, pw, plan="free", days=0, ip=None):
     if not admin or not admin.get("is_admin"):
         raise AuthError("solo administradores", 403)
     username, pw = validate_credentials(username, pw)
-    if db.one("SELECT id FROM users WHERE email = ?", (username,)):
-        raise AuthError("Ese usuario ya existe", 409)
+    if is_reserved(username) or db.one("SELECT id FROM users WHERE email = ?", (username,)):
+        raise AuthError("Ese usuario ya existe o está reservado", 409)
     plan = plan if plan in PLANS else "free"
     try:
         days = max(0, min(3650, int(days or 0)))
@@ -220,6 +303,9 @@ def admin_create(admin, username, pw, plan="free", days=0, ip=None):
 
 def admin_reset_password(admin, uid, pw, ip=None):
     t = _admin_target(admin, uid)
+    if t["is_admin"]:
+        raise AuthError("La contraseña de un administrador solo se cambia desde su propia cuenta o con "
+                        "CRYPTO_RADAR_ADMIN_RESET", 403)
     validate_password(t["email"].split("@")[0], pw)
     db.execute("UPDATE users SET pw_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?", (hash_password(pw), uid))
     logout_all(uid)

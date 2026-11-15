@@ -473,6 +473,7 @@ function groupTable(title, g){
 }
 async function loadBacktest(){
   let r; try { r = await api("/api/backtest/results"); } catch (e) { return; }
+  if (r?._status === 402) { $("#btBox").innerHTML = `<div class="card empty"><h2>Plan Élite</h2><p>${esc(r.error)}</p></div>`; return; }
   if (!r || r.available === false || !r.base_full) { $("#btBox").innerHTML = `<div class="card empty"><h2>Aún no hay resultados</h2><p>${esc(r?.note || "")}</p></div>`; return; }
   const c = r.calibration || {}, wf = r.walk_forward || {}, sv = r.score_validation || {};
   $("#btBox").innerHTML = `

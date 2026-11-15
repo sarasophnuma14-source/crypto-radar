@@ -7,7 +7,7 @@ Nada cambió para el uso en el Mac: `instalar.command` sigue funcionando y el pa
 ```
 python3 main.py serve          # panel + escaneos automáticos
 python3 main.py scan           # un escaneo ahora
-python3 tests/test_suite.py -v # batería de pruebas (166 con SQLite)
+python3 tests/test_suite.py -v # batería de pruebas (181; la de PostgreSQL corre si defines TEST_DATABASE_URL)
 ```
 
 Requisitos: Python 3.10 o superior. El radar solo usa la librería estándar. `psycopg` solo hace falta con PostgreSQL.
@@ -15,7 +15,7 @@ Requisitos: Python 3.10 o superior. El radar solo usa la librería estándar. `p
 ## 2. Modo SaaS en local (para probar cuentas y planes)
 
 ```
-CRYPTO_RADAR_ACCOUNTS=1 CRYPTO_RADAR_ADMIN_USER=admin CRYPTO_RADAR_ADMIN_PASSWORD='una clave larga de admin' python3 main.py serve
+CRYPTO_RADAR_ACCOUNTS=1 CRYPTO_RADAR_ADMIN_USER=admin CRYPTO_RADAR_ADMIN_PASSWORD='una clave larga y propia' python3 main.py serve
 ```
 
 Sin `DATABASE_URL` usa SQLite en `data/app.db`. Al arrancar se crea (o confirma) la cuenta de administrador con esos datos.
@@ -40,8 +40,10 @@ Nadie puede convertirse en administrador desde la web.
 | `CRYPTO_RADAR_ACCOUNTS` | No | `1` activa cuentas, planes y pagos. Vacía: modo de un solo usuario |
 | `DATABASE_URL` | Sí con cuentas en Render | PostgreSQL (`postgresql://usuario:clave@host/db?sslmode=require`). Guarda usuarios, sesiones, pagos y también los informes del escáner |
 | `CRYPTO_RADAR_ADMIN_USER` | Sí con cuentas | Usuario del administrador. Se crea al arrancar (plan Élite, aprueba solicitudes, botón de escaneo, ajustes) |
-| `CRYPTO_RADAR_ADMIN_PASSWORD` | Sí con cuentas | Contraseña del administrador, mínimo 12 caracteres. Solo se usa al crearlo |
+| `CRYPTO_RADAR_ADMIN_PASSWORD` | Sí con cuentas | Contraseña del administrador: mínimo 12 caracteres y sin contener el usuario. Solo se usa al crearlo |
 | `CRYPTO_RADAR_ADMIN_RESET` | No | `1` vuelve a poner la contraseña de `CRYPTO_RADAR_ADMIN_PASSWORD` al arrancar (si la olvidaste). Quítala después |
+| `CRYPTO_RADAR_ADMIN_TAKEOVER` | No | Solo si el servidor no arranca porque una cuenta normal ya tiene el nombre del administrador: `1` pone esa cuenta en cuarentena y crea el administrador nuevo. Quítala después. Ver `docs/SEGURIDAD.md` |
+| `CRYPTO_RADAR_ALLOW_SQLITE` | No | Solo pruebas: permite el modo cuentas en Render sin `DATABASE_URL` (por defecto se niega a arrancar) |
 | `CRYPTO_RADAR_PASSWORD` | Sí sin cuentas fuera de localhost | Contraseña única del panel en el modo antiguo |
 | `CRYPTO_RADAR_HOST` | No | `0.0.0.0` en servidores |
 | `PORT` | No | Puerto (Render lo pone solo) |
@@ -67,7 +69,9 @@ confirmación del proveedor**: el webhook se verifica con su firma y además se 
 2. En Render, el servicio `crypto-radar` ya existe. En **Environment** añade `CRYPTO_RADAR_ACCOUNTS=1`, `DATABASE_URL`,
    `CRYPTO_RADAR_ADMIN_USER`, `CRYPTO_RADAR_ADMIN_PASSWORD` y, si vas a cobrar, las claves de Wompi y NOWPayments. `render.yaml` ya las lista.
 3. Despliega. El comando de compilación instala `requirements.txt` (psycopg). En el registro debe aparecer
-   `Modo cuentas activo · base de datos postgresql`. Si dice `sqlite`, falta `DATABASE_URL` y las cuentas se perderían.
+   `Modo cuentas activo · base de datos postgresql · esquema verificado` y `Administrador: <usuario> · creado`.
+   Sin `DATABASE_URL` el servidor se niega a arrancar en Render. Las reglas de seguridad y sus límites están en
+   `docs/SEGURIDAD.md`.
 4. Entra en `https://TU-APP.onrender.com/entrar` con el usuario y la contraseña de administrador. Las solicitudes nuevas
    aparecen en Configuración → Usuarios y solicitudes de acceso, con un contador de pendientes.
    El antiguo servicio estático `crypto-radar-ventas` ya no hace falta: la web de ventas vive en `/`. Puedes borrarlo en Render.

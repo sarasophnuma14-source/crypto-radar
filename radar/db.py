@@ -43,17 +43,46 @@ SCHEMA = [
         code TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at DOUBLE PRECISION NOT NULL)""",
     """CREATE TABLE IF NOT EXISTS kv (
         name TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DOUBLE PRECISION NOT NULL)""",
+    # límites de intentos compartidos entre reinicios e instancias (la clave es un hash; no guarda IP en claro)
+    """CREATE TABLE IF NOT EXISTS rate_limits (
+        k TEXT PRIMARY KEY, n INTEGER NOT NULL, expires_at DOUBLE PRECISION NOT NULL)""",
+    "CREATE INDEX IF NOT EXISTS rate_limits_exp ON rate_limits(expires_at)",
 ]
 
 
-# Columnas añadidas después de crear la tabla (se aplican una vez; si ya existen, se ignora el error).
+# Columnas añadidas después de crear la tabla: (tabla, columna, tipo). Solo se añaden si faltan.
 MIGRATIONS = [
-    "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",   # pending | active | rejected
-    "ALTER TABLE users ADD COLUMN contact TEXT",
-    "ALTER TABLE users ADD COLUMN request_note TEXT",
-    "ALTER TABLE users ADD COLUMN approved_at DOUBLE PRECISION",
-    "ALTER TABLE users ADD COLUMN approved_by TEXT",
+    ("users", "status", "TEXT NOT NULL DEFAULT 'active'"),     # pending | active | rejected
+    ("users", "contact", "TEXT"),
+    ("users", "request_note", "TEXT"),
+    ("users", "approved_at", "DOUBLE PRECISION"),
+    ("users", "approved_by", "TEXT"),
 ]
+
+# Esquema mínimo que el servidor necesita para arrancar. Si falta algo, no arranca.
+REQUIRED = {
+    "users": {"id", "email", "pw_hash", "created_at", "plan", "plan_until", "is_admin", "telegram_chat_id", "settings",
+              "disabled", "failed_logins", "locked_until", "status", "contact", "request_note", "approved_at", "approved_by"},
+    "sessions": {"token_hash", "user_id", "csrf", "created_at", "expires_at", "ip", "ua"},
+    "activity": {"id", "user_id", "at", "action", "detail", "ip"},
+    "positions": {"id", "user_id", "status", "data", "updated_at"},
+    "payments": {"id", "user_id", "provider", "reference", "plan", "period", "amount_cents", "currency", "status",
+                 "verified", "raw", "created_at", "updated_at"},
+    "telegram_links": {"code", "user_id", "expires_at"},
+    "kv": {"name", "value", "updated_at"},
+    "rate_limits": {"k", "n", "expires_at"},
+}
+
+
+class SchemaError(RuntimeError):
+    pass
+
+
+def _is_duplicate_column(e):
+    """Único error de migración tolerado: la columna ya existe (p. ej. otra instancia la añadió a la vez)."""
+    if type(e).__name__ == "DuplicateColumn":                                   # psycopg
+        return True
+    return isinstance(e, sqlite3.OperationalError) and "duplicate column name" in str(e).lower()
 
 
 def _connect():
@@ -79,6 +108,38 @@ def _sql(q):
     return q.replace("?", "%s") if IS_PG else q
 
 
+def columns(table):
+    c = conn()
+    if IS_PG:
+        cur = c.execute("SELECT column_name FROM information_schema.columns WHERE table_schema = current_schema() "
+                        "AND table_name = %s", (table,))
+        return {r[0] for r in cur.fetchall()}
+    return {r[1] for r in c.execute(f"PRAGMA table_info({table})").fetchall()}   # nombre de tabla fijo, no del usuario
+
+
+def migrate():
+    c = conn()
+    for table, col, typ in MIGRATIONS:
+        if col in columns(table):
+            continue
+        t = typ if IS_PG else typ.replace("DOUBLE PRECISION", "REAL")
+        try:
+            c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {t}")
+        except Exception as e:
+            if not _is_duplicate_column(e):
+                raise SchemaError(f"No se pudo migrar {table}.{col}: {e}") from e
+    if not IS_PG:
+        c.commit()
+
+
+def verify_schema():
+    missing = {t: sorted(req - columns(t)) for t, req in REQUIRED.items()}
+    missing = {t: m for t, m in missing.items() if m}
+    if missing:
+        raise SchemaError("Esquema de base de datos incompleto: " +
+                          "; ".join(f"{t}: {', '.join(m)}" for t, m in missing.items()))
+
+
 def init():
     global _ready
     with _init_lock:
@@ -88,14 +149,10 @@ def init():
         for stmt in SCHEMA:
             s = stmt if IS_PG else stmt.replace("DOUBLE PRECISION", "REAL").replace("BIGINT", "INTEGER")
             c.execute(s)
-        for stmt in MIGRATIONS:
-            s = stmt if IS_PG else stmt.replace("DOUBLE PRECISION", "REAL")
-            try:
-                c.execute(s.replace("ADD COLUMN", "ADD COLUMN IF NOT EXISTS") if IS_PG else s)
-            except Exception:
-                pass                                  # SQLite: la columna ya existe
         if not IS_PG:
             c.commit()
+        migrate()
+        verify_schema()
         _ready = True
 
 

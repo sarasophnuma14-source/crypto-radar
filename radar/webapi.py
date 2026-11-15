@@ -34,6 +34,40 @@ def _filter_report(rep, feats):
     return rep
 
 
+# Permisos de cada ruta GET autenticada (revisados en tests/test_suite.py: test_entitlements_matrix).
+#   todos      · /api/me, /api/state (filtrado por plan), /api/alerts, /api/journal, /api/scans, /api/candles,
+#                /api/history (con plan Libre solo de las monedas de su top), /api/activity, /api/billing/payments,
+#                /api/settings (los suyos; el admin ve los del sistema)
+#   pro        · /api/positions, /api/memes, /api/memes/radar
+#   elite      · /api/backtest/results
+#   admin      · /api/admin/users, /api/paper/report (experimental, nunca se muestra como recomendación)
+UPGRADE_PRO = "Disponible en el plan Pro"
+UPGRADE_ELITE = "El backtest está disponible en el plan Élite"
+
+
+def _allowed_symbols(feats):
+    """None = todas las monedas; si no, solo las del top que su plan muestra."""
+    if feats["ranking_limit"] >= 20:
+        return None
+    rep = storage.read("latest.json", {}) or {}
+    return {r.get("symbol") for r in (rep.get("ranking") or [])[:feats["ranking_limit"]]}
+
+
+def _filter_alerts(alerts, feats):
+    allowed = _allowed_symbols(feats)
+    out = []
+    for a in alerts:
+        kind = str(a.get("kind") or "")
+        if kind.startswith("MEME") and not feats.get("memes"):
+            continue
+        if kind == "EXIT" and not feats.get("exits"):
+            continue
+        if allowed is not None and a.get("symbol") and a["symbol"] not in allowed:
+            continue
+        out.append(a)
+    return out
+
+
 def handle(h, method):
     u = urlparse(h.path)
     p = u.path
@@ -82,10 +116,32 @@ def handle(h, method):
                 return h._send(402, {"error": "El radar de memecoins está disponible en el plan Pro"})
             return h._send(200, memes.state())
         if p == "/api/backtest/results":
+            if not feats.get("backtest"):
+                return h._send(402, {"error": UPGRADE_ELITE})
             return h._send(200, backtest_results())
         if p == "/api/paper/report":
+            if not user["is_admin"]:
+                return h._send(403, {"error": "solo administradores"})
             from .server import paper_report
             return h._send(200, paper_report(q.get("name")))
+        if p == "/api/alerts":
+            al = list(reversed(storage.read("alerts.json", []) or []))
+            return h._send(200, _filter_alerts(al, feats)[:300])
+        if p == "/api/journal":
+            from .server import journal_payload
+            allowed = _allowed_symbols(feats)
+            j = storage.read("journal.json", []) or []
+            if allowed is not None:
+                j = [x for x in j if x.get("symbol") in allowed]
+            return h._send(200, journal_payload(j))
+        if p == "/api/scans":
+            lim = feats["ranking_limit"]
+            rows = list(reversed(storage.read("scans.json", []) or []))[:100]
+            return h._send(200, [r | {"top": (r.get("top") or [])[:lim]} for r in rows])
+        if p in ("/api/candles", "/api/history"):
+            allowed = _allowed_symbols(feats)
+            if allowed is not None and q.get("symbol", "").upper() not in allowed:
+                return h._send(402, {"error": "En el plan Libre el detalle está disponible para las monedas de tu top. " + UPGRADE_PRO})
         if p == "/api/activity":
             rows = db.all_("SELECT at, action, detail, ip FROM activity WHERE user_id = ? ORDER BY at DESC LIMIT 100", (user["id"],))
             return h._send(200, rows)
@@ -100,7 +156,7 @@ def handle(h, method):
         if p == "/api/settings":
             if not user["is_admin"]:
                 return h._send(200, auth.public(user)["settings"])
-        if p in ("/api/alerts", "/api/journal", "/api/candles", "/api/history", "/api/scans", "/api/settings", "/api/memes/radar"):
+        if p in ("/api/candles", "/api/history", "/api/settings", "/api/memes/radar"):
             if p == "/api/memes/radar" and not feats["memes"]:
                 return h._send(402, {"error": "El radar de memecoins está disponible en el plan Pro"})
             return h._get_single(skip_auth=True)
@@ -148,6 +204,8 @@ def handle(h, method):
         if p == "/api/me/settings":
             return h._send(200, {"settings": auth.save_user_settings(user["id"], b)})
         if p == "/api/telegram/link":
+            if not feats["telegram"]:
+                return h._send(402, {"error": "Las alertas por Telegram están disponibles en el plan Pro"})
             if not telegram_bot.token():
                 return h._send(503, {"error": "El bot de Telegram no está configurado en el servidor"})
             return h._send(200, {"code": telegram_bot.new_link_code(user["id"])})
@@ -169,6 +227,8 @@ def handle(h, method):
                      "notes": str(b.get("notes", ""))[:300], "paper": bool(b.get("paper", True))}
             return h._send(200, multiuser.add_position(user["id"], clean, plan))
         if p.startswith("/api/positions/"):
+            if not feats["portfolio"]:
+                return h._send(402, {"error": "La cartera está disponible en el plan Pro"})
             parts = p.split("/")
             if len(parts) < 5 or not re.match(r"^[a-f0-9]{8,32}$", parts[3]):
                 return h._send(400, {"error": "ruta no válida"})
