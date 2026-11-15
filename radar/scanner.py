@@ -6,7 +6,7 @@ import traceback
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 from . import data, storage, alerts, notify
-from .config import CATEGORIES, STABLES, load_settings
+from .config import ACCOUNTS, CATEGORIES, STABLES, load_settings
 from .quant import engine as qengine, features as qfeatures, regime as qregime
 
 status = {"scanning": False, "progress": "", "last_error": None, "last_watch": None, "fail_streak": 0}
@@ -246,6 +246,12 @@ def run_scan(settings=None):
         save_candles(cache, report)
         fire_alerts(prev, report, settings)
         update_positions(report, settings)
+        if ACCOUNTS:
+            try:
+                from . import multiuser
+                multiuser.after_scan(report, feats, regime)
+            except Exception:
+                traceback.print_exc()
         log_journal(report)
         evaluate_journal(settings)
         storage.write("latest.json", report)

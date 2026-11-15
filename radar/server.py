@@ -14,8 +14,13 @@ import traceback
 import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
+from http.cookies import SimpleCookie
 from . import storage, scanner, alerts, memes, __version__
-from .config import WEB_DIR, load_settings, save_settings
+from .config import WEB_DIR, ROOT, ACCOUNTS, load_settings, save_settings
+
+COOKIE = "cr_session"
+PUBLIC_GET = ("/", "/index.html", "/healthz", "/api/public/status", "/api/billing/status")
+PUBLIC_POST = ("/api/auth/register", "/api/auth/login", "/api/billing/wompi/webhook", "/api/billing/nowpayments/ipn")
 
 WATCH_EVERY_S = 15 * 60
 MEME_EVERY_S = 60 * 60   # memecoins: revisar cada hora (la señal sale al cierre diario 00:00 UTC)
@@ -181,8 +186,59 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         return False
 
+    # ------------------------------------------------------------ entrada común y errores
     def do_GET(self):
-        if not self._authorized():
+        self._dispatch("GET")
+
+    def do_POST(self):
+        self._dispatch("POST")
+
+    def _dispatch(self, method):
+        t0 = time.time()
+        try:
+            if ACCOUNTS:
+                from . import webapi
+                webapi.handle(self, method)
+            elif method == "GET":
+                self._get_single()
+            else:
+                self._post_single()
+        except Exception:
+            traceback.print_exc()
+            try:
+                self._send(500, {"error": "error interno; quedó registrado"})
+            except Exception:
+                pass
+        finally:
+            if self.path.startswith("/api/") and (time.time() - t0) > 2:
+                print(f"[lento] {method} {self.path.split('?')[0]} {time.time() - t0:.1f}s", flush=True)
+
+    def _cookie(self, name):
+        try:
+            c = SimpleCookie(self.headers.get("Cookie") or "")
+            return c[name].value if name in c else None
+        except Exception:
+            return None
+
+    def _secure(self):
+        return (self.headers.get("X-Forwarded-Proto") == "https") or bool(os.environ.get("RENDER"))
+
+    def _send_cookie(self, code, body, token, max_age):
+        body = json.dumps(body, ensure_ascii=False, default=str).encode("utf-8")
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        for k, v in SECURITY_HEADERS.items():
+            self.send_header(k, v)
+        flags = "; HttpOnly; SameSite=Lax; Path=/" + ("; Secure" if self._secure() else "")
+        self.send_header("Set-Cookie", f"{COOKIE}={token or ''}; Max-Age={max_age}{flags}")
+        self.end_headers()
+        self.wfile.write(body)
+
+    # ------------------------------------------------------------ modo de un solo usuario (local / contraseña única)
+    def _get_single(self, skip_auth=False):
+        if not skip_auth and not self._authorized():
             return
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
@@ -231,16 +287,21 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(200, (storage.read("history.json", {}) or {}).get(q.get("symbol", "").upper(), []))
         if p == "/api/scans":
             return self._send(200, list(reversed(storage.read("scans.json", []) or []))[:100])
+        if p == "/api/backtest/results":
+            return self._send(200, backtest_results())
+        if p == "/api/memes/radar":
+            from . import meme_radar
+            return self._send(200, meme_radar.state())
         # /api/backtest se retiró del panel: el backtest solo corre en local (python -m radar.backtest).
         return self._send(404, {"error": "ruta desconocida"})
 
-    def do_POST(self):
-        if not self._authorized():
+    def _post_single(self, skip_auth=False, body=None):
+        if not skip_auth and not self._authorized():
             return
         p = urlparse(self.path).path
         if not self._same_origin():
             return self._send(403, {"error": "origen no permitido"})
-        b = self._body()
+        b = self._body() if body is None else body
         if b is None:
             return self._send(413, {"error": "petición demasiado grande"})
         if p == "/api/memes/check":
@@ -302,12 +363,30 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, {"error": "ruta desconocida"})
 
 
+def backtest_results():
+    """Resultados del backtest profesional (archivo generado por research/backtest_pro_run.py, sin cifras inventadas)."""
+    for f in (ROOT / "docs" / "backtest_results.json", ROOT / "data" / "research" / "backtest_pro_results.json"):
+        if f.exists():
+            try:
+                return json.loads(f.read_text("utf-8"))
+            except Exception:
+                pass
+    return {"available": False, "note": "Aún no hay resultados: ejecuta python3 research/backtest_pro_run.py"}
+
+
 def serve(port=None, host=None, schedule=True):
     s = load_settings()
     port = int(port or os.environ.get("PORT") or s["port"])
     host = host or os.environ.get("CRYPTO_RADAR_HOST", "127.0.0.1")
-    if host != "127.0.0.1" and not os.environ.get("CRYPTO_RADAR_PASSWORD"):
-        raise SystemExit("Por seguridad, define CRYPTO_RADAR_PASSWORD antes de exponer el panel a internet.")
+    if host != "127.0.0.1" and not ACCOUNTS and not os.environ.get("CRYPTO_RADAR_PASSWORD"):
+        raise SystemExit("Por seguridad, define CRYPTO_RADAR_PASSWORD (o activa cuentas con CRYPTO_RADAR_ACCOUNTS=1) "
+                         "antes de exponer el panel a internet.")
+    if ACCOUNTS:
+        from . import db, telegram_bot
+        db.init()
+        print(f"Modo cuentas activo · base de datos {db.backend()}", flush=True)
+        if schedule:
+            telegram_bot.start()
     if schedule:
         threading.Thread(target=scheduler, daemon=True).start()
     if os.environ.get("KEEPALIVE") == "1":

@@ -85,5 +85,13 @@ def emit(settings, kind, symbol, message, extra=None, dedupe_hours=12):
     title = f"{ICONS.get(kind, '')} {symbol} · {LABELS.get(kind, kind)}"
     if settings.get("desktop_notifications", True):
         _desktop("Crypto Radar", f"{title}: {message}")
-    telegram(settings, f"{title}\n{message}\n\nCrypto Radar · solo análisis, no es asesoría financiera.")
+    text = f"{title}\n{message}\n\nCrypto Radar · solo análisis, no es asesoría financiera."
+    telegram(settings, text)
+    from .config import ACCOUNTS
+    if ACCOUNTS:
+        try:
+            from . import telegram_bot
+            telegram_bot.fanout(kind, text)
+        except Exception:
+            pass
     return alert
