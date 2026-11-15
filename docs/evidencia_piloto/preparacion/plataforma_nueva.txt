@@ -1,0 +1,42 @@
+[OK] [SQLite] El servidor 2.1 arranca sobre una base con datos de la 2.0.0 y la archiva · Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {"activity": 1, "payments": 1, "positions": 1, "sessions": 1, "telegram_links": 1, "users": 2} · piloto cerrado
+[OK] [SQLite] Solo queda el administrador nuevo; ninguna cuenta, sesión, código, pago ni posición de 2.0.0 · [('jefe.piloto', 1)]
+[OK] [SQLite] Lo histórico queda en legacy_archive, sin contraseñas, tokens de sesión ni códigos · 7 filas archivadas
+[OK] [SQLite] Los documentos del sistema (kv: informes) se conservan · 
+[OK] [SQLite] El administrador y el cliente de 2.0.0 no pueden entrar (mismo mensaje que un usuario inexistente) · HTTP 401 / 401
+[OK] [SQLite] La cookie de sesión de 2.0.0 se rechaza · HTTP 401
+[OK] [SQLite] Telegram: el chat vinculado en 2.0.0 no recibe datos y el código antiguo no vincula · Este chat no está vinculado a una cuenta activa. G | Código no válido o vencido. Genera uno nuevo en el
+[OK] [SQLite] Registro nuevo desde cero: queda pendiente, sin rol de administrador ni plan heredado o inyectado · HTTP 200; [('pending', 0, 'free', None)]
+[OK] [SQLite] Pendiente: no entra hasta que el administrador apruebe · HTTP 403: Tu solicitud está pendiente de aprobación por el administrador
+[OK] [SQLite] Nadie puede pedir el nombre del administrador del entorno · HTTP 409
+[OK] [SQLite] Administrador sin TOTP: entra pero no administra · HTTP 200 / 403
+[OK] [SQLite] Con TOTP (código de alta de un solo uso) administra; la lista no muestra cuentas de 2.0.0 · (200, 200, 200, 200) · ['cliente.antiguo', 'jefe.piloto']
+[OK] [SQLite] Aprobado: entra con plan Libre, sin el plan pagado ni los pagos de 2.0.0 · plan free; pagos []
+[OK] [SQLite] Usuario normal: todas las rutas de administración responden 403 · [403, 403, 403, 403, 403, 403, 403]
+[OK] [SQLite] El administrador tampoco puede crear otro administrador · administradores: 1
+[OK] [SQLite] Reinicio: la plataforma ya está marcada, nada se vuelve a archivar ni a importar, 2.0.0 sigue fuera · Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {"activity": 1, "payments": 1, "positions": 1, "sessions": 1, "telegram_links": 1, "users": 2} · piloto cerrado · Administrador: je
+[OK] [SQLite] Segundo reinicio: un único administrador (inicialización idempotente) · administradores: 1
+[OK] [SQLite] Cambiar el administrador del entorno retira al anterior: nunca hay dos · Administrador: jefe.relevo · creado · 1 administradores anteriores retirados · antiguo: HTTP 403
+[OK] [SQLite] Base de 2.1 sin marca: no se archiva nada y el servidor no arranca · No arranco: La base tiene cuentas de 2.1 pero no la marca de plataforma (usuarios_2_1: 4, codigos_de_alta: 1). No se archiva nada. Si es correcto, define CRYPTO
+[OK] [SQLite] Con CRYPTO_RADAR_PLATFORM_ADOPT=1 se marca tal como está (y avisa de borrar la variable) · Plataforma 2.1 · inicialización: adoptada · archivado de 2.0.0: {} · piloto cerrado
+[OK] [PostgreSQL] El servidor 2.1 arranca sobre una base con datos de la 2.0.0 y la archiva · Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {"activity": 1, "payments": 1, "positions": 1, "sessions": 1, "telegram_links": 1, "users": 2} · piloto cerrado
+[OK] [PostgreSQL] Solo queda el administrador nuevo; ninguna cuenta, sesión, código, pago ni posición de 2.0.0 · [('jefe.piloto', 1)]
+[OK] [PostgreSQL] Lo histórico queda en legacy_archive, sin contraseñas, tokens de sesión ni códigos · 7 filas archivadas
+[OK] [PostgreSQL] Los documentos del sistema (kv: informes) se conservan · 
+[OK] [PostgreSQL] El administrador y el cliente de 2.0.0 no pueden entrar (mismo mensaje que un usuario inexistente) · HTTP 401 / 401
+[OK] [PostgreSQL] La cookie de sesión de 2.0.0 se rechaza · HTTP 401
+[OK] [PostgreSQL] Telegram: el chat vinculado en 2.0.0 no recibe datos y el código antiguo no vincula · Este chat no está vinculado a una cuenta activa. G | Código no válido o vencido. Genera uno nuevo en el
+[OK] [PostgreSQL] Registro nuevo desde cero: queda pendiente, sin rol de administrador ni plan heredado o inyectado · HTTP 200; [('pending', 0, 'free', None)]
+[OK] [PostgreSQL] Pendiente: no entra hasta que el administrador apruebe · HTTP 403: Tu solicitud está pendiente de aprobación por el administrador
+[OK] [PostgreSQL] Nadie puede pedir el nombre del administrador del entorno · HTTP 409
+[OK] [PostgreSQL] Administrador sin TOTP: entra pero no administra · HTTP 200 / 403
+[OK] [PostgreSQL] Con TOTP (código de alta de un solo uso) administra; la lista no muestra cuentas de 2.0.0 · (200, 200, 200, 200) · ['cliente.antiguo', 'jefe.piloto']
+[OK] [PostgreSQL] Aprobado: entra con plan Libre, sin el plan pagado ni los pagos de 2.0.0 · plan free; pagos []
+[OK] [PostgreSQL] Usuario normal: todas las rutas de administración responden 403 · [403, 403, 403, 403, 403, 403, 403]
+[OK] [PostgreSQL] El administrador tampoco puede crear otro administrador · administradores: 1
+[OK] [PostgreSQL] Reinicio: la plataforma ya está marcada, nada se vuelve a archivar ni a importar, 2.0.0 sigue fuera · Plataforma 2.1 · inicialización: archivada_2_0 · archivado de 2.0.0: {"activity": 1, "payments": 1, "positions": 1, "sessions": 1, "telegram_links": 1, "users": 2} · piloto cerrado · Administrador: je
+[OK] [PostgreSQL] Segundo reinicio: un único administrador (inicialización idempotente) · administradores: 1
+[OK] [PostgreSQL] Cambiar el administrador del entorno retira al anterior: nunca hay dos · Administrador: jefe.relevo · creado · 1 administradores anteriores retirados · antiguo: HTTP 403
+[OK] [PostgreSQL] Base de 2.1 sin marca: no se archiva nada y el servidor no arranca · No arranco: La base tiene cuentas de 2.1 pero no la marca de plataforma (usuarios_2_1: 4, codigos_de_alta: 1). No se archiva nada. Si es correcto, define CRYPTO
+[OK] [PostgreSQL] Con CRYPTO_RADAR_PLATFORM_ADOPT=1 se marca tal como está (y avisa de borrar la variable) · Plataforma 2.1 · inicialización: adoptada · archivado de 2.0.0: {} · piloto cerrado
+[OK] [PostgreSQL] 4 procesos arrancan a la vez sobre la base heredada: se archiva UNA vez, sin errores · códigos [0, 0, 0, 0]; archivo [('activity', 1), ('payments', 1), ('positions', 1), ('sessions', 1), ('telegram_links', 1), ('users', 2)]; 
+41 de 41 pasos OK

@@ -1,0 +1,7 @@
+[OK] La versión 2.0.0 (9176b36) crea su esquema y escribe datos · {"kv": 3, "sessions": 7, "payments": 13, "telegram_links": 3, "users": 12, "activity": 6, "positions": 5}
+[OK] La versión nueva migra, verifica el esquema y crea el administrador · 0.34 s; {"cifrados": 0, "recifrados": 0, "ilegibles": 0}
+[OK] Plataforma nueva: la cuenta de 2.0.0 sale de la autenticación y queda archivada sin contraseña; los informes (kv) se conservan · {"platform": "2.1", "initialized": "archivada_2_0", "legacy_archived": "{\"activity\": 1, \"payments\": 0, \"positions\": 0, \"sessions\": 0, \"telegram_links\": 0, \"users\": 1}"}
+[OK] Esquema nuevo completo · {"admin_enroll_tokens": 6, "kv": 3, "sessions": 7, "payments": 13, "telegram_links": 3, "rate_limits": 3, "users": 22, "platform_meta": 3, "legacy_archive": 5, "positions": 5, "activity": 6}
+[OK] Segundo arranque: migración idempotente · verificado
+[OK] `preflight --db` tras migrar: esquema OK; TOTP del administrador pendiente (aviso esperado) · [APROBADO   ] Esquema: todas las columnas requeridas existen | [ADVERTENCIA] TOTP del administrador en la base: pendiente: actívalo en Cuenta con un código de alta (docs/BOOTSTRAP_ADMIN.md) | [APROBADO   ] Secretos TOTP en la base: ninguno todavía
+6 de 6 pasos OK

@@ -63,7 +63,7 @@ Solo si ya se fusionaron los PR en `main` y se quiere que `main` vuelva a la 2.0
 
 ```bash
 git checkout main && git pull
-git revert -m 1 <merge de #7> <merge de #6> <merge de #5> <merge de #4> <merge de #3>   # en orden inverso
+git revert -m 1 <merge de #8> <merge de #7> <merge de #6> <merge de #5> <merge de #4> <merge de #3>   # en orden inverso
 git diff 9176b36 HEAD --stat        # debe salir vacío
 ```
 

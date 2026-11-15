@@ -1,0 +1,16 @@
+[OK] Base de origen poblada con la app · {"users": 201, "sessions": 30, "positions": 133, "activity": 20567, "kv": 10}
+[OK] Copia sin CRYPTO_RADAR_BACKUP_KEY → se niega · ERROR: Falta CRYPTO_RADAR_BACKUP_KEY (32+ caracteres): las copias se firman siempre con HMAC
+[OK] `backup create` con clave: copia firmada e idéntica al origen · 3.9 MB
+[OK] La copia no contiene el secreto TOTP en claro · 
+[OK] La copia guarda los códigos de alta usados (solo su hash) · 
+[OK] `backup verify`: hashes + HMAC + restauración de prueba · Copia íntegra y restaurable (postgresql, 2026-11-15T19:14:33Z): users 201, activity 20567, positions 133, payments 0, telegram_links 0, kv 10, admin_enroll_tokens 1, platform_meta 3, legacy_archive 0
+[OK] `verify` con otra clave → rechazada · ERROR: Firma HMAC inválida: la copia fue alterada o se firmó con otra clave
+[OK] `restore` sobre la base de DATABASE_URL → se niega · ERROR: El destino es la base configurada en DATABASE_URL. Restaura en una base nueva.
+[OK] `restore` en una base PostgreSQL vacía · Restaurada en postgresql://radar@127.0.0.1:55432/cr_bk0_dst_96c097: users 201, activity 20567, positions 133, payments 0, telegram_links 0, kv 10, admin_enroll_
+[OK] Segunda restauración sobre la base ya restaurada (no vacía) → se niega · ERROR: El destino no está vacío (users: 201, activity: 20567, positions: 133, kv: 10, admin_enroll_tokens: 1, platform_m
+[OK] `compare` copia ↔ base restaurada: idénticas · Idéntica a la base actual
+[OK] El servidor arranca sobre la restaurada y el administrador entra con contraseña + TOTP · HTTP 200; Administrador: jefe.copia · verificado
+[OK] `preflight --db` sobre la restaurada: esquema, TOTP del administrador y secretos cifrados · [APROBADO   ] Esquema: todas las columnas requeridas existen | [APROBADO   ] TOTP del administrador en la base: activo | [APROBADO   ] Secretos TOTP en la base: 1 en total, 0 sin cifrar, 0 ilegibles con las claves definidas
+[OK] Con otra CRYPTO_RADAR_TOTP_KEY el TOTP no se puede leer (503): la clave se guarda aparte · HTTP 503
+[OK] Lo escrito después de la copia no está en la restaurada (RPO = tiempo desde la última copia) · 
+15 de 15 pasos OK {"poblar": 38.4, "copia": 0.71, "verificar": 0.62, "restaurar": 0.98, "comparar": 0.48, "arranque_y_login": 0.3, "preflight": 0.28} 3.9 MB

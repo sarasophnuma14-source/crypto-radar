@@ -1,0 +1,103 @@
+{
+ "tamano": {
+  "usuarios": 200,
+  "actividad_extra": 20000
+ },
+ "pasos": [
+  {
+   "paso": "Base de origen poblada con la app",
+   "ok": true,
+   "detalle": "{\"users\": 201, \"sessions\": 30, \"positions\": 133, \"activity\": 20567, \"kv\": 10}"
+  },
+  {
+   "paso": "Copia sin CRYPTO_RADAR_BACKUP_KEY → se niega",
+   "ok": true,
+   "detalle": "ERROR: Falta CRYPTO_RADAR_BACKUP_KEY (32+ caracteres): las copias se firman siempre con HMAC"
+  },
+  {
+   "paso": "`backup create` con clave: copia firmada e idéntica al origen",
+   "ok": true,
+   "detalle": "3.9 MB"
+  },
+  {
+   "paso": "La copia no contiene el secreto TOTP en claro",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "La copia guarda los códigos de alta usados (solo su hash)",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "`backup verify`: hashes + HMAC + restauración de prueba",
+   "ok": true,
+   "detalle": "Copia íntegra y restaurable (postgresql, 2026-11-15T19:14:33Z): users 201, activity 20567, positions 133, payments 0, telegram_links 0, kv 10, admin_enroll_tokens 1, platform_meta 3, legacy_archive 0"
+  },
+  {
+   "paso": "`verify` con otra clave → rechazada",
+   "ok": true,
+   "detalle": "ERROR: Firma HMAC inválida: la copia fue alterada o se firmó con otra clave"
+  },
+  {
+   "paso": "`restore` sobre la base de DATABASE_URL → se niega",
+   "ok": true,
+   "detalle": "ERROR: El destino es la base configurada en DATABASE_URL. Restaura en una base nueva."
+  },
+  {
+   "paso": "`restore` en una base PostgreSQL vacía",
+   "ok": true,
+   "detalle": "Restaurada en postgresql://radar@127.0.0.1:55432/cr_bk0_dst_96c097: users 201, activity 20567, positions 133, payments 0, telegram_links 0, kv 10, admin_enroll_"
+  },
+  {
+   "paso": "Segunda restauración sobre la base ya restaurada (no vacía) → se niega",
+   "ok": true,
+   "detalle": "ERROR: El destino no está vacío (users: 201, activity: 20567, positions: 133, kv: 10, admin_enroll_tokens: 1, platform_m"
+  },
+  {
+   "paso": "`compare` copia ↔ base restaurada: idénticas",
+   "ok": true,
+   "detalle": "Idéntica a la base actual"
+  },
+  {
+   "paso": "El servidor arranca sobre la restaurada y el administrador entra con contraseña + TOTP",
+   "ok": true,
+   "detalle": "HTTP 200; Administrador: jefe.copia · verificado"
+  },
+  {
+   "paso": "`preflight --db` sobre la restaurada: esquema, TOTP del administrador y secretos cifrados",
+   "ok": true,
+   "detalle": "[APROBADO   ] Esquema: todas las columnas requeridas existen | [APROBADO   ] TOTP del administrador en la base: activo | [APROBADO   ] Secretos TOTP en la base: 1 en total, 0 sin cifrar, 0 ilegibles con las claves definidas"
+  },
+  {
+   "paso": "Con otra CRYPTO_RADAR_TOTP_KEY el TOTP no se puede leer (503): la clave se guarda aparte",
+   "ok": true,
+   "detalle": "HTTP 503"
+  },
+  {
+   "paso": "Lo escrito después de la copia no está en la restaurada (RPO = tiempo desde la última copia)",
+   "ok": true,
+   "detalle": ""
+  }
+ ],
+ "tiempos_s": {
+  "poblar": 38.4,
+  "copia": 0.71,
+  "verificar": 0.62,
+  "restaurar": 0.98,
+  "comparar": 0.48,
+  "arranque_y_login": 0.3,
+  "preflight": 0.28
+ },
+ "origen": {
+  "users": 201,
+  "sessions": 30,
+  "positions": 133,
+  "activity": 20567,
+  "kv": 10
+ },
+ "origen_mb": 13.2,
+ "copia_mb": 3.9,
+ "rto_medido_s": 1.76,
+ "resumen": "15 de 15 pasos OK"
+}

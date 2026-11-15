@@ -1,0 +1,57 @@
+base|9176b36
+0_main|3.12|test_suite|rc=0|Ran 158 tests in 9.195s OK 
+0_main|3.12|test_edge|rc=0|Ran 29 tests in 0.802s OK 
+0_main|3.12|test_paper|rc=0|Ran 39 tests in 3.544s OK 
+0_main|3.13|test_suite|rc=0|Ran 158 tests in 8.678s OK 
+0_main|3.13|test_edge|rc=0|Ran 29 tests in 0.661s OK 
+0_main|3.13|test_paper|rc=0|Ran 39 tests in 3.873s OK 
+merge|PR3|2d72a2b|ok|conflictos=0| 21 files changed, 1696 insertions(+), 301 deletions(-)
+arbol|PR3|idéntico a la rama
+1_PR3|3.12|test_suite|rc=0|Ran 192 tests in 19.860s OK 
+1_PR3|3.12|test_edge|rc=0|Ran 29 tests in 0.775s OK 
+1_PR3|3.12|test_paper|rc=0|Ran 39 tests in 3.517s OK 
+1_PR3|3.13|test_suite|rc=0|Ran 192 tests in 15.711s OK 
+1_PR3|3.13|test_edge|rc=0|Ran 29 tests in 0.638s OK 
+1_PR3|3.13|test_paper|rc=0|Ran 39 tests in 3.210s OK 
+merge|PR4|8476715|ok|conflictos=0| 29 files changed, 2136 insertions(+), 81 deletions(-)
+arbol|PR4|idéntico a la rama
+2_PR4|3.12|test_suite|rc=0|Ran 231 tests in 30.329s OK 
+2_PR4|3.12|test_edge|rc=0|Ran 29 tests in 0.895s OK 
+2_PR4|3.12|test_paper|rc=0|Ran 39 tests in 3.273s OK 
+2_PR4|3.13|test_suite|rc=0|Ran 231 tests in 23.605s OK 
+2_PR4|3.13|test_edge|rc=0|Ran 29 tests in 0.655s OK 
+2_PR4|3.13|test_paper|rc=0|Ran 39 tests in 3.052s OK 
+merge|PR5|fedb3a1|ok|conflictos=0| 30 files changed, 2777 insertions(+), 10 deletions(-)
+arbol|PR5|idéntico a la rama
+3_PR5|3.12|test_suite|rc=0|Ran 258 tests in 34.691s OK 
+3_PR5|3.12|test_edge|rc=0|Ran 29 tests in 0.773s OK 
+3_PR5|3.12|test_paper|rc=0|Ran 39 tests in 3.643s OK 
+3_PR5|3.13|test_suite|rc=0|Ran 258 tests in 28.478s OK 
+3_PR5|3.13|test_edge|rc=0|Ran 29 tests in 0.763s OK 
+3_PR5|3.13|test_paper|rc=0|Ran 39 tests in 3.556s OK 
+merge|PR6|f79b24c|ok|conflictos=0| 27 files changed, 6315 insertions(+), 14 deletions(-)
+arbol|PR6|idéntico a la rama
+4_PR6|3.12|test_suite|rc=0|Ran 275 tests in 57.925s OK 
+4_PR6|3.12|test_edge|rc=0|Ran 29 tests in 0.758s OK 
+4_PR6|3.12|test_paper|rc=0|Ran 39 tests in 3.512s OK 
+4_PR6|3.13|test_suite|rc=0|Ran 275 tests in 45.646s OK 
+4_PR6|3.13|test_edge|rc=0|Ran 29 tests in 0.725s OK 
+4_PR6|3.13|test_paper|rc=0|Ran 39 tests in 3.413s OK 
+merge|PR7|27f23e3|ok|conflictos=0| 32 files changed, 2592 insertions(+), 61 deletions(-)
+arbol|PR7|idéntico a la rama
+5_PR7|3.12|test_suite|rc=0|Ran 291 tests in 61.745s OK 
+5_PR7|3.12|test_edge|rc=0|Ran 29 tests in 0.728s OK 
+5_PR7|3.12|test_paper|rc=0|Ran 39 tests in 3.805s OK 
+5_PR7|3.13|test_suite|rc=0|Ran 291 tests in 48.244s OK 
+5_PR7|3.13|test_edge|rc=0|Ran 29 tests in 0.606s OK 
+5_PR7|3.13|test_paper|rc=0|Ran 39 tests in 3.506s OK 
+merge|PREPARACION|24a0683|ok|conflictos=0| 32 files changed, 3776 insertions(+), 57 deletions(-)
+arbol|PREPARACION|idéntico a la rama
+6_PREPARACION|3.12|test_suite|rc=0|Ran 309 tests in 66.446s OK 
+6_PREPARACION|3.12|test_edge|rc=0|Ran 29 tests in 0.688s OK 
+6_PREPARACION|3.12|test_paper|rc=0|Ran 39 tests in 3.486s OK 
+6_PREPARACION|3.13|test_suite|rc=0|Ran 309 tests in 58.391s OK 
+6_PREPARACION|3.13|test_edge|rc=0|Ran 29 tests in 0.740s OK 
+6_PREPARACION|3.13|test_paper|rc=0|Ran 39 tests in 3.503s OK 
+protegido|sin cambios
+squash|PR4 tras squash de PR3|CONFLICTOS en 14 archivos: CHANGELOG.md docs/INSTALACION_Y_DESPLIEGUE.md docs/SEGURIDAD.md radar/auth.py radar/db.py radar/server.py radar/webapi.py render.yaml 

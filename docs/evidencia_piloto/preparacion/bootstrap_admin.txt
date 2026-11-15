@@ -1,0 +1,18 @@
+[OK] En Render sin CRYPTO_RADAR_TOTP_KEY el servidor no arranca ·   - Falta CRYPTO_RADAR_TOTP_KEY: los secretos TOTP no se guardan sin cifrar en producción
+[OK] Arranca con clave TOTP y código de alta del entorno · Código de alta del administrador (CRYPTO_RADAR_ADMIN_ENROLL_TOKEN): registrado (vale 24 h, un solo uso)
+[OK] El atacante entra con la contraseña (admin aún sin TOTP) · HTTP 200; el panel pide código de alta
+[OK] Atacante: alta de TOTP sin código → rechazada · HTTP 403: Código de alta de administrador no válido, caducado o ya usado. Genera
+[OK] Atacante: alta con un código inventado → rechazada · HTTP 403
+[OK] Atacante: sin TOTP no puede administrar · HTTP 403
+[OK] Administrador legítimo: alta con el código → activada · HTTP 200 / 200
+[OK] El secreto TOTP está cifrado en PostgreSQL · enc1:b56ceffb:…
+[OK] La sesión del atacante muere al activar el TOTP · HTTP 401
+[OK] Sin código TOTP ya no se entra · HTTP 401
+[OK] Con contraseña + TOTP: entra y administra · HTTP 200 / 200
+[OK] Reinicio (con restablecimiento) y el mismo código en el entorno: figura como usado · Código de alta del administrador (CRYPTO_RADAR_ADMIN_ENROLL_TOKEN): usado (bórralo del entorno)
+[OK] Repetición del código ya usado → rechazada · HTTP 403
+[OK] `main.py admin enroll-token` genera un código nuevo (10 min) · código de 32 caracteres (no se guarda en la evidencia)
+[OK] Recuperación tras perder el teléfono: alta nueva con el código nuevo · HTTP 200 / 200
+[OK] Con otra clave: el arranque avisa y el inicio de sesión da 503 (no cuenta como fallo) · HTTP 503
+[OK] Rotación: con la clave antigua en _OLD se recifra; después basta la nueva · Secretos TOTP: 0 cifrados ahora, 1 con la clave nueva · HTTP 200
+17 de 17 pasos OK
