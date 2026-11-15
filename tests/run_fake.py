@@ -13,8 +13,8 @@ rep = scanner.run_scan()
 print("scan s", round(time.time() - t, 1), "err", scanner.status["last_error"])
 print(rep["verdict"], rep["verdict_text"]); print(rep["outlook"])
 for r in rep["ranking"]:
-    print(r["rank"], r["symbol"], r["score"], r["phase"], r["action"], round(r["plan"]["rr"], 2), r["confidence"], r["coverage"])
-print("extra", rep["extra"])
+    print(r["rank"], r["symbol"], r["score"], r["rank_score"], r["phase"], r["action"], round(r["rr"], 2), r["manipulation_risk"])
+print("avoid", rep["avoid"][:3])
 from collections import Counter
 print(Counter(r["phase"] for r in rep["assets"])); print(Counter(r["action"] for r in rep["assets"]))
 scanner.price_watch()

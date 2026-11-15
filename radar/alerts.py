@@ -14,6 +14,7 @@ ICONS = {
     "NEW EARLY ENTRY": "🟢", "BREAKOUT CONFIRMATION": "🚀", "ENTRY ZONE REACHED": "🎯",
     "STOP LOSS WARNING": "⚠️", "STOP LOSS HIT": "🛑", "TAKE PROFIT REACHED": "💰",
     "DISTRIBUTION DETECTED": "🟠", "BEARISH REVERSAL": "🔻", "MARKET REGIME CHANGE": "🌐", "SYSTEM": "ℹ️",
+    "PRE-EXPLOSION": "🧨", "RISK": "🚨", "EXIT": "🚪", "DAILY SUMMARY": "🗓️", "WEEKLY SUMMARY": "📊",
     "MEME BREAKOUT": "🐸", "MEME STOP": "🛑", "MEME TARGET": "💰", "MEME TIME EXIT": "⏱️",
 }
 LABELS = {
@@ -22,6 +23,8 @@ LABELS = {
     "STOP LOSS HIT": "Stop loss tocado", "TAKE PROFIT REACHED": "Take profit alcanzado",
     "DISTRIBUTION DETECTED": "Distribución detectada", "BEARISH REVERSAL": "Giro bajista",
     "MARKET REGIME CHANGE": "Cambio de régimen de mercado", "SYSTEM": "Sistema",
+    "PRE-EXPLOSION": "Pre-explosión detectada", "RISK": "Riesgo elevado", "EXIT": "Decisión de salida",
+    "DAILY SUMMARY": "Resumen diario", "WEEKLY SUMMARY": "Resumen semanal",
     "MEME BREAKOUT": "Memecoin: ruptura con volumen", "MEME STOP": "Memecoin: stop tocado",
     "MEME TARGET": "Memecoin: objetivo +60% alcanzado", "MEME TIME EXIT": "Memecoin: salida por tiempo (5 días)",
 }

@@ -331,3 +331,22 @@ def fear_greed():
                 "week": [int(x["value"]) for x in d]}
     except Exception:
         return None
+
+
+def order_book(symbol, limit=100):
+    """Libro de órdenes spot de Binance: spread y profundidad a ±2 % (en USD). None si no responde (N/D)."""
+    try:
+        b = _binance("/api/v3/depth", {"symbol": symbol, "limit": limit})
+        bids = [(float(p), float(q)) for p, q in b.get("bids", [])]
+        asks = [(float(p), float(q)) for p, q in b.get("asks", [])]
+        if not bids or not asks:
+            return None
+        bb, ba = bids[0][0], asks[0][0]
+        mid = (bb + ba) / 2
+        bid_d = sum(p * q for p, q in bids if p >= mid * 0.98)
+        ask_d = sum(p * q for p, q in asks if p <= mid * 1.02)
+        return {"spread_pct": (ba - bb) / mid * 100, "depth_usd_2pct": bid_d + ask_d, "bid_depth_usd": bid_d,
+                "ask_depth_usd": ask_d, "imbalance": (bid_d - ask_d) / (bid_d + ask_d) if bid_d + ask_d else 0,
+                "at": int(time.time() * 1000)}
+    except Exception:
+        return None
