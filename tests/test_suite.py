@@ -26,7 +26,8 @@ from pathlib import Path
 HOME = tempfile.mkdtemp(prefix="cr-test-")
 os.environ["CRYPTO_RADAR_HOME"] = HOME
 os.environ.pop("DATABASE_URL", None)
-os.environ["CRYPTO_RADAR_ADMIN_EMAIL"] = "admin@example.com"
+os.environ["CRYPTO_RADAR_ADMIN_USER"] = "admin"
+os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave larga del jefe 2026"
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests"))
 import shutil
@@ -780,7 +781,7 @@ class T12_Escaner(unittest.TestCase):
 # ================================================================== 13. Seguridad y SaaS (SQLite)
 class T13_SaaS(unittest.TestCase):
     def setUp(self):
-        from radar import auth as _a; _a._rate.clear()   # los límites por IP son reales; cada prueba parte limpia
+        from radar import auth as _a; _a.reset_rate_limits()   # los límites por IP son reales; cada prueba parte limpia
 
     @classmethod
     def setUpClass(cls):
@@ -788,6 +789,8 @@ class T13_SaaS(unittest.TestCase):
         from http.server import ThreadingHTTPServer
         server.ACCOUNTS = True
         db.init()
+        auth.ensure_admin()
+        cls.admin = db.one("SELECT * FROM users WHERE email = 'admin'", ())
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
         cls.base = f"http://127.0.0.1:{cls.httpd.server_address[1]}"
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
@@ -805,7 +808,7 @@ class T13_SaaS(unittest.TestCase):
 
     def test_registration_rate_limited_per_ip(self):
         from radar import auth as _a
-        for i in range(5):
+        for i in range(3):
             _a.register(f"rl{i}{random.randint(0, 10**9)}@example.com", "clave muy segura 123", ip="10.9.9.9")
         with self.assertRaises(_a.AuthError) as cm:
             _a.register(f"rl6{random.randint(0, 10**9)}@example.com", "clave muy segura 123", ip="10.9.9.9")
@@ -824,11 +827,26 @@ class T13_SaaS(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read() or b"{}"), e.headers
 
+    def request(self, username=None, pw="clave muy segura 123", op=None, note=None):
+        username = username or f"u{random.randint(0, 10**9)}"
+        body = {"username": username, "password": pw}
+        if note: body["note"] = note
+        return self.call(op or self.client(), "/api/auth/request", body), username
+
+    def approve(self, username, plan="free", days=0):
+        uid = db.one("SELECT id FROM users WHERE email = ?", (username,))["id"]
+        auth.admin_set_status(self.admin, uid, "approve", plan, days)
+        return uid
+
     def signup(self, email=None, pw="clave muy segura 123"):
-        op = self.client(); email = email or f"u{random.randint(0, 10**9)}@example.com"
-        st, r, h = self.call(op, "/api/auth/register", {"email": email, "password": pw})
+        auth.reset_rate_limits()
+        (st, r, _), username = self.request(email, pw)
         self.assertEqual(st, 200, r)
-        return op, r["csrf"], email
+        self.approve(username)
+        op = self.client()
+        st, r, h = self.call(op, "/api/auth/login", {"username": username, "password": pw})
+        self.assertEqual(st, 200, r)
+        return op, r["csrf"], username
 
     def test_password_hash_scrypt_salted(self):
         a, b = auth.hash_password("x" * 12), auth.hash_password("x" * 12)
@@ -836,21 +854,27 @@ class T13_SaaS(unittest.TestCase):
         self.assertTrue(auth.verify_password("x" * 12, a)); self.assertFalse(auth.verify_password("y" * 12, a))
 
     def test_weak_password_rejected(self):
-        st, r, _ = self.call(self.client(), "/api/auth/register", {"email": "weak@example.com", "password": "123"})
+        auth.reset_rate_limits()
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "weakuser", "password": "123"})
         self.assertEqual(st, 400)
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "weakuser", "password": "weakuser12345"})
+        self.assertEqual(st, 400)                                   # contiene el usuario
 
-    def test_invalid_email_rejected(self):
-        st, _, _ = self.call(self.client(), "/api/auth/register", {"email": "no-es-correo", "password": "clave muy segura 123"})
-        self.assertEqual(st, 400)
+    def test_invalid_username_rejected(self):
+        for bad in ("No Válido!", "ab", "x" * 40, "<script>", "a b"):
+            auth.reset_rate_limits()
+            st, _, _ = self.call(self.client(), "/api/auth/request", {"username": bad, "password": "clave muy segura 123"})
+            self.assertEqual(st, 400, bad)
 
     def test_duplicate_email(self):
         op, csrf, email = self.signup()
-        st, _, _ = self.call(self.client(), "/api/auth/register", {"email": email, "password": "clave muy segura 123"})
+        st, _, _ = self.call(self.client(), "/api/auth/request", {"username": email, "password": "clave muy segura 123"})
         self.assertEqual(st, 409)
 
     def test_session_cookie_flags(self):
-        op = self.client()
-        st, r, h = self.call(op, "/api/auth/register", {"email": "flags@example.com", "password": "clave muy segura 123"})
+        (st, r, _), u = self.request("flags.user")
+        self.approve(u)
+        st, r, h = self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})
         ck = h.get("Set-Cookie")
         self.assertIn("HttpOnly", ck); self.assertIn("SameSite=Lax", ck)
 
@@ -890,7 +914,7 @@ class T13_SaaS(unittest.TestCase):
     def test_account_lockout(self):
         op, csrf, email = self.signup()
         bad = self.client()
-        codes = [self.call(bad, "/api/auth/login", {"email": email, "password": "incorrecta 12345"})[0] for _ in range(6)]
+        codes = [self.call(bad, "/api/auth/login", {"username": email, "password": "incorrecta 12345"})[0] for _ in range(6)]
         self.assertEqual(codes[-1], 429)
 
     def test_logout_invalidates_session(self):
@@ -911,10 +935,111 @@ class T13_SaaS(unittest.TestCase):
         self.assertEqual(self.call(op, "/api/scan", {}, {"X-CSRF-Token": csrf})[0], 403)
         self.assertEqual(self.call(op, "/api/settings", {"universe_size": 5}, {"X-CSRF-Token": csrf})[0], 403)
 
-    def test_admin_email_gets_admin(self):
+    def test_env_admin_is_admin_and_registration_cannot_create_admins(self):
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": "admin", "password": "clave larga del jefe 2026"})
+        self.assertEqual(st, 200, r); self.assertTrue(r["user"]["is_admin"])
+        (st, r, _), u = self.request("admin2")
+        self.assertEqual(st, 200)
+        self.assertEqual(db.one("SELECT is_admin, status FROM users WHERE email = 'admin2'", ()), {"is_admin": 0, "status": "pending"})
+
+    def test_request_does_not_log_in_and_pending_cannot_enter(self):
         op = self.client()
-        st, r, _ = self.call(op, "/api/auth/register", {"email": "admin@example.com", "password": "clave muy segura 123"})
-        self.assertTrue(r["user"]["is_admin"])
+        (st, r, h), u = self.request(op=op)
+        self.assertEqual(st, 200); self.assertIsNone(h.get("Set-Cookie")); self.assertNotIn("csrf", r)
+        self.assertEqual(self.call(op, "/api/me")[0], 401)
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})
+        self.assertEqual(st, 403); self.assertIn("pendiente", r["error"])
+        # con la contraseña equivocada no se revela que existe una solicitud
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": u, "password": "otra clave 98765"})
+        self.assertEqual(st, 401)
+        self.approve(u)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u.upper(), "password": "clave muy segura 123"})[0], 200)
+
+    def test_same_error_for_unknown_user_and_wrong_password(self):
+        op, csrf, u = self.signup()
+        a = self.call(self.client(), "/api/auth/login", {"username": u, "password": "mala clave 12345"})
+        b = self.call(self.client(), "/api/auth/login", {"username": "no.existe", "password": "mala clave 12345"})
+        self.assertEqual((a[0], a[1]["error"]), (b[0], b[1]["error"]))
+
+    def test_rejected_and_disabled_users(self):
+        (st, r, _), u = self.request()
+        uid = db.one("SELECT id FROM users WHERE email = ?", (u,))["id"]
+        auth.admin_set_status(self.admin, uid, "reject")
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})[0], 403)
+        op, csrf, u2 = self.signup()
+        uid2 = db.one("SELECT id FROM users WHERE email = ?", (u2,))["id"]
+        auth.admin_set_status(self.admin, uid2, "disable")
+        self.assertEqual(self.call(op, "/api/me")[0], 401)                 # su sesión se cierra al momento
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u2, "password": "clave muy segura 123"})[0], 403)
+
+    def admin_client(self):
+        op = self.client()
+        st, r, _ = self.call(op, "/api/auth/login", {"username": "admin", "password": "clave larga del jefe 2026"})
+        return op, r["csrf"]
+
+    def test_admin_api_approve_create_reset(self):
+        op, csrf = self.admin_client()
+        (st, r, _), u = self.request(note="quiero el plan pro")
+        users = self.call(op, "/api/admin/users")[1]
+        row = next(x for x in users if x["email"] == u)
+        self.assertEqual(row["status"], "pending"); self.assertEqual(users[0]["status"], "pending")
+        st, r, _ = self.call(op, "/api/admin/user", {"id": row["id"], "action": "approve", "plan": "pro", "days": 30}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})
+        self.assertEqual(r["user"]["plan"], "pro")
+        st, r, _ = self.call(op, "/api/admin/user/create", {"username": "creado.por.admin", "password": "otra clave segura 1", "plan": "free"}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": "creado.por.admin", "password": "otra clave segura 1"})[0], 200)
+        st, r, _ = self.call(op, "/api/admin/user/password", {"id": row["id"], "password": "clave nueva segura 7"}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave nueva segura 7"})[0], 200)
+        # sin CSRF no se puede aprobar
+        self.assertEqual(self.call(op, "/api/admin/user", {"id": row["id"], "action": "disable"})[0], 403)
+
+    def test_non_admin_cannot_manage_users(self):
+        op, csrf, u = self.signup()
+        (st, r, _), other = self.request()
+        oid = db.one("SELECT id FROM users WHERE email = ?", (other,))["id"]
+        self.assertEqual(self.call(op, "/api/admin/users")[0], 403)
+        self.assertEqual(self.call(op, "/api/admin/user", {"id": oid, "action": "approve"}, {"X-CSRF-Token": csrf})[0], 403)
+        self.assertEqual(self.call(op, "/api/admin/user/create", {"username": "hacker1", "password": "clave muy segura 123"}, {"X-CSRF-Token": csrf})[0], 403)
+        self.assertEqual(db.one("SELECT status FROM users WHERE id = ?", (oid,))["status"], "pending")
+
+    def test_admin_cannot_be_disabled_from_panel(self):
+        op, csrf = self.admin_client()
+        aid = self.admin["id"]
+        self.assertEqual(self.call(op, "/api/admin/user", {"id": aid, "action": "disable"}, {"X-CSRF-Token": csrf})[0], 400)
+
+    def test_pages_and_redirects(self):
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k): return None
+        op = urllib.request.build_opener(NoRedirect, urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+        def get(o, path):
+            try:
+                r = o.open(self.base + path); return r.status, r.read().decode(), r.headers
+            except urllib.error.HTTPError as e:
+                return e.code, "", e.headers
+        st, body, _ = get(op, "/"); self.assertEqual(st, 200); self.assertIn("Solicitar acceso", body)
+        st, body, _ = get(op, "/entrar"); self.assertEqual(st, 200); self.assertIn("loginForm", body)
+        st, _, h = get(op, "/app"); self.assertEqual(st, 302); self.assertEqual(h["Location"], "/entrar")
+        self.call(op, "/api/auth/login", {"username": "admin", "password": "clave larga del jefe 2026"})
+        st, body, _ = get(op, "/app"); self.assertEqual(st, 200); self.assertIn('id="app"', body)
+        st, _, h = get(op, "/entrar"); self.assertEqual(st, 302); self.assertEqual(h["Location"], "/app")
+        for page in ("/", "/entrar"):
+            st, body, h = get(self.client(), page)
+            self.assertNotIn("<script>", body)                              # sin JS en línea: lo permite la CSP estricta
+            self.assertNotIn("https://cdn", body)
+        self.assertEqual(get(self.client(), "/static/vendor/gsap.min.js")[0], 200)
+
+    def test_pending_requests_capped(self):
+        old = auth.MAX_PENDING
+        try:
+            auth.MAX_PENDING = db.one("SELECT COUNT(*) AS n FROM users WHERE status = 'pending'", ())["n"]
+            auth.reset_rate_limits()
+            st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "uno.mas", "password": "clave muy segura 123"})
+            self.assertEqual(st, 503)
+        finally:
+            auth.MAX_PENDING = old
 
     def test_user_isolation_positions(self):
         a, ca, ea = self.signup(); b, cb, eb = self.signup()
@@ -939,7 +1064,7 @@ class T13_SaaS(unittest.TestCase):
     def test_activity_log(self):
         op, csrf, email = self.signup()
         acts = [r["action"] for r in self.call(op, "/api/activity")[1]]
-        self.assertIn("register", acts); self.assertIn("login", acts)
+        self.assertIn("access_requested", acts); self.assertIn("login", acts)
 
     def test_expired_plan_is_free(self):
         self.assertEqual(auth.effective_plan({"plan": "pro", "plan_until": time.time() - 1, "is_admin": 0}), "free")
@@ -958,7 +1083,7 @@ class T14_Pagos(unittest.TestCase):
     def setUp(self):
         self._old = {k: os.environ.get(k) for k in self.ENV}; os.environ.update(self.ENV)
         db.init()
-        auth._rate.clear()
+        auth.reset_rate_limits()
         self.user = auth.register(f"pay{random.randint(0, 10**9)}@example.com", "clave muy segura 123")
 
     def tearDown(self):
@@ -1042,7 +1167,7 @@ class T14_Pagos(unittest.TestCase):
 class T15_TelegramMemes(unittest.TestCase):
     def test_link_flow(self):
         db.init()
-        auth._rate.clear()
+        auth.reset_rate_limits()
         u = auth.register(f"tg{random.randint(0, 10**9)}@example.com", "clave muy segura 123")
         code = telegram_bot.new_link_code(u["id"])
         reply = telegram_bot.handle({"chat": {"id": 4242}, "text": f"/start {code}"})
@@ -1085,6 +1210,416 @@ class T16_Interfaz(unittest.TestCase):
         self.assertNotRegex(js, r"retorno[^\n]{0,40}\d{2,}\s*%")
 
 
+# ================================================================== 18. Auditoría final de seguridad (2.1.0)
+class T18_SeguridadFinal(T13_SaaS):
+    """Hereda el servidor y los ayudantes de T13; solo ejecuta sus propias pruebas."""
+    def setUp(self):
+        auth.reset_rate_limits()
+        self._env = {k: os.environ.get(k) for k in ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD",
+                                                    "CRYPTO_RADAR_ADMIN_RESET", "CRYPTO_RADAR_ADMIN_TAKEOVER")}
+
+    def tearDown(self):
+        for k, v in self._env.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
+
+    def acts(self, action):
+        return db.all_("SELECT user_id, detail FROM activity WHERE action = ? ORDER BY at", (action,))
+
+    # ---------- 1. Bootstrap del administrador
+    def test_admin_bootstrap_never_promotes_squatter(self):
+        name = f"jefe{random.randint(0, 10**9)}"
+        uid = auth.request_access(name, "clave del intruso 99", ip="10.1.1.1")         # alguien reserva el nombre
+        auth.admin_set_status(self.admin, uid, "approve")
+        tok, _, _ = auth.login(name, "clave del intruso 99")
+        os.environ["CRYPTO_RADAR_ADMIN_USER"] = name
+        os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave real del duenio 2026"
+        os.environ.pop("CRYPTO_RADAR_ADMIN_TAKEOVER", None)
+        with self.assertRaises(auth.AdminBootstrapError):
+            auth.ensure_admin()
+        row = db.one("SELECT * FROM users WHERE id = ?", (uid,))
+        self.assertEqual(row["is_admin"], 0)                                         # no se promovió
+        self.assertTrue(any(a["user_id"] == uid for a in self.acts("admin_bootstrap_conflict")))
+        # cuarentena explícita: la cuenta del intruso se aparta y el admin nace con la clave del entorno
+        os.environ["CRYPTO_RADAR_ADMIN_TAKEOVER"] = "1"
+        self.assertEqual(auth.ensure_admin(), {"user": name, "result": "cuarentena"})
+        old = db.one("SELECT * FROM users WHERE id = ?", (uid,))
+        self.assertEqual((old["is_admin"], old["status"], old["disabled"]), (0, "rejected", 1))
+        self.assertNotEqual(old["email"], name)
+        self.assertIsNone(auth.session(tok))                                          # sus sesiones se cerraron
+        new = db.one("SELECT * FROM users WHERE email = ?", (name,))
+        self.assertNotEqual(new["id"], uid); self.assertEqual(new["is_admin"], 1); self.assertEqual(new["approved_by"], "entorno")
+        with self.assertRaises(auth.AuthError):
+            auth.login(name, "clave del intruso 99")                                 # su contraseña no sirve
+        self.assertEqual(auth.login(name, "clave real del duenio 2026")[2]["is_admin"], True)
+        self.assertTrue(self.acts("admin_bootstrap_quarantine")); self.assertTrue(self.acts("admin_bootstrap_created"))
+        # el nombre en cuarentena no puede volver a pedirse ni usarse para entrar
+        with self.assertRaises(auth.AuthError):
+            auth.login(old["email"], "clave del intruso 99")
+
+    def test_admin_bootstrap_verified_and_env_reset(self):
+        name = f"jefa{random.randint(0, 10**9)}"
+        os.environ["CRYPTO_RADAR_ADMIN_USER"] = name
+        os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "primera clave larga 1"
+        os.environ.pop("CRYPTO_RADAR_ADMIN_RESET", None)
+        self.assertEqual(auth.ensure_admin()["result"], "creado")
+        aid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        auth.change_password(aid, "primera clave larga 1", "clave cambiada en app 2")
+        os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "otra clave de entorno 3"
+        self.assertEqual(auth.ensure_admin()["result"], "verificado")                # reinicio normal: no pisa su clave
+        auth.login(name, "clave cambiada en app 2")
+        tok, _, _ = auth.login(name, "clave cambiada en app 2")
+        os.environ["CRYPTO_RADAR_ADMIN_RESET"] = "1"
+        self.assertEqual(auth.ensure_admin()["result"], "restablecido")
+        self.assertIsNone(auth.session(tok))
+        auth.login(name, "otra clave de entorno 3")
+        self.assertTrue(any(a["user_id"] == aid for a in self.acts("admin_bootstrap_password_reset")))
+        self.assertTrue(any(a["user_id"] == aid for a in self.acts("admin_bootstrap_verified")))
+
+    def test_admin_bootstrap_rejects_bad_env(self):
+        os.environ["CRYPTO_RADAR_ADMIN_USER"] = "jefe.corto"
+        os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "corta"
+        with self.assertRaises(auth.AdminBootstrapError):
+            auth.ensure_admin()
+        os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "jefe.corto 1234567"                # contiene el usuario
+        with self.assertRaises(auth.AdminBootstrapError):
+            auth.ensure_admin()
+        os.environ.pop("CRYPTO_RADAR_ADMIN_PASSWORD")
+        with self.assertRaises(auth.AdminBootstrapError):                            # solo una de las dos
+            auth.ensure_admin()
+
+    def test_admin_name_and_reserved_names_cannot_be_requested(self):
+        for name in ("admin", "administrador", "root", "soporte", os.environ["CRYPTO_RADAR_ADMIN_USER"]):
+            auth.reset_rate_limits()
+            st, r, _ = self.call(self.client(), "/api/auth/request", {"username": name, "password": "clave muy segura 123"})
+            self.assertEqual(st, 409, name)
+        with self.assertRaises(auth.AuthError):
+            auth.admin_create(self.admin, "root", "clave muy segura 123")
+
+    def test_admin_cannot_touch_other_admin(self):
+        name = f"otroadmin{random.randint(0, 10**9)}"
+        os.environ["CRYPTO_RADAR_ADMIN_USER"] = name; os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave del otro admin 5"
+        auth.ensure_admin()
+        oid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        for action in ("approve", "disable", "reject", "delete"):
+            with self.assertRaises(auth.AuthError) as cm:
+                auth.admin_set_status(self.admin, oid, action)
+            self.assertEqual(cm.exception.code, 403)
+        with self.assertRaises(auth.AuthError) as cm:
+            auth.admin_reset_password(self.admin, oid, "clave impuesta 12345")
+        self.assertEqual(cm.exception.code, 403)
+
+    # ---------- 2. Permisos por plan
+    def _user_with_plan(self, plan):
+        op, csrf, u = self.signup()
+        if plan != "free":
+            db.execute("UPDATE users SET plan = ?, plan_until = ? WHERE email = ?", (plan, time.time() + 86400, u))
+        return op, csrf, u
+
+    def test_entitlements_matrix(self):
+        from radar import storage
+        storage.write("latest.json", {"ranking": [{"symbol": s} for s in ("AAA", "BBB", "CCC", "DDD", "EEE")], "assets": []})
+        storage.write("alerts.json", [{"at": "1", "kind": "NEW EARLY ENTRY", "symbol": "AAA"},
+                                      {"at": "2", "kind": "NEW EARLY ENTRY", "symbol": "EEE"},
+                                      {"at": "3", "kind": "MEME BREAKOUT", "symbol": "AAA"},
+                                      {"at": "4", "kind": "EXIT", "symbol": "BBB"},
+                                      {"at": "5", "kind": "MARKET REGIME CHANGE", "symbol": None}])
+        storage.write("journal.json", [{"symbol": "AAA", "status": "OPEN", "r_multiple": None},
+                                       {"symbol": "EEE", "status": "CLOSED", "r_multiple": 2.0}])
+        storage.write("history.json", {"AAA": [[1, 50, "X", 1]], "EEE": [[1, 60, "X", 2]]})
+        storage.write("scans.json", [{"at": "1", "top": ["AAA", "BBB", "CCC", "DDD", "EEE"]}])
+        expect = {   # ruta: (libre, pro, élite)
+            "/api/backtest/results": (402, 402, 200), "/api/positions": (402, 200, 200),
+            "/api/memes": (402, 200, 200), "/api/memes/radar": (402, 200, 200),
+            "/api/admin/users": (403, 403, 403), "/api/paper/report": (403, 403, 403),
+            "/api/history?symbol=EEE": (402, 200, 200), "/api/candles?symbol=EEE": (402, 404, 404),
+            "/api/history?symbol=AAA": (200, 200, 200), "/api/me": (200, 200, 200), "/api/state": (200, 200, 200),
+        }
+        clients = [self._user_with_plan(p) for p in ("free", "pro", "elite")]
+        for path, codes in expect.items():
+            got = tuple(self.call(op, path)[0] for op, _, _ in clients)
+            self.assertEqual(got, codes, path)
+        free, pro = clients[0][0], clients[1][0]
+        kinds = {(a["kind"], a["symbol"]) for a in self.call(free, "/api/alerts")[1]}
+        self.assertEqual(kinds, {("NEW EARLY ENTRY", "AAA"), ("MARKET REGIME CHANGE", None)})
+        self.assertEqual(len(self.call(pro, "/api/alerts")[1]), 5)
+        self.assertEqual([x["symbol"] for x in self.call(free, "/api/journal")[1]["items"]], ["AAA"])
+        self.assertEqual(self.call(free, "/api/scans")[1][0]["top"], ["AAA", "BBB", "CCC"])
+        # escrituras también respetan el plan
+        op, csrf, _ = clients[0]
+        self.assertEqual(self.call(op, "/api/positions/abcdef12/delete", {}, {"X-CSRF-Token": csrf})[0], 402)
+        self.assertEqual(self.call(op, "/api/telegram/link", {}, {"X-CSRF-Token": csrf})[0], 402)
+        self.assertEqual(self.call(op, "/api/scan", {}, {"X-CSRF-Token": csrf})[0], 403)
+        self.assertEqual(self.call(op, "/api/settings", {"min_score": 1}, {"X-CSRF-Token": csrf})[0], 403)
+        # sin sesión, nada privado
+        for path in expect:
+            self.assertEqual(self.call(self.client(), path)[0], 401, path)
+
+    def test_expired_paid_plan_falls_back_to_free(self):
+        op, csrf, u = self._user_with_plan("elite")
+        db.execute("UPDATE users SET plan_until = ? WHERE email = ?", (time.time() - 1, u))
+        self.assertEqual(self.call(op, "/api/backtest/results")[0], 402)
+
+    # ---------- 3. Migraciones
+    def _py(self, code, home=None):
+        env = dict(os.environ, CRYPTO_RADAR_HOME=home or tempfile.mkdtemp(prefix="cr-mig-"))
+        env.pop("DATABASE_URL", None)
+        return subprocess.run([sys.executable, "-c", code, str(ROOT)], capture_output=True, text=True, env=env, timeout=60)
+
+    def test_migration_from_old_schema_keeps_users(self):
+        code = r"""
+import os, sys, sqlite3
+sys.path.insert(0, sys.argv[1])
+from radar.config import DATA_DIR
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+c = sqlite3.connect(str(DATA_DIR / "app.db"))
+c.execute("CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, pw_hash TEXT NOT NULL, created_at REAL NOT NULL, plan TEXT NOT NULL DEFAULT 'free', plan_until REAL, is_admin INTEGER NOT NULL DEFAULT 0, telegram_chat_id TEXT, settings TEXT NOT NULL DEFAULT '{}', disabled INTEGER NOT NULL DEFAULT 0, failed_logins INTEGER NOT NULL DEFAULT 0, locked_until REAL)")
+c.execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES ('u1', 'viejo@example.com', 'x', 1)"); c.commit(); c.close()
+from radar import db
+db.init(); db._ready = False; db.init()          # dos arranques seguidos: idempotente
+assert db.REQUIRED["users"] <= db.columns("users")
+r = db.one("SELECT email, status FROM users WHERE id = 'u1'", ())
+assert r == {"email": "viejo@example.com", "status": "active"}, r
+print("MIG_OK")
+"""
+        r = self._py(code); self.assertIn("MIG_OK", r.stdout, r.stderr[-1500:])
+
+    def test_migration_unexpected_error_is_not_ignored(self):
+        code = r"""
+import sys
+sys.path.insert(0, sys.argv[1])
+from radar import db
+db.MIGRATIONS.append(("tabla_que_no_existe", "x", "TEXT"))
+try:
+    db.init(); print("NO_ERROR")
+except db.SchemaError as e:
+    print("SCHEMA_ERROR", e)
+"""
+        r = self._py(code); self.assertIn("SCHEMA_ERROR", r.stdout, r.stdout + r.stderr[-1500:])
+
+    def test_incomplete_schema_blocks_startup(self):
+        code = r"""
+import os, sys, sqlite3
+os.environ["CRYPTO_RADAR_ACCOUNTS"] = "1"
+sys.path.insert(0, sys.argv[1])
+from radar.config import DATA_DIR
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+c = sqlite3.connect(str(DATA_DIR / "app.db")); c.execute("CREATE TABLE kv (name TEXT PRIMARY KEY, value TEXT)"); c.commit(); c.close()
+from radar import server
+try:
+    server.serve(port=0, schedule=False); print("STARTED")
+except SystemExit as e:
+    print("REFUSED", e)
+"""
+        r = self._py(code)
+        self.assertIn("REFUSED", r.stdout, r.stdout + r.stderr[-1500:]); self.assertIn("kv: updated_at", r.stdout)
+
+    def test_duplicate_column_is_the_only_tolerated_error(self):
+        import sqlite3
+        self.assertTrue(db._is_duplicate_column(sqlite3.OperationalError("duplicate column name: status")))
+        self.assertFalse(db._is_duplicate_column(sqlite3.OperationalError("no such table: users")))
+        self.assertFalse(db._is_duplicate_column(sqlite3.OperationalError("database is locked")))
+
+    def test_render_without_postgres_refuses_accounts_mode(self):
+        code = r"""
+import os, sys
+os.environ["CRYPTO_RADAR_ACCOUNTS"] = "1"; os.environ["RENDER"] = "true"
+sys.path.insert(0, sys.argv[1])
+from radar import server
+try:
+    server.serve(port=0, schedule=False); print("STARTED")
+except SystemExit as e:
+    print("REFUSED", e)
+"""
+        r = self._py(code); self.assertIn("REFUSED", r.stdout, r.stdout + r.stderr[-1500:])
+
+    # ---------- 4. Límites de intentos persistentes
+    def test_rate_limit_survives_restart_and_is_shared(self):
+        key = f"prueba:{random.randint(0, 10**9)}"
+        self.assertFalse(auth.rate_limited(key, 2, 3600)); self.assertFalse(auth.rate_limited(key, 2, 3600))
+        self.assertTrue(auth.rate_limited(key, 2, 3600))
+        auth._rate.clear(); db._ready = False; db._local.c = None                     # "reinicio" del proceso
+        self.assertTrue(auth.rate_limited(key, 2, 3600))
+        code = f"""
+import sys
+sys.path.insert(0, sys.argv[1])
+from radar import auth
+print("BLOCKED" if auth.rate_limited({key!r}, 2, 3600) else "FREE")
+"""
+        r = self._py(code, home=HOME)                                                  # otra instancia, misma base
+        self.assertIn("BLOCKED", r.stdout, r.stderr[-1500:])
+        self.assertIsNone(db.one("SELECT k FROM rate_limits WHERE k LIKE ?", ("%prueba%",)))   # la clave va con hash
+
+    def test_login_ip_limit_persists(self):
+        for i in range(20):
+            self.call(self.client(), "/api/auth/login", {"username": f"nadie{i}", "password": "mala clave 12345"})
+        auth._rate.clear()                                                             # sin memoria, sigue bloqueado
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": "admin", "password": "clave larga del jefe 2026"})
+        self.assertEqual(st, 429)
+
+    # ---------- 5. Flujo completo
+    def test_full_account_lifecycle(self):
+        name = f"ciclo{random.randint(0, 10**9)}"
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": name, "password": "mi clave inicial 1", "contact": "@ciclo"})
+        self.assertEqual(st, 200); self.assertNotIn("Set-Cookie", _ or {})
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": name, "password": "mi clave inicial 1"})[0], 403)
+        aop, acsrf = self.admin_client()
+        uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        self.assertEqual(self.call(aop, "/api/admin/user", {"id": uid, "action": "approve", "plan": "pro", "days": 30}, {"X-CSRF-Token": acsrf})[0], 200)
+        op = self.client()
+        st, r, _ = self.call(op, "/api/auth/login", {"username": name, "password": "mi clave inicial 1"})
+        self.assertEqual(st, 200); csrf = r["csrf"]; self.assertEqual(r["user"]["plan"], "pro")
+        self.assertEqual(self.call(op, "/api/positions")[0], 200)
+        self.assertEqual(self.call(op, "/api/backtest/results")[0], 402)
+        self.assertEqual(self.call(op, "/api/auth/logout", {}, {"X-CSRF-Token": csrf})[0], 200)
+        self.assertEqual(self.call(op, "/api/me")[0], 401)
+        st, r, _ = self.call(op, "/api/auth/login", {"username": name, "password": "mi clave inicial 1"}); csrf = r["csrf"]
+        self.assertEqual(self.call(aop, "/api/admin/user/password", {"id": uid, "password": "clave del admin para ti 4"}, {"X-CSRF-Token": acsrf})[0], 200)
+        self.assertEqual(self.call(op, "/api/me")[0], 401)                             # el restablecimiento cierra sus sesiones
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": name, "password": "mi clave inicial 1"})[0], 401)
+        op = self.client()
+        st, r, _ = self.call(op, "/api/auth/login", {"username": name, "password": "clave del admin para ti 4"}); csrf = r["csrf"]
+        self.assertEqual(self.call(op, "/api/auth/password", {"old": "clave del admin para ti 4", "new": "mi clave definitiva 9"}, {"X-CSRF-Token": csrf})[0], 200)
+        self.assertEqual(self.call(op, "/api/me")[0], 401)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": name, "password": "mi clave definitiva 9"})[0], 200)
+        acts = {a["action"] for a in db.all_("SELECT action FROM activity WHERE user_id = ?", (uid,))}
+        self.assertTrue({"access_requested", "login", "logout", "password_changed"} <= acts, acts)
+
+    # Las pruebas heredadas de T13 ya corren en T13; aquí no se repiten.
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T18_SeguridadFinal.__dict__:
+        setattr(T18_SeguridadFinal, _n, None)
+
+
+# ================================================================== 19. serve(): nunca arranca en modo cuentas sin administrador
+SERVE_HARNESS = r"""
+import os, sys, json
+sys.path.insert(0, sys.argv[1])
+cfg = json.loads(sys.argv[2])
+from radar import server, auth, db
+
+class FakeHTTPServer:                       # sustituye solo al socket: todo lo anterior es el serve() real
+    def __init__(self, *a, **k): pass
+    def serve_forever(self): print("SERVING", flush=True)
+server.ThreadingHTTPServer = FakeHTTPServer
+
+if cfg.get("squatter"):                     # alguien reservó el nombre antes de configurar el administrador
+    adm = os.environ.pop("CRYPTO_RADAR_ADMIN_USER", None)
+    uid = auth.request_access(cfg["squatter"], "clave del intruso 99", ip="10.7.7.7")
+    auth.admin_set_status({"id": "x", "is_admin": 1, "email": "prueba"}, uid, "approve")
+    if adm: os.environ["CRYPTO_RADAR_ADMIN_USER"] = adm
+    print("SQUATTER", uid, flush=True)
+if cfg.get("ensure_none"):
+    auth.ensure_admin = lambda: None
+try:
+    server.serve(port=0, host=cfg.get("host"), schedule=False)
+except SystemExit as e:
+    print("REFUSED", e, flush=True)
+if cfg.get("report"):
+    rows = db.all_("SELECT id, email, is_admin, status, approved_by FROM users ORDER BY created_at", ())
+    print("USERS", json.dumps(rows), flush=True)
+"""
+
+
+class T19_ServeAdminObligatorio(unittest.TestCase):
+    STRIP = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD", "CRYPTO_RADAR_ADMIN_RESET",
+             "CRYPTO_RADAR_ADMIN_TAKEOVER", "CRYPTO_RADAR_ACCOUNTS", "CRYPTO_RADAR_PASSWORD", "RENDER",
+             "DATABASE_URL", "CRYPTO_RADAR_HOST", "PAPER_TRADING", "KEEPALIVE")
+
+    def run_serve(self, env=None, home=None, **cfg):
+        e = {k: v for k, v in os.environ.items() if k not in self.STRIP}
+        e["CRYPTO_RADAR_HOME"] = home or tempfile.mkdtemp(prefix="cr-serve-")
+        e.update(env or {})
+        r = subprocess.run([sys.executable, "-c", SERVE_HARNESS, str(ROOT), json.dumps(cfg)],
+                           capture_output=True, text=True, env=e, timeout=90)
+        return r.stdout + r.stderr
+
+    ADMIN = {"CRYPTO_RADAR_ACCOUNTS": "1", "CRYPTO_RADAR_ADMIN_USER": "duenio",
+             "CRYPTO_RADAR_ADMIN_PASSWORD": "clave larga del jefe 2026"}
+
+    def refused(self, out):
+        self.assertIn("REFUSED", out, out[-2000:]); self.assertNotIn("SERVING", out, out[-2000:])
+
+    def test_1_accounts_without_both_vars_refuses(self):
+        out = self.run_serve({"CRYPTO_RADAR_ACCOUNTS": "1"})
+        self.refused(out)
+        self.assertIn("CRYPTO_RADAR_ADMIN_USER", out); self.assertIn("CRYPTO_RADAR_ADMIN_PASSWORD", out)
+
+    def test_2_missing_user_refuses(self):
+        env = dict(self.ADMIN); env.pop("CRYPTO_RADAR_ADMIN_USER")
+        out = self.run_serve(env); self.refused(out)
+        self.assertIn("Falta definir: CRYPTO_RADAR_ADMIN_USER.", out)
+        self.assertNotIn("clave larga del jefe 2026", out)                         # nunca muestra la contraseña
+
+    def test_3_missing_password_refuses(self):
+        env = dict(self.ADMIN); env.pop("CRYPTO_RADAR_ADMIN_PASSWORD")
+        out = self.run_serve(env); self.refused(out)
+        self.assertIn("Falta definir: CRYPTO_RADAR_ADMIN_PASSWORD.", out)
+
+    def test_3b_blank_values_count_as_missing(self):
+        out = self.run_serve(dict(self.ADMIN, CRYPTO_RADAR_ADMIN_USER="   ", CRYPTO_RADAR_ADMIN_PASSWORD=""))
+        self.refused(out); self.assertIn("CRYPTO_RADAR_ADMIN_USER, CRYPTO_RADAR_ADMIN_PASSWORD", out)
+
+    def test_3c_invalid_admin_password_refuses(self):
+        out = self.run_serve(dict(self.ADMIN, CRYPTO_RADAR_ADMIN_PASSWORD="corta"))
+        self.refused(out); self.assertNotIn("corta\n", out.replace("REFUSED", ""))
+
+    def test_4_valid_admin_boots(self):
+        out = self.run_serve(self.ADMIN, report=True)
+        self.assertIn("Administrador: duenio · creado", out, out[-2000:]); self.assertIn("SERVING", out, out[-2000:])
+        self.assertNotIn("clave larga del jefe 2026", out)
+        users = json.loads(out.split("USERS ", 1)[1].splitlines()[0])
+        self.assertEqual([(u["email"], u["is_admin"], u["approved_by"]) for u in users], [("duenio", 1, "entorno")])
+
+    def test_5_ensure_admin_none_refuses(self):
+        out = self.run_serve(self.ADMIN, ensure_none=True)
+        self.refused(out); self.assertIn("no se pudo confirmar el administrador", out)
+
+    def test_6_single_user_mode_unchanged(self):
+        out = self.run_serve({})                                                   # local, sin cuentas: arranca
+        self.assertIn("SERVING", out, out[-2000:]); self.assertNotIn("Administrador", out)
+        out = self.run_serve({}, host="0.0.0.0")                                   # expuesto sin contraseña: no
+        self.refused(out); self.assertIn("CRYPTO_RADAR_PASSWORD", out)
+        out = self.run_serve({"CRYPTO_RADAR_PASSWORD": "clave del panel 123"}, host="0.0.0.0")
+        self.assertIn("SERVING", out, out[-2000:])
+
+    def test_7_squatter_never_becomes_admin_via_serve(self):
+        home = tempfile.mkdtemp(prefix="cr-serve-")
+        out = self.run_serve(self.ADMIN, home=home, squatter="duenio", report=True)
+        self.refused(out); self.assertIn("apropiación", out)
+        users = json.loads(out.split("USERS ", 1)[1].splitlines()[0])
+        self.assertEqual([(u["email"], u["is_admin"]) for u in users], [("duenio", 0)])
+        out = self.run_serve(self.ADMIN, home=home, report=True)                  # reintentar no cambia nada
+        self.refused(out)
+        users = json.loads(out.split("USERS ", 1)[1].splitlines()[0])
+        self.assertEqual([(u["email"], u["is_admin"]) for u in users], [("duenio", 0)])
+
+    def test_8_takeover_quarantines_and_boots(self):
+        home = tempfile.mkdtemp(prefix="cr-serve-")
+        out = self.run_serve(self.ADMIN, home=home, squatter="duenio")
+        self.refused(out)
+        squat_id = out.split("SQUATTER ", 1)[1].split()[0]
+        out = self.run_serve(dict(self.ADMIN, CRYPTO_RADAR_ADMIN_TAKEOVER="1"), home=home, report=True)
+        self.assertIn("Administrador: duenio · cuarentena", out, out[-2000:]); self.assertIn("SERVING", out)
+        users = {u["id"]: u for u in json.loads(out.split("USERS ", 1)[1].splitlines()[0])}
+        old = users.pop(squat_id)
+        self.assertEqual((old["is_admin"], old["status"]), (0, "rejected")); self.assertNotEqual(old["email"], "duenio")
+        (new,) = users.values()
+        self.assertEqual((new["email"], new["is_admin"], new["approved_by"]), ("duenio", 1, "entorno"))
+        out = self.run_serve(self.ADMIN, home=home)                                # siguiente arranque normal
+        self.assertIn("Administrador: duenio · verificado", out, out[-2000:]); self.assertIn("SERVING", out)
+
+    @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
+    def test_9_postgres_boot_requires_admin(self):
+        pg = {"DATABASE_URL": os.environ["TEST_DATABASE_URL"]}
+        out = self.run_serve(dict(pg, CRYPTO_RADAR_ACCOUNTS="1")); self.refused(out)
+        out = self.run_serve(dict(pg, **dict(self.ADMIN, CRYPTO_RADAR_ADMIN_USER="pgserve")))
+        self.assertIn("base de datos postgresql · esquema verificado", out, out[-2000:])
+        self.assertRegex(out, r"Administrador: pgserve · (creado|verificado)"); self.assertIn("SERVING", out)
+
+
 # ================================================================== 17. PostgreSQL (opcional, real)
 @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
 class T17_Postgres(unittest.TestCase):
@@ -1095,12 +1630,46 @@ os.environ["CRYPTO_RADAR_HOME"] = tempfile.mkdtemp()
 sys.path.insert(0, sys.argv[1])
 from radar import db, auth, storage, multiuser
 assert db.IS_PG
-for t in ("users", "sessions", "activity", "positions", "payments", "telegram_links", "kv"):
-    db.execute(f"DROP TABLE IF EXISTS {t}")
-db._ready = False; db.init()
+for t in ("users", "sessions", "activity", "positions", "payments", "telegram_links", "kv", "rate_limits"):
+    db.conn().execute(f"DROP TABLE IF EXISTS {t}")
+# esquema antiguo (antes de 2.1): la migración añade columnas sin perder usuarios
+db.conn().execute("CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, pw_hash TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL, plan TEXT NOT NULL DEFAULT 'free', plan_until DOUBLE PRECISION, is_admin INTEGER NOT NULL DEFAULT 0, telegram_chat_id TEXT, settings TEXT NOT NULL DEFAULT '{}', disabled INTEGER NOT NULL DEFAULT 0, failed_logins INTEGER NOT NULL DEFAULT 0, locked_until DOUBLE PRECISION)")
+db.conn().execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES ('old1', 'viejo@example.com', 'x', 1)")
+db._ready = False; db.init(); db._ready = False; db.init()
+assert db.REQUIRED["users"] <= db.columns("users")
+assert db.one("SELECT status FROM users WHERE id = 'old1'", ())["status"] == "active"
+# apropiación del nombre del administrador: nunca se promueve
+squat = auth.request_access("pgadmin", "clave del intruso 99", ip="10.0.0.9")
+os.environ["CRYPTO_RADAR_ADMIN_USER"] = "pgadmin"; os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave larga del jefe 2026"
+try:
+    auth.ensure_admin(); raise SystemExit("debió negarse")
+except auth.AdminBootstrapError:
+    pass
+assert db.one("SELECT is_admin FROM users WHERE id = ?", (squat,))["is_admin"] == 0
+os.environ["CRYPTO_RADAR_ADMIN_TAKEOVER"] = "1"
+assert auth.ensure_admin()["result"] == "cuarentena"
+os.environ.pop("CRYPTO_RADAR_ADMIN_TAKEOVER")
+assert auth.ensure_admin()["result"] == "verificado"
+# límites de intentos en PostgreSQL, persistentes tras "reinicio"
+auth.reset_rate_limits()
+assert not auth.rate_limited("pg:x", 1, 3600) and auth.rate_limited("pg:x", 1, 3600)
+auth._rate.clear(); db._ready = False; db._local.c = None
+assert auth.rate_limited("pg:x", 1, 3600)
+auth.reset_rate_limits()
+adm = db.one("SELECT * FROM users WHERE email = 'pgadmin'", ())
 u = auth.register("pg@example.com", "clave muy segura 123")
+assert u["status"] == "pending"
+try:
+    auth.login("pg@example.com", "clave muy segura 123"); raise SystemExit("pendiente no debería entrar")
+except auth.AuthError as e:
+    assert e.code == 403
+auth.admin_set_status(adm, u["id"], "approve")
 tok, csrf, _ = auth.login("pg@example.com", "clave muy segura 123")
 assert auth.session(tok)["user"]["email"] == "pg@example.com"
+auth.admin_reset_password(adm, u["id"], "clave restablecida 55")
+assert auth.session(tok) is None
+tok, csrf, _ = auth.login("pg@example.com", "clave restablecida 55")
+auth.logout(tok); assert auth.session(tok) is None
 storage.write("latest.json", {"a": [1, 2]}); assert storage.read("latest.json") == {"a": [1, 2]}
 p = multiuser.add_position(u["id"], {"symbol": "SOL", "entry": 1.0})
 assert multiuser.list_positions(u["id"])[0]["id"] == p["id"]

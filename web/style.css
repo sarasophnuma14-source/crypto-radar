@@ -284,3 +284,15 @@ legend,.adv summary{font:600 1rem var(--display);padding:0;margin-bottom:12px;fl
 tr.locked td{opacity:.55}
 #account,#userSet,#adminBox{display:grid;gap:12px}
 @media (max-width:760px){.lockbar{margin:10px 16px 0}.grid2{grid-template-columns:1fr}}
+/* Administración de usuarios */
+.btn.small{padding:6px 12px;font-size:.8rem;min-height:0}
+.adm-row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.adm-row select,.adm-row input{width:auto;min-width:0;padding:6px 8px;font-size:.8rem;border-radius:9px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
+.adm-row input{width:68px}
+tr.pend td{background:rgba(240,174,69,.06)}
+td.wrap-cell{white-space:normal;max-width:260px;color:var(--muted)}
+.adm-forms{margin-top:14px}
+.adm-forms summary{cursor:pointer;color:var(--amber);font-weight:600}
+.adm-forms form{margin-top:12px}
+.adm-forms h4{margin:0 0 8px;font-size:.95rem}
+#adminBadge{background:var(--amber);color:#1C1406}

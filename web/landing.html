@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Crypto Radar</title>
 <meta name="description" content="Software de análisis de criptomonedas en español. Escaneo cada 4 horas, puntaje de 0 a 100 y alertas por Telegram. Solo spot, sin apalancamiento.">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
@@ -50,7 +51,7 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .btn.ghost{border-color:var(--line-2);color:var(--fg);background:transparent}
 .btn.ghost:hover{border-color:var(--fg)}
 .btn.small{padding:9px 16px;font-size:.88rem}
-@media (max-width:760px){.links{display:none}.nav-in .btn{margin-left:auto}}
+@media (max-width:760px){.links{display:none}.nav-cta{margin-left:auto}}
 
 /* Héroe */
 .hero{position:relative;padding-block:72px 40px;overflow:hidden}
@@ -128,6 +129,16 @@ section{padding-block:110px}
 .res h3{font-size:1.1rem}
 .res p{color:var(--muted);font-size:.9rem}
 .res small{color:var(--muted);font-size:.78rem;margin-top:auto;padding-top:10px;border-top:1px solid var(--line)}
+.res .ico{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;background:rgba(191,211,214,.06);border:1px solid var(--line)}
+.routine{margin-top:22px;border:1px solid var(--line);border-radius:22px;padding:28px 24px;background:var(--bg-2)}
+.routine ol{margin:16px 0 0;padding:0;list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:r}
+.routine li{counter-increment:r;color:var(--muted);font-size:.92rem;display:grid;gap:6px}
+.routine li::before{content:counter(r);font:600 1.6rem var(--display);color:var(--amber)}
+.routine li b{color:var(--fg)}
+@media (max-width:980px){.routine ol{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:520px){.routine ol{grid-template-columns:1fr}}
+.nav-cta{display:flex;gap:8px;align-items:center}
+@media (max-width:420px){.hide-s{display:none}}
 .res-note{margin-top:26px;color:var(--muted);max-width:72ch;font-size:.95rem}
 @media (max-width:980px){.results{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:520px){.results{grid-template-columns:1fr}}
@@ -177,6 +188,7 @@ section{padding-block:110px}
 form.wl{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;max-width:480px;margin:0 auto}
 form.wl input{flex:1 1 220px;min-width:0;font:500 1rem var(--body);padding:13px 18px;border-radius:999px;border:1px solid var(--line-2);background:rgba(7,20,26,.6);color:var(--fg)}
 form.wl input::placeholder{color:#6F8890}
+.cta-row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
 .wl-msg{min-height:1.5em;margin-top:14px;font-size:.9rem;color:var(--muted)}
 
 footer{padding-block:40px 60px;border-top:1px solid var(--line);color:var(--muted);font-size:.85rem}
@@ -195,9 +207,9 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
       Crypto Radar
     </a>
     <nav class="links" aria-label="Secciones">
-      <a href="#motores">Cómo funciona</a><a href="#resultados">Resultados</a><a href="#planes">Planes</a><a href="#preguntas">Preguntas</a>
+      <a href="#motores">Cómo funciona</a><a href="#proteccion">Protección</a><a href="#planes">Planes</a><a href="#preguntas">Preguntas</a>
     </nav>
-    <a class="btn amber small" href="#lista">Unirme a la lista</a>
+    <div class="nav-cta"><a class="btn ghost small" href="/entrar">Entrar</a><a class="btn amber small hide-s" href="/entrar#solicitar">Solicitar acceso</a></div>
   </div></div>
 </header>
 
@@ -209,8 +221,8 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
       <h1 id="h1">Mira el mercado antes de moverte.</h1>
       <p class="lede" data-hero>Crypto Radar revisa más de 150 criptomonedas cada 4 horas, les da un puntaje de 0 a 100 y te avisa por Telegram cuando algo entra en zona de compra. Cuando nada califica, te dice que esperes.</p>
       <div class="cta" data-hero>
-        <a class="btn amber" href="#lista">Unirme a la lista de espera</a>
-        <a class="btn ghost" href="#resultados">Ver resultados reales</a>
+        <a class="btn amber" href="/entrar#solicitar">Solicitar acceso</a>
+        <a class="btn ghost" href="#proteccion">Cómo protege tu capital</a>
       </div>
       <p class="fine" data-hero>En español. Solo spot, sin apalancamiento. No es asesoría financiera.</p>
       <div class="stage" data-hero>
@@ -285,19 +297,27 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
     </div></div>
   </section>
 
-  <section id="resultados">
+  <section id="proteccion">
     <div class="wrap">
       <div class="head reveal">
-        <h2>Lo que probamos, incluido lo que no funcionó.</h2>
-        <p>Pusimos cada estrategia a prueba con datos reales de Binance antes de cobrarte. Publicamos todas, también las que perdieron dinero.</p>
+        <h2>Primero protege tu capital. Después busca la entrada.</h2>
+        <p>La mayoría pierde dinero por entrar tarde, sin plan o con demasiado tamaño. Crypto Radar está hecho para evitar esos tres errores antes de pensar en ganar.</p>
       </div>
-      <div class="results num">
-        <div class="res reveal"><div class="val pos" data-count="31.3" data-sign="+">+31,3 %</div><h3>Ruptura de memecoins</h3><p>Prueba a ciegas 2025 a hoy. 45 % de acierto y caída máxima de 12,3 %, mientras las memecoins cayeron 73,8 %.</p><small>La prueba se miró una vez antes de un ajuste; el resultado real puede ser menor.</small></div>
-        <div class="res reveal"><div class="val pos" data-count="18.8" data-sign="+">+18,8 %</div><h3>Reversión RSI(2)</h3><p>Prueba a ciegas 2025 a hoy en las 5 más líquidas. La única positiva en diseño y en prueba.</p><small>Simulación con datos reales.</small></div>
-        <div class="res reveal"><div class="val neg" data-count="18.6" data-sign="−">−18,6 %</div><h3>Motor 2.0, fuera de muestra</h3><p>2024 a nov. 2026, las 150 más líquidas de cada día entre 661 pares, con costes. US$10.000 terminaron en US$8.139; comprar y mantener BTC dio +45 %.</p><small>En el periodo de diseño ganó +44,7 %, pero no aguantó en datos nuevos.</small></div>
-        <div class="res reveal"><div class="val neg" data-count="18" data-sign="−">−18 %</div><h3>Motor principal, altcoins</h3><p>2023 a hoy, 530 altcoins, incluidas 170 retiradas del mercado.</p><small>No encontró ventaja en altcoins.</small></div>
+      <div class="results prot">
+        <div class="res reveal"><div class="ico"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="14" fill="none" stroke="#F0AE45" stroke-width="2"/><path d="M11 17h12" stroke="#F0AE45" stroke-width="2.4" stroke-linecap="round"/></svg></div><h3>Te dice cuándo no comprar</h3><p>Lee el régimen del mercado (tendencia de BTC, dominancia, miedo y codicia). Cuando el riesgo es alto, el veredicto es «Mantener liquidez» y no te empuja a operar.</p><small>Esperar también es una decisión.</small></div>
+        <div class="res reveal"><div class="ico"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><rect x="5" y="9" width="24" height="16" rx="3" fill="none" stroke="#5FBF92" stroke-width="2"/><path d="M5 14h24" stroke="#5FBF92" stroke-width="2"/></svg></div><h3>Tamaño según tu capital</h3><p>Indicas cuánto tienes y cuánto aceptas arriesgar por operación. Cada plan calcula cuántas unidades comprar para que un stop te cueste solo ese porcentaje.</p><small>Ninguna operación puede hundir la cuenta.</small></div>
+        <div class="res reveal"><div class="ico"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M17 4 L30 28 H4 Z" fill="none" stroke="#E07A6B" stroke-width="2" stroke-linejoin="round"/><path d="M17 13v7" stroke="#E07A6B" stroke-width="2.4" stroke-linecap="round"/><circle cx="17" cy="24" r="1.6" fill="#E07A6B"/></svg></div><h3>Alertas de manipulación</h3><p>Marca volumen anormal, mechas extremas y subidas sin base que suelen terminar en «pump and dump», y baja el puntaje de esas monedas.</p><small>Menos trampas en monedas pequeñas.</small></div>
+        <div class="res reveal"><div class="ico"><svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><path d="M4 24 L12 16 L18 20 L30 8" fill="none" stroke="#BFD3D6" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 28h26" stroke="#E07A6B" stroke-width="2" stroke-dasharray="3 3"/></svg></div><h3>Salida definida antes de entrar</h3><p>Stop, invalidación y objetivos escalonados están en el plan desde el primer minuto, y el seguimiento cada 15 minutos te avisa si se tocan.</p><small>Sin decisiones en caliente.</small></div>
       </div>
-      <p class="res-note reveal">Los backtests son simulaciones y no garantizan resultados futuros. Desde el lanzamiento, cada señal queda registrada y evaluada sola en un historial público.</p>
+      <div class="routine reveal">
+        <h3>Tu rutina en 5 minutos al día</h3>
+        <ol>
+          <li><b>Mira el veredicto.</b> Si dice esperar, cierras la app y sigues con tu día.</li>
+          <li><b>Revisa el top del ranking.</b> Puntaje, fase y por qué califica cada moneda.</li>
+          <li><b>Copia el plan.</b> Zona de entrada, stop, objetivos y tamaño ya calculados.</li>
+          <li><b>Deja que te avise.</b> Telegram te escribe si entra en zona, toca el stop o un objetivo.</li>
+        </ol>
+      </div>
     </div>
   </section>
 
@@ -315,7 +335,7 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
           <div class="price">$0</div>
           <p class="muted">Para conocer el radar.</p>
           <ul><li>Estado del mercado: BTC, dominancia, miedo y codicia</li><li>Top 5 del ranking con 24 horas de retraso</li><li>Boletín semanal</li></ul>
-          <a class="btn ghost" href="#lista">Unirme a la lista</a>
+          <a class="btn ghost" href="/entrar#solicitar">Solicitar acceso</a>
         </div>
         <div class="plan best reveal">
           <span class="tag">Fundador US$12</span>
@@ -323,14 +343,14 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
           <div class="price">$<span data-m="19" data-y="190">19</span> <small data-m="al mes" data-y="al año">al mes</small></div>
           <p class="muted">Para seguir el mercado a diario.</p>
           <ul><li>Panel completo en tiempo real</li><li>Ranking con entrada, stop y objetivos</li><li>Alertas a Telegram</li><li>Memecoins en modo simulado</li><li>Diario de señales con resultados</li></ul>
-          <a class="btn amber" href="#lista">Reservar cupo de fundador</a>
+          <a class="btn amber" href="/entrar#solicitar">Reservar cupo de fundador</a>
         </div>
         <div class="plan reveal">
           <h3>Élite</h3>
           <div class="price">$<span data-m="39" data-y="390">39</span> <small data-m="al mes" data-y="al año">al mes</small></div>
           <p class="muted">Para quien opera varias veces por semana.</p>
-          <ul><li>Todo lo de Pro</li><li>Vigilancia de precio cada 15 minutos</li><li>Backtest de cualquier token</li><li>Watchlist sin límite</li><li>Informe semanal y soporte por chat</li></ul>
-          <a class="btn ghost" href="#lista">Unirme a la lista</a>
+          <ul><li>Todo lo de Pro</li><li>Vigilancia de precio cada 15 minutos</li><li>Cartera simulada para practicar sin dinero real</li><li>Watchlist sin límite</li><li>Informe semanal y soporte por chat</li></ul>
+          <a class="btn ghost" href="/entrar#solicitar">Solicitar acceso</a>
         </div>
       </div>
       <p class="founder"><b>100 cupos de fundador:</b> Pro a US$12 al mes mientras mantengas la suscripción. Incluye 7 días de prueba sin tarjeta.</p>
@@ -343,7 +363,8 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
       <div class="head reveal"><h2>Preguntas.</h2></div>
       <div class="faq">
         <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Esto es asesoría financiera?<span class="pm"></span></button><div class="ans"><div><p>No. Crypto Radar es un software de análisis que muestra la misma información a todos sus usuarios. No conoce tu situación ni te da recomendaciones personales. La decisión es siempre tuya.</p></div></div></div>
-        <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Garantizan ganancias?<span class="pm"></span></button><div class="ans"><div><p>No, y desconfía de quien lo haga. Nuestro propio motor principal perdió dinero en el backtest y lo publicamos arriba. Ofrecemos método, disciplina y un historial abierto.</p></div></div></div>
+        <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Garantizan ganancias?<span class="pm"></span></button><div class="ans"><div><p>No, y desconfía de quien lo haga. Ofrecemos método, disciplina y gestión del riesgo: plan completo antes de entrar, tamaño según tu capital y avisos para no operar cuando el mercado no acompaña.</p></div></div></div>
+        <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Cómo consigo acceso?<span class="pm"></span></button><div class="ans"><div><p>Solicitas tu cuenta eligiendo un usuario y una contraseña. El administrador revisa cada solicitud y la aprueba; desde ese momento entras con tus datos. Nadie más conoce tu contraseña: se guarda cifrada.</p></div></div></div>
         <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Opera con mi dinero?<span class="pm"></span></button><div class="ans"><div><p>Nunca. No pedimos acceso a tu exchange ni a tus fondos. Tú decides y ejecutas cada operación.</p></div></div></div>
         <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Usa apalancamiento o futuros?<span class="pm"></span></button><div class="ans"><div><p>No. Solo analiza compras spot. Los datos de futuros se usan como termómetro del sentimiento, no para operar.</p></div></div></div>
         <div class="qa" data-open="false"><button type="button" aria-expanded="false">¿Puedo pagar desde fuera de Colombia?<span class="pm"></span></button><div class="ans"><div><p>Sí. Los precios están en dólares y aceptamos tarjetas de cualquier país. También puedes pagar en USDT.</p></div></div></div>
@@ -355,136 +376,23 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
   <section class="final" id="lista" style="padding-top:20px">
     <div class="wrap"><div class="box reveal">
       <h2>Entra antes que el resto.</h2>
-      <p>Estamos registrando señales en público durante las próximas semanas. Anótate y te avisamos cuando se abran los cupos de fundador.</p>
-      <form class="wl" id="wl" novalidate>
-        <label for="wl-email" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Correo electrónico</label>
-        <input id="wl-email" type="email" placeholder="tu@correo.com" autocomplete="email" required>
-        <button class="btn amber" type="submit">Anotarme</button>
-      </form>
-      <p class="wl-msg" id="wl-msg" role="status"></p>
+      <p>Elige tu usuario y tu contraseña. Revisamos cada solicitud a mano y te damos acceso en cuanto la aprobamos.</p>
+      <div class="cta-row"><a class="btn amber" href="/entrar#solicitar">Solicitar acceso</a><a class="btn ghost" href="/entrar">Ya tengo cuenta</a></div>
     </div></div>
   </section>
 </main>
 
 <footer>
   <div class="wrap">
-    <p class="risk"><b>Aviso de riesgo.</b> Crypto Radar es un software de análisis con fines informativos y educativos. No es asesoría financiera, de inversión ni tributaria, ni una recomendación personalizada. Las criptomonedas son muy volátiles y puedes perder todo lo que inviertas. Los resultados pasados y los backtests no garantizan resultados futuros.</p>
-    <div class="row"><span>© 2026 Crypto Radar</span><a href="#preguntas">Términos</a><a href="#preguntas">Privacidad</a><a href="#preguntas">Contacto</a></div>
+    <p class="risk"><b>Aviso de riesgo.</b> Crypto Radar es un software de análisis con fines informativos y educativos. No es asesoría financiera, de inversión ni tributaria, ni una recomendación personalizada. Las criptomonedas son muy volátiles y puedes perder todo lo que inviertas. Los resultados pasados no garantizan resultados futuros.</p>
+    <div class="row"><span>© 2026 Crypto Radar</span><a href="#preguntas">Términos</a><a href="#preguntas">Privacidad</a><a href="/entrar">Entrar</a></div>
   </div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lenis@1.1.13/dist/lenis.min.js"></script>
-<script>
-(function(){
-  var reduce=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  // Cinta de tokens (duplicada para el bucle)
-  var toks=[['BTC',64],['ETH',58],['SOL',78],['LINK',71],['ONDO',69],['RNDR',66],['PEPE',61],['ARB',52],['TAO',47],['SUI',63],['INJ',55],['WIF',49]];
-  var html=toks.map(function(t){return '<span><b>'+t[0]+'</b><i class="'+(t[1]>=65?'hi':'')+'">'+t[1]+'/100</i></span>';}).join('');
-  document.getElementById('track').innerHTML=html+html;
-
-  // Planes mensual / anual con perilla deslizante
-  var bm=document.getElementById('bill-m'), by=document.getElementById('bill-y'), knob=document.getElementById('knob');
-  function place(btn){knob.style.width=btn.offsetWidth+'px';knob.style.transform='translateX('+(btn.offsetLeft-4)+'px)';}
-  function setBill(y){
-    bm.setAttribute('aria-pressed',String(!y)); by.setAttribute('aria-pressed',String(y)); place(y?by:bm);
-    document.querySelectorAll('[data-m]').forEach(function(el){el.textContent=el.getAttribute(y?'data-y':'data-m');});
-  }
-  bm.addEventListener('click',function(){setBill(false)}); by.addEventListener('click',function(){setBill(true)});
-  window.addEventListener('resize',function(){place(by.getAttribute('aria-pressed')==='true'?by:bm)});
-  place(bm);
-
-  // Luz que sigue al cursor en los planes
-  document.querySelectorAll('.plan').forEach(function(p){
-    p.addEventListener('pointermove',function(e){var r=p.getBoundingClientRect();p.style.setProperty('--mx',(e.clientX-r.left)+'px');p.style.setProperty('--my',(e.clientY-r.top)+'px');});
-  });
-
-  // Preguntas
-  document.querySelectorAll('.qa button').forEach(function(b){
-    b.addEventListener('click',function(){var q=b.parentNode, o=q.getAttribute('data-open')!=='true'; q.setAttribute('data-open',String(o)); b.setAttribute('aria-expanded',String(o));});
-  });
-
-  // Lista de espera
-  var f=document.getElementById('wl'), msg=document.getElementById('wl-msg'), em=document.getElementById('wl-email');
-  f.addEventListener('submit',function(e){
-    e.preventDefault();
-    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em.value.trim())){msg.textContent='Escribe un correo válido, por ejemplo nombre@gmail.com.';em.focus();return;}
-    msg.textContent='La lista de espera se activa en los próximos días y todavía no guarda correos. Vuelve pronto para anotarte.';
-  });
-
-  // Radar
-  var cv=document.getElementById('radar'), ctx=cv.getContext('2d');
-  var blips=[{t:'SOL',s:78,a:.6},{t:'LINK',s:71,a:1.7},{t:'RNDR',s:66,a:2.6},{t:'ARB',s:52,a:3.5},{t:'PEPE',s:61,a:4.3},{t:'ONDO',s:69,a:5.2},{t:'TAO',s:47,a:5.85}];
-  var W=0, ang=-.4, last=0;
-  function size(){var d=window.devicePixelRatio||1,w=cv.clientWidth;if(!w)return;cv.width=w*d;cv.height=w*d;ctx.setTransform(d,0,0,d,0,0);W=w;}
-  function draw(){
-    if(!W)return; var c=W/2,R=W/2-4;
-    ctx.clearRect(0,0,W,W); ctx.strokeStyle='rgba(191,211,214,.14)'; ctx.lineWidth=1;
-    for(var i=1;i<=4;i++){ctx.beginPath();ctx.arc(c,c,R*i/4,0,Math.PI*2);ctx.stroke();}
-    ctx.beginPath();ctx.moveTo(c-R,c);ctx.lineTo(c+R,c);ctx.moveTo(c,c-R);ctx.lineTo(c,c+R);ctx.stroke();
-    ctx.fillStyle='rgba(143,166,173,.6)'; ctx.font='500 '+Math.max(10,W/42)+'px Inter, sans-serif';
-    ['85','70','55','40'].forEach(function(v,i){ctx.fillText(v,c+5,c-R*(i+1)/4-5);});
-    for(var k=0;k<48;k++){var a0=ang-1.2*(k+1)/48,a1=ang-1.2*k/48;ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,R,a0,a1);ctx.closePath();ctx.fillStyle='rgba(240,174,69,'+(.2*(1-k/48))+')';ctx.fill();}
-    ctx.strokeStyle='#F0AE45';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(c,c);ctx.lineTo(c+R*Math.cos(ang),c+R*Math.sin(ang));ctx.stroke();
-    blips.forEach(function(b){
-      var rr=Math.min((100-b.s)/60*R,R*.92), x=c+rr*Math.cos(b.a), y=c+rr*Math.sin(b.a);
-      var d=((ang-b.a)%(Math.PI*2)+Math.PI*2)%(Math.PI*2), g=reduce?.9:Math.max(.3,1-d/(Math.PI*1.4)), hot=b.s>=65;
-      ctx.globalAlpha=g; ctx.fillStyle=hot?'#F0AE45':'#BFD3D6';
-      if(hot){ctx.shadowColor='#F0AE45';ctx.shadowBlur=14*g;}
-      ctx.beginPath();ctx.arc(x,y,hot?Math.max(4,W/80):Math.max(3,W/110),0,Math.PI*2);ctx.fill(); ctx.shadowBlur=0;
-      ctx.font='600 '+Math.max(11,W/36)+'px Inter, sans-serif'; var lab=b.t+' '+b.s, lw=ctx.measureText(lab).width;
-      ctx.fillText(lab,x>c?x-10-lw:x+10,y+4); ctx.globalAlpha=1;
-    });
-  }
-  size(); draw(); window.addEventListener('resize',function(){size();draw();});
-  if(!reduce){(function loop(ts){if(!last)last=ts;var dt=Math.min(64,ts-last);last=ts;ang+=dt*.0011;draw();requestAnimationFrame(loop);})(performance.now());}
-
-  // Animaciones estilo Framer (GSAP + ScrollTrigger + Lenis)
-  if(reduce||!window.gsap) return;
-  gsap.registerPlugin(ScrollTrigger);
-  if(window.Lenis && !matchMedia('(pointer: coarse)').matches){
-    var lenis=new Lenis({lerp:.1});
-    lenis.on('scroll',ScrollTrigger.update);
-    gsap.ticker.add(function(t){lenis.raf(t*1000)}); gsap.ticker.lagSmoothing(0);
-    document.querySelectorAll('a[href^="#"]').forEach(function(a){a.addEventListener('click',function(e){var t=document.querySelector(a.getAttribute('href'));if(t){e.preventDefault();lenis.scrollTo(t,{offset:-80});}});});
-  }
-  // Titular palabra por palabra con desenfoque
-  var h1=document.getElementById('h1');
-  h1.innerHTML=h1.textContent.split(' ').map(function(w){return '<span class="w">'+w+'</span>';}).join(' ');
-  var tl=gsap.timeline({defaults:{ease:'power3.out'}});
-  tl.from('.hero .w',{y:40,opacity:0,filter:'blur(12px)',duration:.9,stagger:.07})
-    .from('[data-hero]',{y:24,opacity:0,filter:'blur(6px)',duration:.8,stagger:.08},'-=.55');
-  // Revelado al hacer scroll (parte visible para que nada quede oculto)
-  gsap.utils.toArray('.reveal').forEach(function(el){
-    gsap.from(el,{y:36,opacity:.25,filter:'blur(6px)',duration:.9,ease:'power3.out',scrollTrigger:{trigger:el,start:'top 88%',once:true}});
-  });
-  // Tarjetas apiladas: la de atrás se encoge
-  var cards=gsap.utils.toArray('.eng');
-  cards.forEach(function(card,i){
-    var next=cards[i+1]; if(!next) return;
-    gsap.to(card,{scale:.94,opacity:.55,ease:'none',scrollTrigger:{trigger:next,start:'top 85%',end:'top 140px',scrub:true}});
-  });
-  // Trazos que se dibujan
-  gsap.utils.toArray('.draw').forEach(function(p){
-    var L=p.getTotalLength(); gsap.set(p,{strokeDasharray:L,strokeDashoffset:L});
-    gsap.to(p,{strokeDashoffset:0,duration:1.6,ease:'power2.out',scrollTrigger:{trigger:p,start:'top 85%',once:true}});
-  });
-  // Teléfono: entra, llena la barra y aparece la segunda alerta
-  var ph=gsap.timeline({scrollTrigger:{trigger:'.phone',start:'top 80%',once:true}});
-  ph.from('.phone',{y:80,rotate:-4,opacity:.3,duration:1,ease:'power3.out'})
-    .from('.m1',{y:20,opacity:0,duration:.6},'-=.4')
-    .from('.bar i',{scaleX:0,duration:.8,ease:'power2.out'},'-=.2')
-    .from('.m2',{y:20,opacity:0,duration:.5},'+=.4');
-  // Contadores
-  gsap.utils.toArray('[data-count]').forEach(function(el){
-    var end=parseFloat(el.dataset.count), sign=el.dataset.sign, dec=end%1?1:0, o={v:0};
-    gsap.to(o,{v:end,duration:1.4,ease:'power2.out',scrollTrigger:{trigger:el,start:'top 90%',once:true},
-      onUpdate:function(){el.textContent=sign+o.v.toFixed(dec).replace('.',',')+' %';}});
-  });
-})();
-</script>
+<script src="/static/vendor/gsap.min.js"></script>
+<script src="/static/vendor/ScrollTrigger.min.js"></script>
+<script src="/static/vendor/lenis.min.js"></script>
+<script src="/static/landing.js"></script>
 
 </body>
 </html>

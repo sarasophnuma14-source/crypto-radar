@@ -19,8 +19,8 @@ from . import storage, scanner, alerts, memes, __version__
 from .config import WEB_DIR, ROOT, ACCOUNTS, load_settings, save_settings
 
 COOKIE = "cr_session"
-PUBLIC_GET = ("/", "/index.html", "/healthz", "/api/public/status", "/api/billing/status")
-PUBLIC_POST = ("/api/auth/register", "/api/auth/login", "/api/billing/wompi/webhook", "/api/billing/nowpayments/ipn")
+PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/api/public/status", "/api/billing/status")
+PUBLIC_POST = ("/api/auth/register", "/api/auth/request", "/api/auth/login", "/api/billing/wompi/webhook", "/api/billing/nowpayments/ipn")
 
 WATCH_EVERY_S = 15 * 60
 MEME_EVERY_S = 60 * 60   # memecoins: revisar cada hora (la señal sale al cierre diario 00:00 UTC)
@@ -96,7 +96,10 @@ SECURITY_HEADERS = {
     "Referrer-Policy": "same-origin",
     "Content-Security-Policy": ("default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline' "
                                 "https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; "
-                                "script-src 'self'; connect-src 'self'; frame-ancestors 'none'"),
+                                "script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; "
+                                "form-action 'self'; object-src 'none'"),
+    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "Cross-Origin-Opener-Policy": "same-origin",
 }
 _auth_fail = {}          # ip -> [marcas de tiempo de intentos fallidos]
 AUTH_MAX_FAILS, AUTH_WINDOW_S = 10, 15 * 60
@@ -124,8 +127,19 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         for k, v in SECURITY_HEADERS.items():
             self.send_header(k, v)
+        if self._secure():
+            self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         self.end_headers()
         self.wfile.write(body)
+
+    def _redirect(self, loc):
+        self.send_response(302)
+        self.send_header("Location", loc)
+        self.send_header("Content-Length", "0")
+        self.send_header("Cache-Control", "no-store")
+        for k, v in SECURITY_HEADERS.items():
+            self.send_header(k, v)
+        self.end_headers()
 
     def _client_ip(self):
         # El primer valor de X-Forwarded-For lo escribe el cliente (falsificable); el último lo añade el proxy de Render.
@@ -232,6 +246,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         for k, v in SECURITY_HEADERS.items():
             self.send_header(k, v)
+        if self._secure():
+            self.send_header("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
         flags = "; HttpOnly; SameSite=Lax; Path=/" + ("; Secure" if self._secure() else "")
         self.send_header("Set-Cookie", f"{COOKIE}={token or ''}; Max-Age={max_age}{flags}")
         self.end_headers()
@@ -253,8 +269,10 @@ class Handler(BaseHTTPRequestHandler):
                                     "last_scan": rep.get("generated_at") or rep.get("at"),
                                     "last_error": (str(err)[:300] if err else None),
                                     "sources": rep.get("sources")})
-        if p in ("/", "/index.html"):
+        if p in ("/", "/index.html", "/app"):
             return self._static("index.html")
+        if p == "/entrar":
+            return self._redirect("/app")
         if p.startswith("/static/"):
             return self._static(p[len("/static/"):])
         if p == "/api/state":
@@ -268,19 +286,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/memes":
             return self._send(200, memes.state())
         if p == "/api/journal":
-            j = storage.read("journal.json", []) or []
-            closed = [x for x in j if x["status"] == "CLOSED" and x["r_multiple"] is not None]
-            wins = [x for x in closed if x["r_multiple"] > 0]
-            stats = {"signals": len(j), "closed": len(closed), "open": sum(x["status"] == "OPEN" for x in j),
-                     "win_rate": round(len(wins) / len(closed) * 100, 1) if closed else None,
-                     "avg_R": round(sum(x["r_multiple"] for x in closed) / len(closed), 2) if closed else None,
-                     "total_R": round(sum(x["r_multiple"] for x in closed), 2) if closed else 0}
-            return self._send(200, {"stats": stats, "items": list(reversed(j))[:300]})
-        if p == "/api/settings":
-            s = load_settings()
-            s.pop("meme_list", None)
-            s["telegram_bot_token"] = ("•••" + s["telegram_bot_token"][-4:]) if s.get("telegram_bot_token") else ""
-            return self._send(200, s)
+            return self._send(200, journal_payload(storage.read("journal.json", []) or []))
         if p == "/api/candles":
             c = (storage.read("candles.json", {}) or {}).get(q.get("symbol", "").upper())
             return self._send(200 if c else 404, c or {"error": "sin velas guardadas"})
@@ -368,6 +374,16 @@ class Handler(BaseHTTPRequestHandler):
         return self._send(404, {"error": "ruta desconocida"})
 
 
+def journal_payload(j):
+    closed = [x for x in j if x["status"] == "CLOSED" and x["r_multiple"] is not None]
+    wins = [x for x in closed if x["r_multiple"] > 0]
+    stats = {"signals": len(j), "closed": len(closed), "open": sum(x["status"] == "OPEN" for x in j),
+             "win_rate": round(len(wins) / len(closed) * 100, 1) if closed else None,
+             "avg_R": round(sum(x["r_multiple"] for x in closed) / len(closed), 2) if closed else None,
+             "total_R": round(sum(x["r_multiple"] for x in closed), 2) if closed else 0}
+    return {"stats": stats, "items": list(reversed(j))[:300]}
+
+
 def backtest_results():
     """Resultados del backtest profesional (archivo generado por research/backtest_pro_run.py, sin cifras inventadas)."""
     for f in (ROOT / "docs" / "backtest_results.json", ROOT / "data" / "research" / "backtest_pro_results.json"):
@@ -407,6 +423,9 @@ def paper_scheduler():
             print("paper trading:", e, flush=True)
 
 
+ADMIN_ENV = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD")
+
+
 def serve(port=None, host=None, schedule=True):
     s = load_settings()
     port = int(port or os.environ.get("PORT") or s["port"])
@@ -415,12 +434,27 @@ def serve(port=None, host=None, schedule=True):
         raise SystemExit("Por seguridad, define CRYPTO_RADAR_PASSWORD (o activa cuentas con CRYPTO_RADAR_ACCOUNTS=1) "
                          "antes de exponer el panel a internet.")
     if ACCOUNTS:
+        # En modo cuentas el administrador es obligatorio: sin él nadie aprueba solicitudes ni gestiona usuarios,
+        # y un servidor así no debe quedar expuesto. Se comprueba antes de tocar la base.
+        missing = [k for k in ADMIN_ENV if not (os.environ.get(k) or "").strip()]
+        if missing:
+            raise SystemExit("No arranco: el modo cuentas (CRYPTO_RADAR_ACCOUNTS=1) exige administrador. "
+                             "Falta definir: " + ", ".join(missing) + ".")
         from . import db, telegram_bot
-        db.init()
-        print(f"Modo cuentas activo · base de datos {db.backend()}", flush=True)
-        if os.environ.get("RENDER") and not db.IS_PG:
-            print("AVISO: modo cuentas en Render sin DATABASE_URL: el disco es efímero y las cuentas y pagos se "
-                  "perderían en cada reinicio. Configura una base PostgreSQL (p. ej. Neon) en DATABASE_URL.", flush=True)
+        if os.environ.get("RENDER") and not db.IS_PG and os.environ.get("CRYPTO_RADAR_ALLOW_SQLITE") != "1":
+            raise SystemExit("Modo cuentas en Render sin DATABASE_URL: el disco es efímero y se perderían cuentas, "
+                             "sesiones, pagos y límites de intentos en cada reinicio. Configura PostgreSQL (p. ej. Neon) "
+                             "en DATABASE_URL.")
+        try:
+            db.init()                                   # crea, migra y comprueba el esquema completo
+        except db.SchemaError as e:
+            raise SystemExit(f"No arranco: {e}")
+        print(f"Modo cuentas activo · base de datos {db.backend()} · esquema verificado", flush=True)
+        from . import auth
+        adm = auth.ensure_admin()                       # AdminBootstrapError (SystemExit) si el entorno no es válido
+        if not adm or not adm.get("user"):
+            raise SystemExit("No arranco: no se pudo confirmar el administrador del modo cuentas.")
+        print(f"Administrador: {adm['user']} · {adm['result']}", flush=True)
         if schedule:
             telegram_bot.start()
     if schedule:

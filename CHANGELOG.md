@@ -1,5 +1,28 @@
 # CHANGELOG
 
+## 2.1.0 — 2026-11-15 · Sitio unificado y acceso aprobado por el administrador
+
+- Una sola web: ventas en `/`, inicio de sesión moderno en `/entrar` y la app en `/app` (se elimina `ventas/`).
+- Se acabó la ventana de contraseña del navegador: cada persona elige usuario y contraseña al solicitar acceso, y solo
+  entra cuando el administrador la aprueba. El administrador sale de `CRYPTO_RADAR_ADMIN_USER` / `_PASSWORD`.
+- Panel de administración: aprobar, rechazar, desactivar, eliminar, asignar plan y días, crear usuarios y restablecer claves.
+- Seguridad: contraseñas con scrypt, sesión HttpOnly/SameSite/Secure rotada al entrar, CSRF, bloqueo tras 5 fallos,
+  límites por IP y global en solicitudes, mismo error para usuario inexistente y clave errónea, CSP sin scripts en línea
+  ni CDN (librerías servidas desde `/static/vendor`), HSTS, COOP y Permissions-Policy.
+- La sección de resultados y backtests de la web de ventas se sustituye por «Primero protege tu capital».
+
+### Auditoría final de seguridad
+- Arranque del administrador: nunca promueve una cuenta normal que tenga su nombre; el servidor no arranca o, con
+  `CRYPTO_RADAR_ADMIN_TAKEOVER=1`, pone esa cuenta en cuarentena y crea un administrador nuevo con la clave del
+  entorno. Nombres reservados. Eventos `admin_bootstrap_*` en la actividad.
+- Permisos por plan revisados en todas las rutas: backtest solo Élite; paper trading solo admin; alertas, diario,
+  escaneos, velas e historial filtrados por plan; cartera y Telegram exigen Pro también en las escrituras.
+- Migraciones: solo se tolera «la columna ya existe»; el esquema completo se comprueba antes de arrancar.
+- Límites de intentos guardados en la base (sobreviven a reinicios). En Render, el modo cuentas sin PostgreSQL no arranca.
+- `docs/SEGURIDAD.md` con la matriz de permisos, las limitaciones y la propuesta para producción. 181 pruebas.
+- `serve()` exige `CRYPTO_RADAR_ADMIN_USER` y `CRYPTO_RADAR_ADMIN_PASSWORD` en modo cuentas y se detiene si falta
+  alguna o si no se confirma el administrador. 11 pruebas nuevas del arranque real en procesos aislados (192 en total).
+
 ## 2.0.0 — 2026-11-15 (rama `claude/project-thread-i8udp5`)
 
 Respaldo de la versión anterior: rama `main` (commit 34f6898) y etiqueta local `backup-pre-2.0`.

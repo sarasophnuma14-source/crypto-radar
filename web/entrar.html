@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07141A">
+<meta name="robots" content="noindex">
+<title>Entrar · Crypto Radar</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#07141A; --bg-2:#0C1E26; --card:#10252F; --line:rgba(191,211,214,.12); --line-2:rgba(191,211,214,.22);
+  --fg:#E9F1F2; --muted:#8FA6AD; --amber:#F0AE45; --amber-ink:#1C1406; --gain:#5FBF92; --stop:#E07A6B;
+  --display:"Inter Tight","Inter","Helvetica Neue",Arial,sans-serif; --body:"Inter","Helvetica Neue",Arial,system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);-webkit-font-smoothing:antialiased}
+body{min-height:100svh;display:grid;grid-template-columns:1.05fr 1fr}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:8px}
+h1,h2{font-family:var(--display);font-weight:600;letter-spacing:-.035em;line-height:1.02;margin:0}
+
+.side{position:relative;overflow:hidden;padding:clamp(28px,5vw,64px);display:flex;flex-direction:column;justify-content:space-between;
+  background:radial-gradient(700px circle at 20% 10%,rgba(240,174,69,.16),transparent 60%),var(--bg-2);border-right:1px solid var(--line)}
+.side::after{content:"";position:absolute;inset:0;background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+  background-size:56px 56px;mask-image:radial-gradient(circle at 30% 40%,#000 0,transparent 70%);opacity:.5;pointer-events:none}
+.brand{display:inline-flex;align-items:center;gap:10px;font:600 1.15rem var(--display);letter-spacing:-.02em;text-decoration:none;position:relative;z-index:1}
+.side h1{font-size:clamp(2.2rem,4.4vw,3.8rem);max-width:13ch;position:relative;z-index:1}
+.side p{color:var(--muted);max-width:42ch;line-height:1.6;margin:18px 0 0;position:relative;z-index:1}
+.points{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:12px;position:relative;z-index:1}
+.points li{display:flex;gap:12px;align-items:flex-start;color:#C9D7DA;font-size:.95rem}
+.points i{flex:none;width:22px;height:22px;border-radius:8px;display:grid;place-items:center;background:rgba(240,174,69,.14);color:var(--amber);font-style:normal;font-size:.8rem;font-weight:700}
+.side small{color:var(--muted);font-size:.8rem;position:relative;z-index:1}
+
+main{display:grid;place-items:center;padding:clamp(20px,5vw,56px) max(16px,env(safe-area-inset-left,0px))}
+.card{width:100%;max-width:420px}
+.tabs{position:relative;display:grid;grid-template-columns:1fr 1fr;padding:4px;border:1px solid var(--line-2);border-radius:999px;margin-bottom:28px}
+.tabs button{position:relative;z-index:1;border:0;background:none;color:var(--muted);font:600 .92rem var(--body);padding:10px 12px;border-radius:999px;cursor:pointer}
+.tabs button[aria-selected="true"]{color:var(--amber-ink)}
+.tabs .knob{position:absolute;top:4px;bottom:4px;left:4px;width:calc(50% - 4px);border-radius:999px;background:var(--amber);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.tabs[data-mode="solicitar"] .knob{transform:translateX(100%)}
+.card h2{font-size:2rem}
+.card .sub{color:var(--muted);margin:10px 0 24px;line-height:1.55;font-size:.95rem}
+form{display:grid;gap:14px}
+label{display:grid;gap:7px;font-size:.85rem;color:#C9D7DA;font-weight:500}
+.field{position:relative}
+input,textarea{width:100%;font:500 1rem var(--body);padding:13px 16px;border-radius:14px;border:1px solid var(--line-2);background:rgba(7,20,26,.7);color:var(--fg);transition:border-color .2s,box-shadow .2s}
+textarea{resize:vertical;min-height:70px}
+input:focus,textarea:focus{outline:none;border-color:var(--amber);box-shadow:0 0 0 4px rgba(240,174,69,.15)}
+input::placeholder,textarea::placeholder{color:#5F7880}
+.eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:none;color:var(--muted);padding:8px;cursor:pointer;border-radius:8px}
+.hint{color:var(--muted);font-size:.78rem;font-weight:400}
+.meter{height:5px;border-radius:9px;background:rgba(191,211,214,.12);overflow:hidden}
+.meter i{display:block;height:100%;width:0;background:var(--stop);transition:width .25s,background .25s}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font:600 1rem var(--body);padding:14px 20px;border-radius:999px;border:0;cursor:pointer;background:var(--amber);color:var(--amber-ink);margin-top:6px;transition:transform .2s,background .2s}
+.btn:hover{background:#F6C06A;transform:translateY(-1px)}
+.btn[disabled]{opacity:.6;cursor:wait;transform:none}
+.msg{min-height:1.4em;font-size:.9rem;margin:4px 0 0}
+.msg.err{color:var(--stop)} .msg.ok{color:var(--gain)}
+.foot{margin-top:26px;color:var(--muted);font-size:.82rem;line-height:1.55;display:grid;gap:8px}
+.foot a{color:var(--fg)}
+.lock{display:flex;gap:8px;align-items:center}
+.hidden{display:none!important}
+@media (max-width:860px){
+  body{grid-template-columns:1fr}
+  .side{border-right:0;border-bottom:1px solid var(--line);padding-bottom:28px}
+  .side h1{font-size:2.1rem}
+  .side .points,.side small{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<aside class="side">
+  <a class="brand" href="/" aria-label="Crypto Radar, volver al inicio">
+    <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="none" stroke="#E9F1F2" stroke-width="2"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="#E9F1F2" stroke-width="1.5" opacity=".45"/><path d="M14 14 L24.5 7" stroke="#F0AE45" stroke-width="2.5" stroke-linecap="round"/><circle cx="19" cy="18" r="2.2" fill="#F0AE45"/></svg>
+    Crypto Radar
+  </a>
+  <div>
+    <h1>Mira el mercado antes de moverte.</h1>
+    <p>Más de 150 criptomonedas analizadas cada 4 horas, con plan completo de entrada, stop y objetivos, y un veredicto claro cuando lo mejor es esperar.</p>
+    <ul class="points">
+      <li><i>1</i>Solicitas tu cuenta con el usuario y la contraseña que elijas.</li>
+      <li><i>2</i>El administrador revisa y aprueba cada solicitud.</li>
+      <li><i>3</i>Entras desde cualquier dispositivo; tu sesión es privada y cifrada.</li>
+    </ul>
+  </div>
+  <small>Solo análisis. No es asesoría financiera.</small>
+</aside>
+
+<main>
+  <div class="card">
+    <div class="tabs" role="tablist" aria-label="Acceso" id="tabs" data-mode="entrar">
+      <span class="knob" aria-hidden="true"></span>
+      <button type="button" role="tab" id="t-entrar" aria-selected="true" aria-controls="f-entrar">Entrar</button>
+      <button type="button" role="tab" id="t-solicitar" aria-selected="false" aria-controls="f-solicitar">Solicitar acceso</button>
+    </div>
+
+    <section id="f-entrar" role="tabpanel" aria-labelledby="t-entrar">
+      <h2>Bienvenido de nuevo</h2>
+      <p class="sub">Entra con el usuario y la contraseña que te aprobó el administrador.</p>
+      <form id="loginForm" autocomplete="on" novalidate>
+        <label>Usuario<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="64" placeholder="tu.usuario"></label>
+        <label>Contraseña<span class="field"><input name="password" type="password" autocomplete="current-password" required maxlength="200" placeholder="••••••••••"><button class="eye" type="button" aria-label="Mostrar contraseña">Ver</button></span></label>
+        <button class="btn" type="submit">Entrar</button>
+        <p class="msg" id="loginMsg" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="f-solicitar" role="tabpanel" aria-labelledby="t-solicitar" class="hidden">
+      <h2>Solicita tu cuenta</h2>
+      <p class="sub">Elige tus datos de acceso. Podrás entrar en cuanto el administrador apruebe la solicitud.</p>
+      <form id="reqForm" autocomplete="on" novalidate>
+        <label>Usuario <span class="hint">3 a 32 caracteres: minúsculas, números, punto, guion o guion bajo</span>
+          <input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required maxlength="32" pattern="[a-z0-9][a-z0-9._\-]{2,31}" placeholder="tu.usuario"></label>
+        <label>Contraseña <span class="hint">Mínimo 10 caracteres. Mejor una frase larga.</span>
+          <span class="field"><input name="password" type="password" autocomplete="new-password" required minlength="10" maxlength="200" placeholder="••••••••••"><button class="eye" type="button" aria-label="Mostrar contraseña">Ver</button></span>
+          <span class="meter" aria-hidden="true"><i id="meter"></i></span></label>
+        <label>Repite la contraseña<input name="password2" type="password" autocomplete="new-password" required maxlength="200" placeholder="••••••••••"></label>
+        <label>Contacto <span class="hint">Opcional: correo o usuario de Telegram, para avisarte</span><input name="contact" maxlength="120" autocomplete="email" placeholder="tu@correo.com o @usuario"></label>
+        <label>Mensaje para el administrador <span class="hint">Opcional</span><textarea name="note" maxlength="300" placeholder="Cómo nos conociste o qué plan te interesa"></textarea></label>
+        <button class="btn" type="submit">Enviar solicitud</button>
+        <p class="msg" id="reqMsg" role="alert"></p>
+      </form>
+    </section>
+
+    <div class="foot">
+      <span class="lock"><svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M5.5 7V5a2.5 2.5 0 015 0v2" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>Conexión cifrada. Tu contraseña se guarda con hash, nadie puede leerla.</span>
+      <span>¿Olvidaste tu contraseña? Pide al administrador que la restablezca. · <a href="/">Volver al inicio</a></span>
+    </div>
+  </div>
+</main>
+<script src="/static/entrar.js"></script>
+</body>
+</html>

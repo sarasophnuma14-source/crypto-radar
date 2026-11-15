@@ -240,14 +240,23 @@ class TEdgeProtocol(unittest.TestCase):
     def test_holdout_lock_refuses_second_run(self):
         sys.path.insert(0, str(ROOT / "research" / "edge"))
         import run as R
+        from radar.edge import ledger
+        real = ledger.LEDGER
+        before = real.read_bytes() if real.exists() else b""
         with tempfile.TemporaryDirectory() as d:
+            # el intento rechazado se anota en una copia del registro, nunca en el registro real
+            tmp = Path(d) / "ledger.jsonl"
+            if real.exists():
+                tmp.write_bytes(real.read_bytes())
+            ledger.LEDGER = tmp
             R.OUT = Path(d); (R.OUT / "HOLDOUT_EXECUTED.lock").write_text("2026-11-15")
             old = sys.argv; sys.argv = ["run.py", "holdout"]
             try:
                 with self.assertRaises(SystemExit):
                     R.holdout()
             finally:
-                sys.argv = old
+                sys.argv = old; ledger.LEDGER = real
+        self.assertEqual(real.read_bytes(), before)
 
     def test_splits_do_not_overlap(self):
         sys.path.insert(0, str(ROOT / "research" / "edge"))

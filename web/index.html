@@ -16,24 +16,6 @@
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<!-- Inicio de sesión / registro (solo en modo cuentas) -->
-<div class="auth hidden" id="auth">
-  <div class="auth-box card">
-    <div class="logo"><span class="mark" aria-hidden="true"></span>Crypto Radar</div>
-    <h1 id="authTitle">Inicia sesión</h1>
-    <p class="note" id="authSub">Análisis cuantitativo de criptomonedas en español. Te dice cuándo comprar, cuándo esperar y cuándo no entrar.</p>
-    <form id="authForm" autocomplete="on">
-      <label>Correo<input name="email" type="email" required autocomplete="email" maxlength="254"></label>
-      <label>Contraseña<input name="password" type="password" required minlength="10" maxlength="200" autocomplete="current-password"><small id="pwHint" class="hidden">Mínimo 10 caracteres.</small></label>
-      <button class="btn a" type="submit" id="authBtn">Entrar</button>
-      <p class="msg" id="authMsg" role="alert"></p>
-    </form>
-    <p class="note"><button class="linkbtn small" type="button" id="authSwitch">¿No tienes cuenta? Crear cuenta gratis</button></p>
-    <p class="note"><a id="salesLink" href="#" class="hidden">Ver planes y precios</a></p>
-    <p class="note fine">Software de análisis, no asesoría financiera. Puedes perder todo lo que inviertas.</p>
-  </div>
-</div>
-
 <div class="app" id="app">
   <aside class="side">
     <div class="logo"><span class="mark" aria-hidden="true"></span>Crypto Radar</div>
@@ -240,7 +222,7 @@
           </details>
           <div class="row"><button class="btn a" type="submit">Guardar cambios</button><span class="msg" id="setMsg"></span></div>
         </form>
-        <div class="card admin-only hidden" id="adminBox"><h3 class="h3">Usuarios (administración)</h3><div id="adminUsers"></div></div>
+        <div class="card admin-only hidden" id="adminBox"><h3 class="h3">Usuarios y solicitudes de acceso <span class="tag hidden" id="adminBadge">0</span></h3><div id="adminUsers"></div></div>
       </section>
 
       <footer class="disclaimer">Crypto Radar es software de análisis, no asesoría financiera. Las criptomonedas son de alto riesgo: puedes perder todo lo que inviertas. Resultados pasados no garantizan resultados futuros.</footer>
