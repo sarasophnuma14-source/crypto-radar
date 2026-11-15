@@ -1,6 +1,6 @@
 # Matriz de riesgos pendientes · Crypto Radar 2.1.0
 
-Fecha: 2026-11-15 (actualizada tras el cierre de riesgos; clasificación final en `CIERRE_RIESGOS_PILOTO.md`).
+Fecha: 2026-11-15 (actualizada en la preparación final; estado de lanzamiento en `GO_NO_GO_PILOTO.md`).
 
 Escalas:
 - **Probabilidad:** baja, media o alta.
@@ -34,7 +34,7 @@ Evidencia:
 | R-19 | CPU del plan gratis (0,1 CPU): con 25 usuarios activos el servidor se satura (entrar tarda hasta 15 s, p95 2,1 s) | Alta | Medio | No, si se usa Starter | `estres/render_free_0.1cpu.json` (cgroups) | Plan Starter (0,5 CPU) para hasta 50 usuarios activos; decisión del responsable |
 | R-20 | El escaneo (GIL) sube el p95 del panel a 0,3–0,5 s durante sus 4–7 s (0,65–1 s en Starter emulado) | Alta | Bajo | No | `ANALISIS_ESCANER_HTTP.md` | Aceptado; proceso aparte con 2 GB o si el p99 en Render supera 1 s |
 | R-21 | Neon real sin medir: TLS, arranque tras suspensión, *pooler*. Prueba de 10 usuarios **preparada y ensayada en local**, no ejecutada en Render | — | Medio | No | `tests/piloto/prueba_render_10.py`, `prueba_10_ensayo_local.json` | Ejecutarla tras desplegar, con autorización |
-| R-22 | Usuarios de la 2.0.0 quedan como `active` al migrar (no pasan por la aprobación del administrador). Se desconoce si la base real tiene alguno | Baja | Medio | No | `migracion_desde_main.json`, paso 3 | Antes de desplegar, en solo lectura: `SELECT id, email, status FROM users` |
+| R-22 | ~~Usuarios de la 2.0.0 quedaban `active` al migrar~~ → **CERRADO**: 2.1.0 es plataforma nueva; el primer arranque archiva las cuentas de 2.0.0 fuera de la autenticación | — | — | No | `plataforma_nueva.json` 41/41, `T30` | `REGISTRO_USUARIOS_PILOTO.md` §1; usar una base nueva en Neon |
 
 ## Riesgos cerrados en esta auditoría
 
@@ -49,3 +49,5 @@ Evidencia:
 | F-07 | Reinicio de PostgreSQL: 15 respuestas 500 mientras la base arrancaba (estrés integral) | Reintento corto al conectar (`radar/db.py`): 0 errores |
 | F-08 | 30 de 50 usuarios legítimos tras una misma IP recibían 429 (estrés integral) | Límite por intentos fallidos (`radar/auth.py`) |
 | F-09 | Restaurar la copia del piloto a través de la red tardaba 444,6 s (fila a fila con 10 ms de latencia) | Inserción por lotes de 1000 filas: 4,2 s (`PLAN_BACKUP_RECUPERACION.md` §3) |
+| F-10 | Dos instancias arrancando a la vez sobre PostgreSQL: una caía (choque en el catálogo al crear tablas) | Bloqueo consultivo en `db.init()`; 4 procesos simultáneos sin errores |
+| F-11 | Cambiar `CRYPTO_RADAR_ADMIN_USER` dejaba dos administradores | El arranque retira el rol al anterior: siempre uno |

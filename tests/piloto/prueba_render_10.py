@@ -9,10 +9,12 @@ Antes:
   2. export CR_BASE=https://<tu-servicio>.onrender.com  CR_PASSWORD='…'  (no la escribas en ningún archivo)
 
 Uso:
-  python tests/piloto/prueba_render_10.py --usuarios prueba01,prueba02,... [--minutos 5] [salida.json]
+  python tests/piloto/prueba_render_10.py --usuarios prueba01,prueba02,... [--minutos 5] [--escalonar 1] [salida.json]
+  (--escalonar S: segundos entre la entrada de cada usuario; 0 = todos a la vez. En Render Starter emulado, 10
+  inicios de sesión simultáneos tardan ~1,1 s cada uno por el coste de scrypt: ver INFORME_FINAL §5)
   python tests/piloto/prueba_render_10.py --simular             (ensayo local contra un servidor propio, sin red)
 
-Mide: latencia de inicio de sesión y del panel (p50/p95/p99/máx.), códigos HTTP, /healthz (fuentes de datos, último
+Mide: latencia de inicio de sesión (también > 2 s) y del panel (p50/p95/p99/máx.), códigos HTTP, /healthz (fuentes de datos, último
 escaneo) antes y después, y si alguna petición tarda más de 2 s. Se detiene sola si los errores pasan del 5 %.
 """
 import http.client
@@ -63,7 +65,7 @@ class Client:
         return st, (time.perf_counter() - t) * 1000, data
 
 
-def run(base, users, password, minutes):
+def run(base, users, password, minutes, stagger=1.0):
     if len(users) > MAX_USERS:
         sys.exit(f"Como mucho {MAX_USERS} usuarios en esta prueba")
     R = {"base": base, "usuarios": len(users), "minutos": minutes, "inicio": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())}
@@ -72,7 +74,8 @@ def run(base, users, password, minutes):
     R["healthz_antes"] = {"codigo": st, "ms": round(ms, 1), "cuerpo": json.loads(data or b"{}") if st == 200 else None}
     logins, samples, stop = [], [], threading.Event()
 
-    def user(name):
+    def user(i, name):
+        time.sleep(i * stagger)        # llegada escalonada (1 por segundo por defecto); --escalonar 0 = ráfaga
         c = Client(base)
         st, ms, _ = c.req("POST", "/api/auth/login", {"username": name, "password": password})
         logins.append((st, ms))
@@ -92,7 +95,7 @@ def run(base, users, password, minutes):
                 stop.set()
             time.sleep(1 + rnd.random())
 
-    ts = [threading.Thread(target=user, args=(u,)) for u in users]
+    ts = [threading.Thread(target=user, args=(i, u)) for i, u in enumerate(users)]
     [t.start() for t in ts]; [t.join() for t in ts]
     lat = [ms for s, ms in samples if s == 200]
     codes = {}
@@ -100,7 +103,8 @@ def run(base, users, password, minutes):
         codes[str(s)] = codes.get(str(s), 0) + 1
     R["login"] = {"ok": sum(1 for s, _ in logins if s == 200), "de": len(logins),
                   "p95_ms": pct([ms for _, ms in logins], 95), "max_ms": round(max((ms for _, ms in logins), default=0), 1),
-                  "codigos": sorted({str(s) for s, _ in logins})}
+                  "codigos": sorted({str(s) for s, _ in logins}), "escalonado_s": stagger,
+                  "mas_de_2s": sum(1 for _, ms in logins if ms > 2000)}
     R["panel"] = {"n": len(samples), "codigos": codes, "p50_ms": pct(lat, 50), "p95_ms": pct(lat, 95), "p99_ms": pct(lat, 99),
                   "max_ms": round(max(lat), 1) if lat else None, "mas_de_2s": sum(1 for x in lat if x > 2000)}
     R["detenida_por_errores"] = stop.is_set()
@@ -110,7 +114,8 @@ def run(base, users, password, minutes):
     R["panel"]["5xx"] = sum(1 for c in all_codes if c.startswith("5") or c.startswith("EXC"))
     R["panel"]["429"] = sum(1 for c in all_codes if c == "429")
     ok = (not stop.is_set() and R["login"]["ok"] == len(users) and (R["panel"]["p95_ms"] or 1e9) < 1000
-          and R["panel"]["mas_de_2s"] == 0 and R["panel"]["5xx"] == 0 and R["panel"]["429"] == 0)
+          and R["panel"]["mas_de_2s"] == 0 and R["login"]["mas_de_2s"] == 0 and R["panel"]["5xx"] == 0
+          and R["panel"]["429"] == 0)
     R["criterio"] = ("p95 del panel < 1 s, ningún 5xx ni error de red, ninguna petición > 2 s, todos los usuarios entran "
                      "y ningún 429 (sin bloqueos de usuarios legítimos)")
     R["resultado"] = "APROBADA" if ok else "NO APROBADA"
@@ -138,7 +143,8 @@ def simulate():
         while "LISTO" not in (p.stdout.readline() or "LISTO"):
             pass
         time.sleep(1)
-        return run(f"http://127.0.0.1:{port}", [f"prueba{i:02d}" for i in range(1, 11)], "clave de prueba r10 2026", 0.5)
+        return run(f"http://127.0.0.1:{port}", [f"prueba{i:02d}" for i in range(1, 11)], "clave de prueba r10 2026", 0.5,
+                   float(os.environ.get("ESCALONAR", "1")))
     finally:
         p.terminate(); p.wait(10)
 
@@ -154,7 +160,8 @@ if __name__ == "__main__":
             sys.exit(__doc__)
         users = [u for u in a[a.index("--usuarios") + 1].split(",") if u]
         mins = float(a[a.index("--minutos") + 1]) if "--minutos" in a else 5
-        R = run(base.rstrip("/"), users, pw, mins)
+        stg = float(a[a.index("--escalonar") + 1]) if "--escalonar" in a else 1.0
+        R = run(base.rstrip("/"), users, pw, mins, stg)
     print(json.dumps({k: v for k, v in R.items() if not k.startswith("healthz")}, ensure_ascii=False, indent=1))
     if out:
         Path(out).write_text(json.dumps(R, indent=1, ensure_ascii=False))
