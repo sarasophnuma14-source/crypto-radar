@@ -1,206 +1,626 @@
+// Crypto Radar · panel. JavaScript sin dependencias.
 const $ = s => document.querySelector(s);
-const api = (p, o) => fetch(p, o).then(r => r.json());
-const post = (p, b) => api(p, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(b || {})});
-let STATE = null, SORT = {key: "score", dir: -1}, lastAlertSeen = localStorageGet("seenAlert") || "";
+const $$ = s => [...document.querySelectorAll(s)];
+let CSRF = "", ME = null, ACCOUNTS = false;
+async function api(p, o) {
+  const r = await fetch(p, Object.assign({credentials: "same-origin"}, o));
+  let j = null; try { j = await r.json(); } catch (e) {}
+  if (r.status === 401 && ACCOUNTS && !p.startsWith("/api/auth/")) { showAuth(); throw new Error("sesión"); }
+  if (!r.ok && !j) throw new Error("El servidor respondió " + r.status);
+  if (j && typeof j === "object" && !Array.isArray(j)) j._status = r.status;
+  return j;
+}
+const post = (p, b) => api(p, {method: "POST", headers: {"Content-Type": "application/json", "X-CSRF-Token": CSRF}, body: JSON.stringify(b || {})});
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 
-function localStorageGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
-function localStorageSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
-function px(v){if(v==null||isNaN(v))return "N/D";const a=Math.abs(v);return "$"+(a>=1000?v.toLocaleString("en-US",{maximumFractionDigits:0}):a>=1?v.toLocaleString("en-US",{maximumFractionDigits:3}):Number(v.toPrecision(4)).toString())}
-function big(v){if(v==null)return "N/D";const a=Math.abs(v);return a>=1e12?"$"+(v/1e12).toFixed(2)+"T":a>=1e9?"$"+(v/1e9).toFixed(2)+"B":a>=1e6?"$"+(v/1e6).toFixed(1)+"M":"$"+Math.round(v).toLocaleString()}
-function pct(v,d=1){if(v==null||isNaN(v))return "N/D";return `<span class="${v>=0?"pos":"neg"}">${v>=0?"+":""}${v.toFixed(d)}%</span>`}
-function sc(v){const c=v>=90?"s90":v>=80?"s80":v>=70?"s70":v>=60?"s60":"s0";return `<span class="score ${c}">${Math.round(v)}</span>`}
-function act(a){const c=a.startsWith("COMPRAR")?"a-buy":a.startsWith("ESPERAR")?"a-wait":a.startsWith("EVITAR")||a.startsWith("RECHAZAR")?"a-avoid":"a-watch";return `<span class="act ${c}">${a}</span>`}
-function ago(iso){if(!iso)return "nunca";const m=Math.round((Date.now()-new Date(iso))/60000);return m<1?"ahora":m<60?`hace ${m} min`:m<1440?`hace ${Math.round(m/60)} h`:`hace ${Math.round(m/1440)} d`}
-function when(iso){return iso?new Date(iso).toLocaleString("es-CO",{dateStyle:"short",timeStyle:"short"}):"—"}
-function esc(s){return String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+let STATE = null, VIEW = "dash", SORT = {key: "rank_score", dir: -1}, MEME_TAB = "radar", MEMES = null;
+let lastAlertSeen = lsGet("seenAlert") || "";
 
-document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>show(b.dataset.tab));
-function show(t){document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));document.querySelectorAll(".tab").forEach(s=>s.classList.toggle("on",s.id==="tab-"+t));
- ({alerts:loadAlerts,positions:loadPositions,memes:loadMemes,journal:loadJournal,settings:loadSettings})[t]?.();
- if(t==="alerts"){localStorageSet("seenAlert",new Date().toISOString());lastAlertSeen=new Date().toISOString();$("#alertCount").classList.add("hidden")}}
+/* ---------- Formato (español) ---------- */
+const NF = (min, max) => new Intl.NumberFormat("es-CO", {minimumFractionDigits: min, maximumFractionDigits: max});
+const nf0 = NF(0, 0), nf1 = NF(1, 1), nf2 = NF(2, 2);
+function num(v, d = 1){ if (v == null || isNaN(v)) return "—"; return NF(d, d).format(v); }
+function px(v){
+  if (v == null || isNaN(v)) return "—";
+  const a = Math.abs(v);
+  if (a >= 1000) return "$" + nf0.format(v);
+  if (a >= 1) return "$" + NF(2, 2).format(v);
+  return "$" + new Intl.NumberFormat("es-CO", {maximumSignificantDigits: 4}).format(v);
+}
+function big(v){
+  if (v == null || isNaN(v)) return "—";
+  const a = Math.abs(v);
+  if (a >= 1e12) return "$" + nf2.format(v / 1e12) + " bill.";   // billones (10^12)
+  if (a >= 1e9) return "$" + nf1.format(v / 1e9) + " mil M";
+  if (a >= 1e6) return "$" + nf1.format(v / 1e6) + " M";
+  return "$" + nf0.format(v);
+}
+function pctTxt(v, d = 1){ if (v == null || isNaN(v)) return "—"; return (v >= 0 ? "+" : "−") + NF(d, d).format(Math.abs(v)) + "%"; }
+function pct(v, d = 1){ if (v == null || isNaN(v)) return `<span class="muted">—</span>`; return `<span class="${v >= 0 ? "pos" : "neg"}">${pctTxt(v, d)}</span>`; }
+function rTxt(v){ if (v == null || isNaN(v)) return "—"; return (v >= 0 ? "+" : "−") + nf1.format(Math.abs(v)) + "×"; }
+function esc(s){ return String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+function ago(iso){
+  if (!iso) return "nunca";
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  return m < 1 ? "ahora" : m < 60 ? `hace ${m} min` : m < 1440 ? `hace ${Math.round(m / 60)} h` : `hace ${Math.round(m / 1440)} d`;
+}
+function when(iso){ return iso ? new Date(iso).toLocaleString("es-CO", {day: "numeric", month: "short", hour: "numeric", minute: "2-digit"}) : "—"; }
+function dayLabel(iso){
+  const d = new Date(iso), t = new Date(); const k = x => x.toDateString();
+  const y = new Date(t); y.setDate(t.getDate() - 1);
+  if (k(d) === k(t)) return "Hoy";
+  if (k(d) === k(y)) return "Ayer";
+  return d.toLocaleDateString("es-CO", {weekday: "long", day: "numeric", month: "long"});
+}
+function scoreCls(v){ return v >= 80 ? "s-hi" : v >= 60 ? "s-mid" : "s-lo"; }
+function sc(v){ return `<span class="sc ${scoreCls(v)}">${Math.round(v)}</span>`; }
+function actCls(a){ a = a || ""; return a.startsWith("COMPRAR") ? "b-buy" : (a.startsWith("ESPERAR") || a.startsWith("VIGILAR")) ? "b-wait" : (a.startsWith("EVITAR") || a.startsWith("RECHAZAR")) ? "b-avoid" : "b-watch"; }
+const ACT = {"WATCHLIST": "En vigilancia", "RECHAZAR": "Descartado"};
+function actLabel(a){ a = String(a || ""); return ACT[a] || cap(a.replace(/\s*\(.*\)\s*/, "").replace(/\s*\/\s*/, " / ")); }
+function act(a){ return `<span class="badge ${actCls(a)}" title="${esc(cap(a))}">${esc(actLabel(a))}</span>`; }
+function cap(s){ s = String(s || "").toLowerCase(); return s.charAt(0).toUpperCase() + s.slice(1); }
+function ring(v){
+  const c = v >= 80 ? "var(--amber)" : v >= 60 ? "var(--info)" : "var(--muted)";
+  return `<div class="ring" style="--p:${Math.max(0, Math.min(100, v))};--c:${c}"><span>${Math.round(v)}</span></div>`;
+}
+const emptyRow = (n, t) => `<tr><td colspan="${n}" class="empty-row">${t}</td></tr>`;
 
-$("#scanBtn").onclick=async()=>{const r=await post("/api/scan");if(!r.ok)alert(r.msg);refresh()};
+/* ---------- Iconos (trazo simple) ---------- */
+const IC = {
+  radar: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><path d="M12 12 18 6"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/>',
+  bell: '<path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  wallet: '<rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M16 12.5h2M3 9h18"/>',
+  bolt: '<path d="M13 3 5 14h6l-1 7 8-11h-6z"/>',
+  history: '<path d="M4 12a8 8 0 1 0 2.3-5.6L4 8.7"/><path d="M4 4v4.7h4.7M12 8v4l3 2"/>',
+  gear: '<circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.1-1.2l2-1.5-2-3.4-2.3.9a7 7 0 0 0-2-1.2L14.2 3h-4l-.4 2.6a7 7 0 0 0-2 1.2l-2.4-.9-2 3.4 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.4 2.4-.9a7 7 0 0 0 2 1.2l.4 2.6h4l.4-2.6a7 7 0 0 0 2-1.2l2.3.9 2-3.4-2-1.5c.1-.4.1-.8.1-1.2z"/>',
+  more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+  refresh: '<path d="M20 11a8 8 0 0 0-14.7-3.5M4 4v4h4M4 13a8 8 0 0 0 14.7 3.5M20 20v-4h-4"/>',
+  download: '<path d="M12 4v11M7 10l5 5 5-5M5 20h14"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  up: '<path d="M4 17 10 11l4 4 6-7"/><path d="M15 8h5v5"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r=".8"/>',
+  warn: '<path d="M12 4 2.5 20h19z"/><path d="M12 10v4M12 17h.01"/>',
+  stop: '<rect x="5" y="5" width="14" height="14" rx="3"/>',
+  coin: '<circle cx="12" cy="12" r="8"/><path d="M14.5 9.5c-.5-.8-1.4-1.2-2.5-1.2-1.5 0-2.5.8-2.5 1.9 0 2.6 5 1.3 5 3.9 0 1.1-1 1.9-2.5 1.9-1.1 0-2-.4-2.6-1.2M12 6.5v1.8M12 15.7v1.8"/>',
+  down: '<path d="M4 7l6 6 4-4 6 7"/><path d="M15 16h5v-5"/>',
+  globe: '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.5 2.6 2.5 14.4 0 17M12 3.5c-2.5 2.6-2.5 14.4 0 17"/>',
+  info: '<circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8h.01"/>'
+};
+function icon(n){ return `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n] || ""}</svg>`; }
+function paintIcons(root = document){ root.querySelectorAll("i[data-ic]:empty").forEach(i => i.innerHTML = icon(i.dataset.ic)); }
+
+/* ---------- Avisos y diálogos dentro de la página ---------- */
+let toastT;
+function toast(t){ const el = $("#toast"); el.textContent = t; el.classList.remove("hidden"); clearTimeout(toastT); toastT = setTimeout(() => el.classList.add("hidden"), 4000); }
+function openOv(id){ $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function closeOv(el){ el.classList.add("hidden"); if (!$$(".overlay:not(.hidden)").length) document.body.style.overflow = ""; }
+$$(".overlay").forEach(o => o.addEventListener("click", e => { if (e.target === o || e.target.closest("[data-close]")) closeOv(o); }));
+document.addEventListener("keydown", e => { if (e.key === "Escape") $$(".overlay:not(.hidden)").forEach(closeOv); });
+function ask({title, text, input = false, placeholder = "", ok = "Aceptar"}){
+  return new Promise(res => {
+    $("#dlgTitle").textContent = title; $("#dlgText").textContent = text || ""; $("#dlgOk").textContent = ok;
+    const inp = $("#dlgInput"); inp.classList.toggle("hidden", !input); inp.value = ""; inp.placeholder = placeholder;
+    const ov = $("#dialog"), f = $("#dialogForm"); let done = false;
+    const finish = v => { if (done) return; done = true; obs.disconnect(); closeOv(ov); res(v); };
+    const obs = new MutationObserver(() => { if (ov.classList.contains("hidden")) finish(null); });
+    f.onsubmit = e => { e.preventDefault(); finish(input ? inp.value : true); };
+    openOv("#dialog"); obs.observe(ov, {attributes: true}); (input ? inp : $("#dlgOk")).focus();
+  });
+}
+
+
+/* ---------- Navegación (11 secciones) ---------- */
+const TITLES = {dash: "Dashboard", early: "Oportunidades tempranas", market: "Mercado", breakouts: "Rupturas", memes: "Memecoins",
+  exits: "Salidas", portfolio: "Cartera", backtest: "Backtesting", perf: "Rendimiento", alerts: "Alertas", settings: "Configuración"};
+const MORE = ["market", "breakouts", "memes", "exits", "backtest", "perf", "settings"];
+const LOADERS = {alerts: loadAlerts, portfolio: loadPositions, exits: loadPositions, memes: loadMemes, perf: loadJournal,
+  settings: loadSettings, backtest: loadBacktest};
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-view]"); if (!b) return;
+  if (b.dataset.view === "more") return openOv("#moreSheet");
+  closeOv($("#moreSheet")); show(b.dataset.view);
+});
+function show(v){
+  VIEW = v;
+  $$("[data-view]").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "more" && MORE.includes(v))));
+  $$(".view").forEach(s => s.classList.toggle("on", s.id === "v-" + v));
+  $("#viewTitle").textContent = TITLES[v]; document.title = TITLES[v] + " · Crypto Radar";
+  $("#exportBtn").classList.toggle("hidden", !["dash", "market", "perf"].includes(v));
+  window.scrollTo(0, 0);
+  LOADERS[v]?.();
+  if (v === "alerts") { lastAlertSeen = new Date().toISOString(); lsSet("seenAlert", lastAlertSeen); setCount(0); }
+  try { history.replaceState(null, "", "#" + v); } catch (e) {}
+}
+function setCount(n){ $$("[data-count]").forEach(c => { c.textContent = n > 99 ? "99+" : n; c.classList.toggle("hidden", !n); }); }
+const PH = {"PRE-EXPLOSION": "Pre-explosión", "ACCUMULATION": "Acumulación", "BREAKOUT": "Ruptura", "MOMENTUM": "Momentum",
+  "OVEREXTENDED": "Sobreextendida", "DISTRIBUTION": "Distribución", "REJECTED": "Descartada"};
+const phase = p => PH[p] || cap(p);
+const manip = (r, l) => `<span class="${r >= 60 ? "neg" : r >= 35 ? "amb" : "muted"}" title="Riesgo de manipulación">${r ?? "—"}${l ? " · " + esc(cap(l)) : ""}</span>`;
+
+/* ---------- Cuenta (modo SaaS) ---------- */
+let AUTH_MODE = "login";
+function showAuth(){ $("#auth").classList.remove("hidden"); $("#app").classList.add("hidden"); }
+function hideAuth(){ $("#auth").classList.add("hidden"); $("#app").classList.remove("hidden"); }
+$("#authSwitch").onclick = () => {
+  AUTH_MODE = AUTH_MODE === "login" ? "register" : "login";
+  const reg = AUTH_MODE === "register";
+  $("#authTitle").textContent = reg ? "Crea tu cuenta" : "Inicia sesión";
+  $("#authBtn").textContent = reg ? "Crear cuenta" : "Entrar";
+  $("#pwHint").classList.toggle("hidden", !reg);
+  $("#authForm").password.autocomplete = reg ? "new-password" : "current-password";
+  $("#authSwitch").textContent = reg ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Crear cuenta gratis";
+  $("#authMsg").textContent = "";
+};
+$("#authForm").onsubmit = async e => {
+  e.preventDefault(); const f = e.target; $("#authMsg").textContent = ""; $("#authBtn").disabled = true;
+  try {
+    const r = await post("/api/auth/" + AUTH_MODE, {email: f.email.value, password: f.password.value});
+    if (r.error) { $("#authMsg").textContent = r.error; return; }
+    CSRF = r.csrf; ME = r.user; f.password.value = ""; hideAuth(); applyUser(); refresh(); show(VIEW);
+  } catch (err) { $("#authMsg").textContent = "No se pudo contactar el servidor"; }
+  finally { $("#authBtn").disabled = false; }
+};
+function applyUser(){
+  const admin = !ACCOUNTS || ME?.is_admin;
+  $$(".admin-only").forEach(el => el.classList.toggle("hidden", !admin));
+  $$(".user-only").forEach(el => el.classList.toggle("hidden", !ACCOUNTS || !ME));
+  const pill = $("#planPill"); pill.classList.toggle("hidden", !ME);
+  if (ME) pill.textContent = "Plan " + ME.plan_label;
+}
+
+/* ---------- Estado ---------- */
+async function scan(){
+  try { const r = await post("/api/scan"); toast(r.ok ? "Escaneo iniciado. Tarda unos minutos." : (r.msg || r.error || "No se pudo iniciar el escaneo")); }
+  catch (e) { toast("No se pudo contactar el servidor"); }
+  refresh();
+}
+$("#scanBtn").onclick = scan; $("#scanBtnM").onclick = scan;
 
 async function refresh(){
-  STATE = await api("/api/state");
-  const st=STATE.status, rep=STATE.report||{};
-  $("#scanBtn").disabled=st.scanning; $("#scanBtn").textContent=st.scanning?"Escaneando…":"Escanear ahora";
-  $("#scanInfo").innerHTML = st.scanning ? esc(st.progress||"Escaneando…") :
-    `Último: ${rep.at?ago(rep.at):"nunca"} · Próximo: ${when(STATE.next_scan)}${st.last_error?` · <span class="neg">⚠ ${esc(st.last_error)}</span>`:""}`;
-  $("#empty").classList.toggle("hidden",!!rep.at);
-  if(rep.at) renderRadar(rep), renderAssets(rep);
-  const al=await api("/api/alerts"); const n=al.filter(a=>a.at>lastAlertSeen).length;
-  $("#alertCount").textContent=n; $("#alertCount").classList.toggle("hidden",!n||$("#tab-alerts").classList.contains("on"));
+  try { STATE = await api("/api/state"); }
+  catch (e) { if (e.message !== "sesión") setStatus("bad", "Sin conexión con el servidor"); return; }
+  if (STATE.user) { ME = STATE.user; applyUser(); }
+  const st = STATE.status || {}, rep = STATE.report || {};
+  $("#scanBtn").disabled = $("#scanBtnM").disabled = !!st.scanning;
+  $("#scanBtn").querySelector("span").textContent = st.scanning ? "Escaneando…" : "Escanear ahora";
+  if (st.scanning) setStatus("busy", st.progress || "Escaneando…");
+  else if (st.last_error) setStatus("bad", "Último escaneo con error");
+  else setStatus(rep.at ? "ok" : "", rep.at ? "Actualizado " + ago(rep.at) : "Sin escaneos todavía");
+  const eb = $("#errBar"); eb.classList.toggle("hidden", !st.last_error);
+  if (st.last_error) eb.textContent = "El último escaneo no terminó: " + st.last_error + ". Los datos mostrados son del último escaneo completo.";
+  const lb = $("#lockBar"); lb.classList.toggle("hidden", !rep.locked);
+  if (rep.locked) lb.innerHTML = `Plan Libre: ves el top 3 con su plan completo. <button class="linkbtn small" data-view="settings">Mejora a Pro</button> para el ranking completo, cartera, salidas, memecoins y alertas por Telegram.`;
+  $("#sideFoot").innerHTML = `Último escaneo: <b>${rep.at ? ago(rep.at) : "nunca"}</b><br>Próximo: ${when(STATE.next_scan)}${STATE.version ? `<br>Versión ${esc(STATE.version)}` : ""}`;
+  $("#empty").classList.toggle("hidden", !!rep.at);
+  if (rep.at) { renderDash(rep); renderEarly(rep); renderMarket(rep); renderBreakouts(rep); }
+  try { const al = await api("/api/alerts"); if (Array.isArray(al)) { setCount(VIEW === "alerts" ? 0 : al.filter(a => a.at > lastAlertSeen).length); renderDashAlerts(al); } } catch (e) {}
+}
+function setStatus(cls, txt){ const s = $("#status"); s.className = "status " + cls; s.querySelector("span").textContent = txt; s.title = txt; }
+
+/* ---------- 1. Dashboard ---------- */
+const FG = {"Extreme Fear": "Miedo extremo", "Fear": "Miedo", "Neutral": "Neutral", "Greed": "Codicia", "Extreme Greed": "Codicia extrema"};
+const mini = (l, v, s = "", x = "") => `<div class="mini ${x}"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
+function renderDash(rep){
+  const m = rep.market || {}, v = rep.verdict || "", fg = m.fear_greed;
+  const vc = v === "OPORTUNIDADES ACTIVAS" ? "v-ok" : v === "ESPERAR ENTRADA" ? "" : "v-cash";
+  $("#kpis").innerHTML = `<div class="verdict ${vc}"><div class="k">Veredicto del mercado</div><h2>${esc(cap(v))}</h2><p>${esc(rep.verdict_text || "")}</p></div>` +
+    mini("Bitcoin", px(m.btc_price), `7 d ${pctTxt(m.btc_chg_7d)} · 30 d ${pctTxt(m.btc_chg_30d)}`) +
+    mini("Régimen", esc(m.regime_label || cap(m.regime || "—")), `Puntaje mínimo ${m.min_buy_score ?? "—"}`) +
+    mini("Amplitud", m.breadth != null ? nf0.format(m.breadth) + "%" : "—", "altcoins sobre su EMA50") +
+    mini("Sentimiento", fg ? fg.value : "—", fg ? (FG[fg.label] || fg.label) : "sin dato", "x");
+  $("#outlook").textContent = rep.outlook || "";
+  const pc = rep.phase_counts || {}, tot = Object.values(pc).reduce((a, b) => a + b, 0) || 1;
+  $("#phaseBar").innerHTML = Object.keys(PH).filter(k => pc[k]).map(k => `<span class="ph ph-${k.toLowerCase()}" style="flex:${pc[k]}" title="${phase(k)}: ${pc[k]}">${pc[k] / tot > .07 ? phase(k) + " " + pc[k] : ""}</span>`).join("");
+  $("#rankMeta").textContent = `${rep.analyzed ?? "—"} activos analizados · prioriza fases tempranas y penaliza lo que ya subió`;
+  const R = rep.ranking || [];
+  $("#rankCards").innerHTML = R.length ? R.map(oppCard).join("") : emptyCard();
+  const cols = ["#", "Token", "Precio", "Puntaje", "Fase", "Vol. rel.", "24 h", "7 d", "30 d", "vs BTC", "Liquidez", "Manip.", "Zona de entrada", "Stop", "TP1", "TP2", "TP3", "R/B", "Acción"];
+  $("#rankTable").innerHTML = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` +
+    (R.length ? R.map(r => `<tr data-s="${esc(r.symbol)}"><td class="muted">${r.rank}</td><td class="sym">${esc(r.symbol)}</td><td>${px(r.price)}</td>
+      <td>${sc(r.score)}</td><td>${phase(r.phase)}</td><td>${r.rel_volume != null ? "×" + nf1.format(r.rel_volume) : "—"}</td><td>${pct(r.chg_24h)}</td><td>${pct(r.chg_7d)}</td>
+      <td>${pct(r.chg_30d)}</td><td>${pct(r.rs_btc_30d)}</td><td>${r.liquidity != null ? nf0.format(r.liquidity * 100) : "—"}</td><td>${manip(r.manipulation_risk)}</td>
+      <td>${px(r.entry_low)} – ${px(r.entry_high)}</td><td class="neg">${px(r.stop)}</td><td>${px(r.tp1)}</td><td class="pos">${px(r.tp2)}</td><td>${px(r.tp3)}</td>
+      <td>${num(r.rr)}</td><td>${act(r.action)}</td></tr>`).join("") : emptyRow(cols.length, "Hoy ningún activo califica. Mantener liquidez también es una decisión.")) + "</tbody>";
+  const av = rep.avoid || [];
+  $("#avoidList").innerHTML = av.length ? `<div class="avoid">${av.slice(0, 8).map(a => `<div><button class="linkbtn small" data-s="${esc(a.symbol)}">${esc(a.symbol)}</button> · ${esc(a.phase)} · ${esc(a.why)}</div>`).join("")}</div>` : `<p class="note">Nada que destacar.</p>`;
+}
+function emptyCard(){ return `<div class="card empty"><h2>Hoy ningún activo califica</h2><p>El radar prefiere no operar a forzar una entrada. Mantener liquidez también es una decisión.</p></div>`; }
+function oppCard(r){
+  return `<button class="opp" data-s="${esc(r.symbol)}">${ring(r.score)}
+    <div><div class="t">${esc(r.symbol)}<small>${esc(r.name || "")}</small></div><div class="m">${phase(r.phase)} · 30 d ${pctTxt(r.chg_30d)} · manip. ${r.manipulation_risk ?? "—"}</div></div>
+    ${act(r.action)}
+    <div class="lv"><div><span>Entrada</span><b>${px(r.entry_low)}–${px(r.entry_high)}</b></div><div><span>Stop</span><b class="neg">${px(r.stop)}</b></div><div><span>TP2</span><b class="pos">${px(r.tp2)}</b></div><div><span>R/B</span><b>${num(r.rr)}</b></div></div>
+  </button>`;
+}
+function renderDashAlerts(al){
+  $("#dashAlerts").innerHTML = al.length ? al.slice(0, 5).map(a => `<div class="mini-al"><b>${esc(a.symbol)}</b> · ${esc(a.label)} <span class="muted">${ago(a.at)}</span></div>`).join("") : `<p class="note">Sin alertas todavía.</p>`;
+}
+document.addEventListener("click", e => { const t = e.target.closest("[data-s]"); if (t && !e.target.closest("[data-pid]")) detail(t.dataset.s); });
+
+/* ---------- 2. Oportunidades tempranas · 4. Rupturas ---------- */
+function renderEarly(rep){
+  const E = rep.early || [];
+  $("#earlyCards").innerHTML = E.length ? E.map(oppCard).join("") :
+    `<div class="card empty"><h2>Sin pre-explosiones ni acumulaciones válidas</h2><p>Ninguna moneda muestra a la vez compresión, volumen creciente y precio cerca de la resistencia sin haber corrido ya.</p></div>`;
+}
+function renderBreakouts(rep){
+  const B = rep.breakouts || [];
+  const cols = ["Token", "Precio", "Puntaje", "Vol. rel.", "24 h", "30 d", "Manip.", "Retest (zona)", "Stop", "TP1", "TP2", "R/B", "Acción"];
+  $("#boTable").innerHTML = `<thead><tr>${cols.map(c => `<th>${c}</th>`).join("")}</tr></thead><tbody>` + (B.length ? B.map(r => `<tr data-s="${esc(r.symbol)}">
+    <td class="sym">${esc(r.symbol)}</td><td>${px(r.price)}</td><td>${sc(r.score)}</td><td>${r.rel_volume != null ? "×" + nf1.format(r.rel_volume) : "—"}</td><td>${pct(r.chg_24h)}</td><td>${pct(r.chg_30d)}</td>
+    <td>${manip(r.manipulation_risk)}</td><td>${px(r.entry_low)} – ${px(r.entry_high)}</td><td class="neg">${px(r.stop)}</td><td>${px(r.tp1)}</td><td class="pos">${px(r.tp2)}</td><td>${num(r.rr)}</td><td>${act(r.action)}</td></tr>`).join("")
+    : emptyRow(cols.length, "Ninguna ruptura con volumen en este escaneo.")) + "</tbody>";
 }
 
-function renderRadar(rep){
-  const m=rep.market, v=rep.verdict;
-  $("#verdict").className="verdict "+(v==="OPORTUNIDADES ACTIVAS"?"v-ok":v==="ESPERAR ENTRADA"?"v-wait":"v-cash");
-  $("#verdict").innerHTML=`<b>${esc(v)}</b>${esc(rep.verdict_text)} <span class="muted small">· Escaneo ${when(rep.at)} · ${rep.analyzed} activos en ${rep.duration_s}s</span>`;
-  const fg=m.fear_greed;
-  $("#market").innerHTML=[
-    ["Régimen",m.regime,m.alt_bias],["Bitcoin",px(m.btc_price),`RSI ${m.btc_rsi?.toFixed(0)??"N/D"} · 30d ${m.btc_chg_30d!=null?m.btc_chg_30d.toFixed(1)+"%":"N/D"}`],
-    ["Dominancia BTC",m.btc_dominance!=null?m.btc_dominance.toFixed(1)+"%":"N/D",`ETH ${m.eth_dominance?.toFixed(1)??"N/D"}%`],
-    ["Cap. total",big(m.total_mcap),`24h ${m.mcap_chg_24h!=null?m.mcap_chg_24h.toFixed(1)+"%":"N/D"}`],
-    ["Fear & Greed",fg?fg.value:"N/D",fg?({"Extreme Fear":"Miedo extremo","Fear":"Miedo","Neutral":"Neutral","Greed":"Codicia","Extreme Greed":"Codicia extrema"}[fg.label]||fg.label):""],["Amplitud alts",m.breadth.toFixed(0)+"%","sobre su EMA50"],
-    ["Exposición máx. alts",m.max_alt_exposure+"%",`score mínimo de compra ${m.min_buy_score}`]
-  ].map(([l,v,s])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div><div class="s">${esc(s)}</div></div>`).join("");
-  $("#outlook").textContent=rep.outlook;
-  const cols=["#","Token","Precio","Market cap","Score","Fase","Entrada","Stop","TP1","TP2","TP3","Retorno","Riesgo","R:R","Confianza","Acción"];
-  $("#rankTable").innerHTML=`<thead><tr>${cols.map(c=>`<th>${c}</th>`).join("")}</tr></thead><tbody>`+
-   (rep.ranking.length?rep.ranking.map(r=>{const p=r.plan;return `<tr data-s="${r.symbol}"><td>${r.rank}</td><td class="sym">${r.symbol}<small>${esc(r.name||"")}</small></td>
-   <td>${px(r.price)}</td><td>${big(r.market_cap)}</td><td>${sc(r.score)}</td><td>${r.phase}</td><td>${px(p.entry_ideal)}–${px(p.entry_zone_high)}</td>
-   <td class="neg">${px(p.stop)}</td><td>${px(p.tp1)}</td><td>${px(p.tp2)}</td><td>${px(p.tp3)}</td><td class="pos">+${p.return_tp2_pct.toFixed(0)}%</td>
-   <td class="neg">-${p.risk_pct.toFixed(1)}%</td><td>${p.rr.toFixed(1)}</td><td>${r.confidence}</td><td>${act(r.action)}</td></tr>`}).join("")
-   :`<tr><td colspan="16" class="muted">Ningún activo califica. Mantener liquidez.</td></tr>`)+"</tbody>";
-  $("#rankTable").querySelectorAll("tr[data-s]").forEach(tr=>tr.onclick=()=>detail(tr.dataset.s));
-  const x=rep.extra, A=s=>s?`<a href="#" data-s="${s}" class="sym">${s}</a>`:`<span class="muted">Ninguno califica</span>`;
-  $("#extra").innerHTML=[
-    ["Top 3",x.top3.length?x.top3.map(A).join(" · "):A(null)],["Mejor entrada temprana",A(x.best_early_entry)],
-    ["Mejor riesgo/beneficio",A(x.best_risk_reward)],["Mayor potencial de crecimiento",A(x.highest_growth)],
-    ["Operación corto plazo más atractiva",A(x.short_term_trade)],
-    ["Activos a evitar",x.avoid.length?x.avoid.map(a=>`<div>${A(a.symbol)} <span class="muted small">${esc(a.why)}</span></div>`).join(""):"—"]
-  ].map(([h,b])=>`<div class="card"><h3>${h}</h3><div>${b}</div></div>`).join("");
-  $("#extra").querySelectorAll("a[data-s]").forEach(a=>a.onclick=e=>{e.preventDefault();detail(a.dataset.s)});
+/* ---------- 3. Mercado ---------- */
+function renderMarket(rep){
+  const m = rep.market || {}, pol = m.policy || {};
+  $("#mktKpis").innerHTML = mini("Bitcoin", px(m.btc_price), `90 d desde máx. ${pctTxt(m.btc_drawdown_90d_pct)}`) + mini("Volatilidad BTC", m.btc_vol_annual_pct != null ? nf0.format(m.btc_vol_annual_pct) + "%" : "—", "anualizada 20 d") +
+    mini("Dominancia BTC", m.btc_dominance != null ? nf1.format(m.btc_dominance) + "%" : "—", `ETH ${num(m.eth_dominance)}%`) + mini("Capitalización total", big(m.total_mcap), `24 h ${pctTxt(m.mcap_chg_24h)}`) +
+    mini("Altcoins vs BTC", m.alt_rs_30d != null ? (m.alt_rs_30d >= 0 ? "+" : "") + nf1.format(m.alt_rs_30d) : "—", "mediana 30 d, puntos");
+  $("#regimeBox").innerHTML = `<p class="big">${esc(m.regime_label || m.regime || "—")}</p><ul>${(m.regime_reasons || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>`;
+  $("#policyBox").innerHTML = `<div class="meta col"><span>Puntaje mínimo para entrar <b>${pol.min_score ?? "—"}</b></span><span>Exposición máxima en altcoins <b>${pol.max_alt_exposure ?? "—"}%</b></span>
+    <span>Multiplicador de tamaño <b>×${pol.size_mult ?? "—"}</b></span><span>Fases que se compran <b>${(pol.phases || []).map(phase).join(", ") || "—"}</b></span></div>`;
+  const A = rep.assets || [], ph = $("#fPhase");
+  if (ph.options.length < 2) { Object.keys(PH).forEach(p => ph.add(new Option(phase(p), p))); ph.oninput = $("#fSearch").oninput = () => renderMarket(STATE.report); }
+  const q = $("#fSearch").value.trim().toUpperCase();
+  const rows = A.filter(a => (!q || a.symbol.includes(q) || (a.name || "").toUpperCase().includes(q)) && (!ph.value || a.phase === ph.value));
+  const g = {symbol: a => a.symbol, price: a => a.price, chg_24h: a => a.metrics?.chg_24h ?? -999, chg_30d: a => a.metrics?.chg_30d ?? -999, market_cap: a => a.market_cap || 0,
+    score: a => a.score ?? -1, rank_score: a => a.rank_score ?? -99, phase: a => a.phase, manip: a => a.manipulation?.risk ?? -1, quality: a => a.quality?.score ?? -1, action: a => a.action || ""};
+  rows.sort((a, b) => { const x = g[SORT.key](a), y = g[SORT.key](b); return (x > y ? 1 : x < y ? -1 : 0) * SORT.dir; });
+  const H = [["symbol", "Token"], ["price", "Precio"], ["chg_24h", "24 h"], ["chg_30d", "30 d"], ["market_cap", "Capitalización"], ["score", "Puntaje"], ["rank_score", "Ranking"],
+    ["phase", "Fase"], ["manip", "Manip."], ["quality", "Calidad datos"], ["action", "Acción"]];
+  $("#assetTable").innerHTML = `<thead><tr>${H.map(([k, l]) => `<th data-k="${k}">${l}${SORT.key === k ? (SORT.dir > 0 ? " ↑" : " ↓") : ""}</th>`).join("")}</tr></thead><tbody>` +
+    (rows.length ? rows.map(a => a.locked ? `<tr class="locked"><td class="sym">${esc(a.symbol)}</td><td>${px(a.price)}</td><td colspan="2" class="muted">—</td><td>${big(a.market_cap)}</td><td colspan="6" class="muted">Disponible en Pro</td></tr>` :
+      `<tr data-s="${esc(a.symbol)}"><td class="sym">${esc(a.symbol)}${a.in_watchlist ? ' <span class="amb" title="En tu lista">★</span>' : ""}</td>
+      <td>${px(a.price)}</td><td>${pct(a.metrics?.chg_24h)}</td><td>${pct(a.metrics?.chg_30d)}</td><td>${big(a.market_cap)}</td><td>${sc(a.score)}</td><td>${a.rank_score >= 0 ? nf1.format(a.rank_score) : "—"}</td>
+      <td>${phase(a.phase)}</td><td>${manip(a.manipulation?.risk)}</td><td>${a.quality?.score ?? "—"}</td><td>${act(a.action)}</td></tr>`).join("") : emptyRow(11, "Ningún activo coincide con el filtro.")) + "</tbody>";
+  $("#assetTable").querySelectorAll("th[data-k]").forEach(th => th.onclick = () => { SORT = {key: th.dataset.k, dir: SORT.key === th.dataset.k ? -SORT.dir : -1}; renderMarket(STATE.report); });
+  const sk = rep.skipped || [];
+  $("#skipped").textContent = sk.length ? `Fuera del análisis (${sk.length}): ${sk.slice(0, 12).map(s => `${s.symbol} (${s.reason})`).join(", ")}${sk.length > 12 ? "…" : ""}` : "";
 }
 
-function renderAssets(rep){
-  const ph=$("#fPhase"),ct=$("#fCat");
-  if(ph.options.length<2){[...new Set(rep.assets.map(a=>a.phase))].sort().forEach(p=>ph.add(new Option(p,p)));
-    [...new Set(rep.assets.flatMap(a=>a.categories||[]))].sort().forEach(p=>ct.add(new Option(p,p)));
-    [ph,ct,$("#fSearch")].forEach(e=>e.oninput=()=>renderAssets(STATE.report))}
-  const q=$("#fSearch").value.trim().toUpperCase();
-  let rows=rep.assets.filter(a=>(!q||a.symbol.includes(q))&&(!ph.value||a.phase===ph.value)&&(!ct.value||(a.categories||[]).includes(ct.value)));
-  const get={symbol:a=>a.symbol,score:a=>a.score,price:a=>a.price,market_cap:a=>a.market_cap||0,chg_24h:a=>a.chg_24h??-999,chg_30d:a=>a.tech.chg_30d??-999,
-    rsi:a=>a.tech.rsi??0,early:a=>a.early_score,mom:a=>a.momentum_score,exit:a=>a.exit_risk,rr:a=>a.plan.rr,phase:a=>a.phase,action:a=>a.action};
-  rows.sort((a,b)=>{const x=get[SORT.key](a),y=get[SORT.key](b);return (x>y?1:x<y?-1:0)*SORT.dir});
-  const H=[["symbol","Token"],["price","Precio"],["chg_24h","24h"],["chg_30d","30d"],["market_cap","Market cap"],["score","Score"],["phase","Fase"],
-    ["rsi","RSI"],["early","Early"],["mom","Momentum"],["exit","Riesgo salida"],["rr","R:R"],["action","Acción"]];
-  $("#assetTable").innerHTML=`<thead><tr>${H.map(([k,l])=>`<th data-k="${k}">${l}${SORT.key===k?(SORT.dir>0?" ▲":" ▼"):""}</th>`).join("")}<th>Categorías</th></tr></thead><tbody>`+
-   rows.map(a=>`<tr data-s="${a.symbol}"><td class="sym">${a.symbol}${a.in_watchlist?" ⭐":""}</td><td>${px(a.price)}</td><td>${pct(a.chg_24h)}</td><td>${pct(a.tech.chg_30d)}</td>
-   <td>${big(a.market_cap)}</td><td>${sc(a.score)}</td><td>${a.phase}</td><td>${a.tech.rsi?.toFixed(0)??"N/D"}</td><td>${a.early_score}</td><td>${a.momentum_score}</td>
-   <td class="${a.exit_risk>=50?"neg":""}">${a.exit_risk}</td><td>${a.plan.rr.toFixed(1)}</td><td>${act(a.action)}</td>
-   <td>${(a.categories||[]).map(c=>`<span class="tag">${c}</span>`).join("")}</td></tr>`).join("")+"</tbody>";
-  $("#assetTable").querySelectorAll("th[data-k]").forEach(th=>th.onclick=()=>{SORT={key:th.dataset.k,dir:SORT.key===th.dataset.k?-SORT.dir:-1};renderAssets(STATE.report)});
-  $("#assetTable").querySelectorAll("tr[data-s]").forEach(tr=>tr.onclick=()=>detail(tr.dataset.s));
-  $("#skipped").innerHTML=(rep.skipped||[]).map(s=>`${s.symbol}: ${esc(s.reason)}`).join(" · ");
-}
-
-const BK={technical_structure:["Estructura técnica",20],volume_and_liquidity:["Volumen y liquidez",15],on_chain_activity:["Actividad on-chain",15],
- fundamentals_and_tokenomics:["Fundamentales y tokenomics",15],market_catalysts:["Catalizadores",15],risk_reward_ratio:["Riesgo/beneficio",10],market_sentiment:["Sentimiento",10]};
-
+/* ---------- Ficha de un activo ---------- */
 async function detail(sym){
-  const a=STATE.report.assets.find(x=>x.symbol===sym); if(!a) return;
-  const p=a.plan, t=a.tech;
-  const lv=(l,v,c="")=>`<div class="lv"><div class="l">${l}</div><div class="v ${c}">${v}</div></div>`;
-  const list=(h,arr)=>`<h3>${h}</h3>${arr.length?`<ul class="sig">${arr.map(s=>`<li>${esc(s)}</li>`).join("")}</ul>`:`<p class="muted small">Ninguna</p>`}`;
-  $("#modalContent").innerHTML=`<h2>${a.symbol} <span class="muted">${esc(a.name||"")}</span> ${sc(a.score)} ${act(a.action)}</h2>
-   <div class="muted">${a.class} · Fase <b>${a.phase}</b> · Confianza ${a.confidence} · Cobertura de datos ${a.coverage}% · ${(a.categories||[]).join(" · ")}</div>
-   <canvas id="chart" width="1060" height="340"></canvas>
-   <div class="grid plan">${lv("Precio",px(a.price))}${lv("Entrada ideal",px(p.entry_ideal))}${lv("Zona hasta",px(p.entry_zone_high))}${lv("Entrada agresiva",px(p.entry_aggressive))}
-   ${lv("Entrada confirmación",px(p.entry_confirmation))}${lv("Stop loss",px(p.stop),"neg")}${lv("TP1",px(p.tp1),"pos")}${lv("TP2",px(p.tp2),"pos")}${lv("TP3",px(p.tp3),"pos")}
-   ${lv("R:R (a TP2)",p.rr.toFixed(2))}${lv("Retorno TP2 / TP3",`+${p.return_tp2_pct.toFixed(0)}% / +${p.return_tp3_pct.toFixed(0)}%`)}${lv("Riesgo",`-${p.risk_pct.toFixed(1)}%`,"neg")}
-   ${lv("Tamaño sugerido",`${px(p.position_usd)} <span class='muted small'>(riesgo ${px(p.risk_usd)})</span>`)}</div>
-   <p class="small"><b>Salida final:</b> ${esc(p.final_exit)}. ${esc(p.plan_note)}</p>
-   <div class="grid cards3">
-     <div>${list("🟢 Early Entry ("+a.early_score+")",a.signals_early)}${list("🚀 Momentum ("+a.momentum_score+")",a.signals_momentum)}</div>
-     <div>${list("🔻 Exit Intelligence ("+a.exit_risk+")",a.signals_exit)}${list("Notas de riesgo",a.notes)}${a.catalyst?`<h3>Catalizador</h3><p>${esc(a.catalyst)}</p>`:""}</div>
-     <div><h3>Puntuación por bloque</h3>${Object.entries(BK).map(([k,[l,w]])=>{const v=a.breakdown[k];return `<div class="bk"><span>${l}</span>${v==null?`<span class="nd">N/D · sin datos verificables</span>`:`<div class="bar"><i style="width:${v/w*100}%"></i></div><span>${v}/${w}</span>`}</div>`}).join("")}
-     <h3 style="margin-top:12px">Indicadores</h3><div class="small">RSI 1D ${t.rsi?.toFixed(0)??"N/D"} · RSI 4H ${t.h4_rsi?.toFixed(0)??"N/D"} · EMA20 ${px(t.ema20)} · EMA50 ${px(t.ema50)} · EMA200 ${px(t.ema200)} · ATR ${t.atr_pct.toFixed(1)}% · Vol x${t.vol_ratio.toFixed(2)} · OBV ${(t.obv_flow*100).toFixed(0)} · 7d ${pct(t.chg_7d)} · 30d ${pct(t.chg_30d)} · 90d ${pct(t.chg_90d)} · Desde máx. ${pct(t.from_high_pct,0)} · Funding ${a.funding!=null?(a.funding*100).toFixed(4)+"%":"N/D"} · OI 24h ${a.oi_change_24h!=null?a.oi_change_24h.toFixed(0)+"%":"N/D"}</div></div>
-   </div>
-   <div class="row gap" style="margin-top:12px"><button class="primary" id="addPos">Registrar posición con este plan</button><button id="runBt">Backtest de ${a.symbol}</button></div>
-   <h3 style="margin-top:14px">Historial de puntuación</h3><div id="hist" class="small muted">Cargando…</div>`;
-  $("#modal").classList.remove("hidden");
-  $("#addPos").onclick=()=>{$("#modal").classList.add("hidden");show("positions");const f=$("#posForm");f.symbol.value=a.symbol;f.entry.value=+p.entry_ideal.toPrecision(6);f.stop.value=+p.stop.toPrecision(6);f.tp1.value=+p.tp1.toPrecision(6);f.tp2.value=+p.tp2.toPrecision(6);f.tp3.value=+p.tp3.toPrecision(6)};
-  $("#runBt").onclick=()=>{$("#modal").classList.add("hidden");show("backtest");$("#btForm").symbol.value=a.symbol;$("#btForm").requestSubmit()};
-  const c=await api("/api/candles?symbol="+sym); if(!c.error) drawChart($("#chart"),c,p);
-  else $("#chart").replaceWith(Object.assign(document.createElement("p"),{className:"muted small",textContent:"Gráfico disponible para el top 40 y tus posiciones."}));
-  const h=await api("/api/history?symbol="+sym);
-  $("#hist").innerHTML=h.length?h.slice(-30).reverse().map(([t,s,ph,pr])=>`${t.replace("T"," ")} · ${Math.round(s)} · ${ph} · ${px(pr)}`).join("<br>"):"Sin historial";
+  const a = (STATE?.report?.assets || []).find(x => x.symbol === sym); if (!a || a.locked) return;
+  const p = a.plan || {}, mt = a.metrics || {}, mn = a.manipulation || {}, q = a.quality || {};
+  const lv = (l, v, c = "") => `<div><span>${l}</span><b class="${c}">${v}</b></div>`;
+  const fams = Object.entries(a.families || {}).map(([k, f]) => `<div class="bk"><span>${esc(f.label)} <small class="muted">peso ${f.weight}</small></span>${f.score == null ? `<span class="nd">N/D</span>` :
+    `<div class="bar"><i style="width:${Math.round(f.score * 100)}%"></i></div>`}</div>${(f.evidence || []).slice(0, 2).map(e => `<p class="ev">${esc(e)}</p>`).join("")}`).join("");
+  const ex = a.exit;
+  $("#detailBody").innerHTML = `
+    <div class="d-head"><h2 id="dTitle">${esc(a.symbol)}</h2><span class="muted">${esc(a.name || "")}</span>${sc(a.score)}${act(a.action)}</div>
+    <div class="d-sub">Fase <b>${phase(a.phase)}</b> · ${esc(a.action_reason || "")} · Cobertura ${a.coverage ?? "—"}% · Calidad de datos ${q.score ?? "—"}/100</div>
+    <canvas id="chart"></canvas>
+    <div class="plan">
+      ${lv("Precio", px(a.price))}${lv("Zona de entrada", `${px(p.entry_low)} – ${px(p.entry_high)}`)}${lv("Ruptura (alternativa)", px(p.trigger_breakout))}
+      ${lv("Invalidación / stop", px(p.stop), "neg")}${lv("TP1", px(p.tp1), "pos")}${lv("TP2", px(p.tp2), "pos")}${lv("TP3", px(p.tp3), "pos")}
+      ${lv("Riesgo/beneficio (TP2)", num(p.rr))}${lv("Riesgo hasta el stop", pctTxt(-(p.risk_pct || 0)), "neg")}${lv("Tamaño sugerido", px(p.position_usd))}
+    </div>
+    <p class="note" style="margin-bottom:14px">${esc(p.partials || "")}</p>
+    ${ex ? `<div class="card exitbox"><h3>Exit Intelligence: ${esc(ex.decision)}</h3><ul>${ex.reasons.map(x => `<li>${esc(x)}</li>`).join("")}</ul><p class="note">Stop sugerido ${px(ex.suggested_stop)}${ex.trailing_stop ? " · trailing " + px(ex.trailing_stop) : ""}</p></div>` : ""}
+    <div class="d-cols">
+      <div class="card"><h3>Puntuación por familia</h3>${fams}</div>
+      <div class="card"><h3>Por qué esta fase</h3><ul>${(a.phase_reasons || []).map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+        <h3>Riesgo de manipulación: ${mn.risk ?? "—"}/100 (${esc(cap(mn.level || ""))})</h3>${(mn.evidence || []).length ? `<ul>${mn.evidence.map(e => `<li>${esc(e.text || e)}</li>`).join("")}</ul>` : `<p class="note">Sin evidencia de manipulación.</p>`}
+        <p class="note">${esc(mn.note || "")}${mn.book ? " · Libro de órdenes: " + esc(mn.book) : ""}</p></div>
+      <div class="card"><h3>Contexto</h3><div class="meta col"><span>Volumen relativo <b>${mt.rel_volume != null ? "×" + nf1.format(mt.rel_volume) : "—"}</b></span>
+        <span>24 h <b>${pctTxt(mt.chg_24h)}</b> · 7 d <b>${pctTxt(mt.chg_7d)}</b> · 30 d <b>${pctTxt(mt.chg_30d)}</b></span><span>Fuerza vs BTC (30 d) <b>${pctTxt(mt.rs_btc_30d)}</b></span>
+        <span>Volumen medio <b>${big(mt.avg_volume_usd)}</b></span><span>RSI <b>${mt.rsi != null ? nf0.format(mt.rsi) : "—"}</b> · ATR <b>${num(mt.atr_pct)}%</b></span>
+        <span>Capitalización <b>${big(a.market_cap)}</b> · FDV <b>${big(a.fdv)}</b></span>${a.book ? `<span>Spread <b>${num(a.book.spread_pct, 3)}%</b> · Profundidad ±2 % <b>${big(a.book.depth_usd_2pct)}</b></span>` : ""}
+        ${(q.issues || []).length ? `<span class="amb">Datos: ${esc(q.issues.join("; "))}</span>` : ""}</div></div>
+    </div>
+    <div class="row" style="margin-top:16px"><button class="btn a" type="button" id="addPos" data-pid="1"><i data-ic="plus"></i>Registrar posición con este plan</button></div>
+    <div class="sec"><h2>Historial del puntaje</h2></div><div class="hist" id="hist">Cargando…</div>`;
+  paintIcons($("#detailBody")); openOv("#detail");
+  $("#addPos").onclick = () => {
+    closeOv($("#detail")); show("portfolio"); openPosForm();
+    const f = $("#posForm"), r6 = v => v != null ? +(+v).toPrecision(6) : "";
+    f.symbol.value = a.symbol; f.entry.value = r6(p.entry); f.stop.value = r6(p.stop); f.tp1.value = r6(p.tp1); f.tp2.value = r6(p.tp2); f.tp3.value = r6(p.tp3);
+  };
+  try {
+    const c = await api("/api/candles?symbol=" + encodeURIComponent(sym));
+    if (c && !c.error && c.c) drawChart($("#chart"), c, p);
+    else $("#chart").replaceWith(Object.assign(document.createElement("p"), {className: "note", textContent: "Gráfico disponible para el ranking, las 40 primeras y tus posiciones."}));
+  } catch (e) {}
+  try {
+    const h = await api("/api/history?symbol=" + encodeURIComponent(sym));
+    $("#hist").innerHTML = Array.isArray(h) && h.length ? h.slice(-30).reverse().map(([ts, s, ph, pr]) => `${when(ts)} · puntaje ${Math.round(s)} · ${phase(ph)} · ${px(pr)}`).join("<br>") : "Sin historial todavía";
+  } catch (e) { $("#hist").textContent = "No se pudo cargar"; }
 }
-$("#modalClose").onclick=()=>$("#modal").classList.add("hidden");
-$("#modal").onclick=e=>{if(e.target.id==="modal")$("#modal").classList.add("hidden")};
-
-function emaJS(v,n){const k=2/(n+1);let o=[],p=null;v.forEach((x,i)=>{if(i<n-1){o.push(null);return}if(p===null)p=v.slice(0,n).reduce((a,b)=>a+b)/n;else p=x*k+p*(1-k);o.push(p)});return o}
-function drawChart(cv,c,p){
-  const dpr=window.devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;const g=cv.getContext("2d");g.scale(dpr,dpr);
-  const N=Math.min(160,c.c.length),off=c.c.length-N,e20=emaJS(c.c,20).slice(off),e50=emaJS(c.c,50).slice(off);
-  const hs=c.h.slice(off),ls=c.l.slice(off);let hi=Math.max(...hs,p.tp2),lo=Math.min(...ls,p.stop);const pad=(hi-lo)*.05;hi+=pad;lo-=pad;
-  const L=8,R=70,T=10,B=20,w=(W-L-R)/N,y=v=>T+(hi-v)/(hi-lo)*(H-T-B);
-  g.font="11px sans-serif";
-  const line=(v,col,lab)=>{g.strokeStyle=col;g.setLineDash([4,4]);g.beginPath();g.moveTo(L,y(v));g.lineTo(W-R,y(v));g.stroke();g.setLineDash([]);g.fillStyle=col;g.fillText(lab,W-R+4,y(v)+4)};
-  g.fillStyle="#38bdf822";g.fillRect(L,y(p.entry_zone_high),W-L-R,y(p.entry_ideal)-y(p.entry_zone_high));
-  for(let i=0;i<N;i++){const j=off+i,up=c.c[j]>=c.o[j];g.strokeStyle=g.fillStyle=up?"#22c55e":"#ef4444";const x=L+i*w+w/2;
-    g.beginPath();g.moveTo(x,y(c.h[j]));g.lineTo(x,y(c.l[j]));g.stroke();const yo=y(c.o[j]),yc=y(c.c[j]);g.fillRect(x-w*.35,Math.min(yo,yc),w*.7,Math.max(1,Math.abs(yc-yo)))}
-  [[e20,"#f59e0b"],[e50,"#a78bfa"]].forEach(([s,col])=>{g.strokeStyle=col;g.beginPath();let st=false;s.forEach((v,i)=>{if(v==null)return;const x=L+i*w+w/2;st?g.lineTo(x,y(v)):g.moveTo(x,y(v));st=true});g.stroke()});
-  line(p.stop,"#ef4444","SL");line(p.entry_ideal,"#38bdf8","Entrada");line(p.tp1,"#22c55e","TP1");line(p.tp2,"#22c55e","TP2");if(p.tp3<=hi)line(p.tp3,"#22c55e","TP3");
-  g.fillStyle="#8b98a8";g.fillText("EMA20",L+4,T+12);g.fillStyle="#a78bfa";g.fillText("EMA50",L+50,T+12);
+function emaJS(v, n){ const k = 2 / (n + 1); let o = [], p = null; v.forEach((x, i) => { if (i < n - 1) { o.push(null); return; } if (p === null) p = v.slice(0, n).reduce((a, b) => a + b) / n; else p = x * k + p * (1 - k); o.push(p); }); return o; }
+function drawChart(cv, c, p){
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; cv.width = W * dpr; cv.height = H * dpr;
+  const g = cv.getContext("2d"); g.scale(dpr, dpr);
+  const N = Math.min(W < 500 ? 90 : 160, c.c.length), off = c.c.length - N, e20 = emaJS(c.c, 20).slice(off), e50 = emaJS(c.c, 50).slice(off);
+  let hi = Math.max(...c.h.slice(off), p.tp2 ?? -Infinity), lo = Math.min(...c.l.slice(off), p.stop ?? Infinity); const pad = (hi - lo) * .06; hi += pad; lo -= pad;
+  const L = 10, R = 64, T = 14, B = 14, w = (W - L - R) / N, y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  g.font = "500 11px Inter, Arial, sans-serif";
+  g.strokeStyle = "rgba(191,211,214,.07)"; for (let i = 1; i < 5; i++) { const yy = T + (H - T - B) * i / 5; g.beginPath(); g.moveTo(L, yy); g.lineTo(W - R, yy); g.stroke(); }
+  if (p.entry_zone_high && p.entry_ideal) { g.fillStyle = "rgba(240,174,69,.10)"; g.fillRect(L, y(p.entry_zone_high), W - L - R, y(p.entry_ideal) - y(p.entry_zone_high)); }
+  for (let i = 0; i < N; i++) {
+    const j = off + i, up = c.c[j] >= c.o[j]; g.strokeStyle = g.fillStyle = up ? "#5FBF92" : "#E07A6B"; const x = L + i * w + w / 2;
+    g.beginPath(); g.moveTo(x, y(c.h[j])); g.lineTo(x, y(c.l[j])); g.stroke();
+    const yo = y(c.o[j]), yc = y(c.c[j]); g.fillRect(x - w * .34, Math.min(yo, yc), Math.max(1, w * .68), Math.max(1, Math.abs(yc - yo)));
+  }
+  [[e20, "#F0AE45"], [e50, "#7FB3D5"]].forEach(([s, col]) => { g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); let st = false; s.forEach((v, i) => { if (v == null) return; const x = L + i * w + w / 2; st ? g.lineTo(x, y(v)) : g.moveTo(x, y(v)); st = true; }); g.stroke(); });
+  g.lineWidth = 1;
+  const line = (v, col, lab) => { if (v == null || v > hi || v < lo) return; g.strokeStyle = col; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(L, y(v)); g.lineTo(W - R, y(v)); g.stroke(); g.setLineDash([]); g.fillStyle = col; g.fillText(lab, W - R + 6, y(v) + 4); };
+  line(p.stop, "#E07A6B", "Stop"); line(p.entry_ideal, "#F0AE45", "Entrada"); line(p.tp1, "#5FBF92", "TP1"); line(p.tp2, "#5FBF92", "TP2"); line(p.tp3, "#5FBF92", "TP3");
+  g.fillStyle = "#F0AE45"; g.fillText("EMA 20", L + 6, T + 4); g.fillStyle = "#7FB3D5"; g.fillText("EMA 50", L + 58, T + 4);
 }
 
+
+/* ---------- 10. Alertas ---------- */
+const AK = {"PRE-EXPLOSION": ["target", "k-amb"], "BREAKOUT CONFIRMATION": ["up", "k-gain"], "ENTRY ZONE REACHED": ["target", "k-amb"], "STOP LOSS WARNING": ["warn", "k-amb"],
+  "STOP LOSS HIT": ["stop", "k-stop"], "TAKE PROFIT REACHED": ["coin", "k-gain"], "DISTRIBUTION DETECTED": ["down", "k-stop"], "RISK": ["warn", "k-stop"], "EXIT": ["down", "k-stop"],
+  "MARKET REGIME CHANGE": ["globe", "k-info"], "DAILY SUMMARY": ["info", "k-info"], "WEEKLY SUMMARY": ["info", "k-info"], "SYSTEM": ["info", "k-info"]};
 async function loadAlerts(){
-  const al=await api("/api/alerts");const ic={"NEW EARLY ENTRY":"🟢","BREAKOUT CONFIRMATION":"🚀","ENTRY ZONE REACHED":"🎯","STOP LOSS WARNING":"⚠️","STOP LOSS HIT":"🛑","TAKE PROFIT REACHED":"💰","DISTRIBUTION DETECTED":"🟠","BEARISH REVERSAL":"🔻","MARKET REGIME CHANGE":"🌐","SYSTEM":"ℹ️"};
-  $("#alertList").innerHTML=al.length?al.map(a=>`<div class="alert"><div class="ic">${ic[a.kind]||"•"}</div><div><b>${a.symbol}</b> · ${esc(a.label)}<div>${esc(a.message)}</div><div class="t">${when(a.at)}</div></div></div>`).join(""):`<p class="muted">Sin alertas todavía.</p>`;
+  const box = $("#alertList");
+  if (ACCOUNTS && ME) {
+    $("#tgState").textContent = ME.telegram_linked ? "Telegram vinculado." + (ME.features?.telegram ? "" : " Tu plan no incluye alertas automáticas; los comandos sí funcionan.")
+      : "Vincula tu chat de Telegram para recibir las alertas en el celular.";
+  }
+  try {
+    const al = await api("/api/alerts"); let last = "";
+    box.innerHTML = al.length ? al.map(a => { const [ic, k] = AK[a.kind] || ["info", "k-info"], d = dayLabel(a.at), h = d !== last ? `<div class="day">${cap(d)}</div>` : ""; last = d;
+      return h + `<div class="al"><div class="ic ${k}">${icon(ic)}</div><div><b>${esc(a.symbol)} · ${esc(a.label)}</b><p class="pre">${esc(a.message)}</p></div><time>${new Date(a.at).toLocaleTimeString("es-CO", {hour: "numeric", minute: "2-digit"})}</time></div>`; }).join("")
+      : `<div class="card empty"><h2>Sin alertas todavía</h2><p>Aquí aparecen pre-explosiones, rupturas, cambios de régimen, riesgos, salidas y los resúmenes diario y semanal.</p></div>`;
+  } catch (e) { box.innerHTML = `<p class="note">No se pudieron cargar las alertas.</p>`; }
 }
+$("#tgLinkBtn").onclick = async () => {
+  const r = await post("/api/telegram/link");
+  $("#tgCode").innerHTML = r.code ? `Envía <b>/start ${esc(r.code)}</b> al bot de Crypto Radar en Telegram (válido 15 min).` : esc(r.error || "No disponible");
+};
 
+/* ---------- 7. Cartera · 6. Salidas ---------- */
+function progBar(lo, hi, cur, loLab, hiLab){
+  if (lo == null || hi == null || cur == null || hi <= lo) return "";
+  const pos = Math.max(0, Math.min(100, (cur - lo) / (hi - lo) * 100));
+  return `<div><div class="prog"><span class="st"></span><span class="tg"></span><i style="left:${pos}%"></i></div><div class="ends"><span>${loLab} ${px(lo)}</span><span>${hiLab} ${px(hi)}</span></div></div>`;
+}
+function openPosForm(){ $("#posForm").classList.remove("hidden"); $("#newPos").classList.add("hidden"); }
+function closePosForm(){ $("#posForm").classList.add("hidden"); $("#newPos").classList.remove("hidden"); $("#posForm").reset(); $("#posMsg").textContent = ""; }
+$("#newPos").onclick = () => { openPosForm(); $("#posForm").symbol.focus(); };
+$("#posCancel").onclick = closePosForm;
+const DEC = {"MANTENER": "b-watch", "PROTEGER GANANCIAS": "b-wait", "REDUCIR POSICIÓN": "b-avoid", "CERRAR POSICIÓN": "b-avoid"};
 async function loadPositions(){
-  const ps=await api("/api/positions");const open=ps.filter(p=>p.status==="OPEN"),closed=ps.filter(p=>p.status!=="OPEN");
-  $("#posTable").innerHTML=`<thead><tr><th>Token</th><th>Tipo</th><th>Entrada</th><th>Precio</th><th>P&L</th><th>Stop</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Alcanzado</th><th>Fase</th><th>Señales de salida</th><th></th></tr></thead><tbody>`+
-   (open.length?open.map(p=>`<tr><td class="sym">${p.symbol}</td><td>${p.paper?"Simulada":"Real"}</td><td>${px(p.entry)}</td><td>${px(p.last_price)}</td><td>${pct(p.pnl_pct)}</td><td class="neg">${px(p.stop)}</td>
-   <td>${px(p.tp1)}</td><td>${px(p.tp2)}</td><td>${px(p.tp3)}</td><td>${(p.hits||[]).join(", ").toUpperCase()||"—"}</td><td>${p.phase||"—"}</td>
-   <td class="${(p.exit_risk||0)>=50?"neg":""}">${(p.exit_signals||[]).slice(0,3).join(", ")||"—"}</td>
-   <td><button data-c="${p.id}">Cerrar</button> <button data-d="${p.id}">🗑</button></td></tr>`).join(""):`<tr><td colspan="13" class="muted">Sin posiciones abiertas</td></tr>`)+"</tbody>";
-  $("#posClosed").innerHTML=`<thead><tr><th>Token</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Abierta</th><th>Cerrada</th></tr></thead><tbody>`+
-   (closed.map(p=>`<tr><td class="sym">${p.symbol}</td><td>${p.paper?"Simulada":"Real"}</td><td>${px(p.entry)}</td><td>${px(p.exit_price)}</td><td>${pct(p.pnl_pct)}</td><td>${when(p.opened_at)}</td><td>${when(p.closed_at)}</td></tr>`).join("")||`<tr><td colspan="7" class="muted">—</td></tr>`)+"</tbody>";
-  document.querySelectorAll("[data-c]").forEach(b=>b.onclick=async()=>{const v=prompt("Precio de salida (vacío = último precio)");if(v===null)return;await post(`/api/positions/${b.dataset.c}/close`,{price:v});loadPositions()});
-  document.querySelectorAll("[data-d]").forEach(b=>b.onclick=async()=>{if(confirm("¿Eliminar esta posición?")){await post(`/api/positions/${b.dataset.d}/delete`);loadPositions()}});
+  let ps = [];
+  try { ps = await api("/api/positions"); } catch (e) { return; }
+  if (!Array.isArray(ps)) { const msg = `<div class="card empty"><h2>${esc(ps?.error || "No disponible")}</h2><p>Mejora tu plan en Configuración.</p></div>`; $("#posOpen").innerHTML = msg; $("#exitCards").innerHTML = msg; return; }
+  const open = ps.filter(p => p.status === "OPEN"), closed = ps.filter(p => p.status !== "OPEN");
+  const wins = closed.filter(p => (p.pnl_pct || 0) > 0).length, avg = closed.length ? closed.reduce((s, p) => s + (p.pnl_pct || 0), 0) / closed.length : null;
+  $("#posKpis").innerHTML = mini("Abiertas", open.length) + mini("Cerradas", closed.length) + mini("Ganadoras", closed.length ? Math.round(wins / closed.length * 100) + "%" : "—", closed.length ? `${wins} de ${closed.length}` : "") + mini("Resultado medio", avg != null ? pct(avg) : "—");
+  $("#posOpen").innerHTML = open.length ? open.map(p => { const tgt = p.tp3 || p.tp2 || p.tp1, d = (p.exit || {}).decision; return `
+    <div class="pcard"><div class="head"><div><span class="sym">${esc(p.symbol)}</span> <span class="tag">${p.paper ? "Simulada" : "Real"}</span> ${d ? `<span class="badge ${DEC[d]}">${esc(cap(d))}</span>` : ""}</div><div class="pl">${pct(p.pnl_pct)}</div></div>
+      <div class="meta"><span>Entrada <b>${px(p.entry)}</b></span><span>Ahora <b>${px(p.last_price)}</b></span><span>Stop <b>${px(p.stop)}</b></span><span>Objetivos <b>${(p.hits || []).join(", ").toUpperCase() || "ninguno"}</b></span></div>
+      ${progBar(p.stop, tgt, p.last_price, "Stop", "Objetivo")}
+      <div class="mini-actions"><button class="btn" data-pid="${esc(p.id)}" data-act="close">Cerrar</button><button class="btn" data-pid="${esc(p.id)}" data-act="del">Eliminar</button></div>
+    </div>`; }).join("") : `<div class="card empty"><h2>No tienes posiciones abiertas</h2><p>Registra una desde la ficha de cualquier oportunidad o con el botón de arriba.</p></div>`;
+  $("#exitCards").innerHTML = open.length ? open.map(p => { const x = p.exit; return `<div class="pcard"><div class="head"><div><span class="sym">${esc(p.symbol)}</span> ${x ? `<span class="badge ${DEC[x.decision]}">${esc(cap(x.decision))}</span>` : '<span class="tag">Pendiente del próximo escaneo</span>'}</div><div class="pl">${pct(p.pnl_pct)}</div></div>
+      ${x ? `<ul>${x.reasons.slice(0, 4).map(r => `<li>${esc(r)}</li>`).join("")}</ul><div class="meta"><span>Ganancia <b>${rTxt(x.gain_R)} el riesgo</b></span><span>Vender <b>${nf0.format((x.sell_fraction || 0) * 100)}%</b></span><span>Stop sugerido <b>${px(x.suggested_stop)}</b></span>${x.trailing_stop ? `<span>Trailing 3 ATR <b>${px(x.trailing_stop)}</b></span>` : ""}</div>` : ""}
+    </div>`; }).join("") : `<div class="card empty"><h2>Sin posiciones que evaluar</h2><p>Cuando registres una posición, aquí verás cada día si conviene mantener, proteger, reducir o cerrar.</p></div>`;
+  $("#posClosed").innerHTML = `<thead><tr><th>Token</th><th>Tipo</th><th>Entrada</th><th>Salida</th><th>Resultado</th><th>Abierta</th><th>Cerrada</th></tr></thead><tbody>` +
+    (closed.length ? closed.map(p => `<tr><td class="sym">${esc(p.symbol)}</td><td>${p.paper ? "Simulada" : "Real"}</td><td>${px(p.entry)}</td><td>${px(p.exit_price)}</td><td>${pct(p.pnl_pct)}</td><td>${when(tsIso(p.opened_at))}</td><td>${when(tsIso(p.closed_at))}</td></tr>`).join("")
+      : emptyRow(7, "Aún no hay posiciones cerradas.")) + "</tbody>";
 }
-$("#posForm").onsubmit=async e=>{e.preventDefault();const f=new FormData(e.target),b=Object.fromEntries(f);b.paper=e.target.paper.checked;
-  const r=await post("/api/positions",b);if(r.error)alert(r.error);else{e.target.reset();e.target.paper.checked=true;loadPositions()}};
+const tsIso = v => typeof v === "number" ? new Date(v * 1000).toISOString() : v;
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act][data-pid]"); if (!b) return;
+  const id = b.dataset.pid;
+  if (b.dataset.act === "close") {
+    const v = await ask({title: "Cerrar posición", text: "Escribe el precio de salida. Si lo dejas vacío, se usa el último precio.", input: true, placeholder: "Último precio", ok: "Cerrar posición"});
+    if (v === null) return;
+    await post(`/api/positions/${encodeURIComponent(id)}/close`, {price: v.replace(",", ".")}); toast("Posición cerrada"); loadPositions();
+  } else {
+    if (!await ask({title: "¿Eliminar esta posición?", text: "Se borra del historial y no se puede deshacer.", ok: "Eliminar"})) return;
+    await post(`/api/positions/${encodeURIComponent(id)}/delete`); toast("Posición eliminada"); loadPositions();
+  }
+});
+$("#posForm").onsubmit = async e => {
+  e.preventDefault(); const f = e.target, b = Object.fromEntries(new FormData(f));
+  for (const k of ["entry", "qty", "stop", "tp1", "tp2", "tp3"]) if (b[k]) b[k] = b[k].replace(",", ".");
+  b.paper = f.paper.checked;
+  try { const r = await post("/api/positions", b); if (r.error) { $("#posMsg").textContent = cap(r.error); return; } }
+  catch (err) { $("#posMsg").textContent = "No se pudo guardar"; return; }
+  closePosForm(); toast("Posición registrada"); loadPositions();
+};
+$("#sizer").oninput = () => {
+  const f = n => parseFloat(($("#sizer").querySelector(`[name=${n}]`).value || "").replace(",", "."));
+  const cap_ = f("cap"), risk = f("risk"), en = f("entry"), st = f("stop");
+  if (!(cap_ > 0 && risk > 0 && en > 0 && st > 0 && st < en)) { $("#sizerOut").textContent = "Escribe capital, riesgo, entrada y un stop por debajo de la entrada."; return; }
+  const riskUsd = cap_ * risk / 100, value = Math.min(riskUsd / (en - st) * en, cap_ * .2);
+  $("#sizerOut").innerHTML = `Comprar <b>${px(value)}</b> (${nf2.format(value / en)} unidades). Si salta el stop pierdes <b class="neg">${px(value / en * (en - st))}</b> (${nf2.format(value / en * (en - st) / cap_ * 100)} % del capital).${value >= cap_ * .2 - 1e-9 ? " Recortado al máximo de 20 % por activo." : ""}`;
+};
 
-function kpis(arr){return arr.map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("")}
+/* ---------- 5. Memecoins ---------- */
+const REASON = {OBJETIVO: "Objetivo", STOP: "Stop", TIEMPO: "Tiempo"};
 async function loadMemes(){
-  const m=await api("/api/memes"),r=m.rule,b=m.backtest,s=m.stats;
-  $("#memeRule").innerHTML=`<b>Señal</b> (al cierre diario, 7 pm hora Colombia): volumen ≥ ${r.vol_mult}× su promedio de ${r.lookback} días y cierre sobre el máximo de ${r.lookback} días, sin que la vela haya subido más de +${r.max_day_gain*100}% ese día. <b>Compra</b> a la apertura siguiente. <b>Salida</b>: lo primero entre +${r.take_profit*100}%, −${r.stop_loss*100}% o ${r.max_days} días. <b>Tamaño</b>: ${r.size_pct}% del capital, máx. ${r.max_open} a la vez. Vigila: ${m.memes.join(", ")}.`;
-  $("#memeBT").innerHTML=kpis([["Backtest acierto",b.acierto_pct+"%"],["Backtest retorno",pct(b.retorno_pct)],["Peor caída",pct(b.max_dd_pct)],["Gana por $1 perdido","$"+b.profit_factor],["Operaciones",b.operaciones]]);
-  $("#memeStats").innerHTML=kpis([["Señales en vivo",s.signals],["Abiertas",s.open],["Cerradas",s.closed],["Acierto en vivo",s.win_rate!=null?s.win_rate+"%":"—"],["Gana por $1 perdido",s.profit_factor!=null?"$"+s.profit_factor:"—"],["Resultado cartera",s.closed?pct(s.portfolio_pct):"—"]]);
-  const st=m.status;$("#memeStatus").textContent=(st.checking?"Revisando… ":"")+"Última revisión: "+ago(st.last_check)+(st.last_error?" · "+st.last_error:"");
-  $("#memeOpen").innerHTML=`<thead><tr><th>Token</th><th>Señal</th><th>Entrada</th><th>Actual</th><th>Resultado</th><th>Stop</th><th>Objetivo</th><th>Vence</th></tr></thead><tbody>`+
-   (m.open.map(t=>`<tr><td class="sym">${esc(t.symbol)}</td><td>${t.signal_day}</td><td>${px(t.entry)}</td><td>${px(t.last)}</td><td>${pct((t.last/t.entry-1)*100)}</td><td>${px(t.stop)}</td><td>${px(t.target)}</td><td>${when(t.expires)}</td></tr>`).join("")||`<tr><td colspan="8" class="muted">Sin operaciones abiertas. Las señales son poco frecuentes: solo aparecen cuando una memecoin explota en volumen.</td></tr>`)+"</tbody>";
-  $("#memeSig").innerHTML=`<thead><tr><th>Cierre</th><th>Token</th><th>Volumen</th><th>Subida del día</th><th>Entrada</th><th>Stop</th><th>Objetivo</th><th>Práctica</th></tr></thead><tbody>`+
-   (m.signals.map(x=>`<tr><td>${x.signal_day}</td><td class="sym">${esc(x.symbol)}</td><td>${x.vol_x}×</td><td>${pct(x.day_gain_pct)}</td><td>${px(x.entry)}</td><td>${px(x.stop)}</td><td>${px(x.target)}</td><td>${x.paper?"Sí":"Sin cupo"}</td></tr>`).join("")||`<tr><td colspan="8" class="muted">Aún no hay señales.</td></tr>`)+"</tbody>";
-  $("#memeClosed").innerHTML=`<thead><tr><th>Token</th><th>Señal</th><th>Entrada</th><th>Salida</th><th>Motivo</th><th>Resultado</th></tr></thead><tbody>`+
-   (m.closed.map(t=>`<tr><td class="sym">${esc(t.symbol)}</td><td>${t.signal_day}</td><td>${px(t.entry)}</td><td>${px(t.exit)}</td><td>${t.reason}</td><td>${pct(t.pnl_pct)}</td></tr>`).join("")||`<tr><td colspan="6" class="muted">Aún no hay operaciones cerradas.</td></tr>`)+"</tbody>";
+  try { MEMES = await api("/api/memes"); } catch (e) { return; }
+  if (MEMES?.error) { $("#memeList").innerHTML = `<div class="card empty"><h2>${esc(MEMES.error)}</h2></div>`; return; }
+  const s = MEMES.stats || {}, st = MEMES.status || {};
+  $("#memeStats").innerHTML = mini("Monedas vigiladas", (MEMES.radar?.coins || []).length) + mini("Señales", s.signals ?? 0) + mini("Abiertas", s.open ?? 0) +
+    mini("Aciertos", s.win_rate != null ? nf0.format(s.win_rate) + "%" : "—") + mini("Resultado en vivo", s.closed ? pct(s.portfolio_pct) : "—");
+  $("#memeStatus").textContent = (st.checking ? "Revisando… · " : "") + "Última revisión " + ago(st.last_check) + (st.last_error ? " · " + st.last_error : "");
+  renderMemes();
 }
-$("#memeCheck").onclick=async(ev)=>{const b=ev.currentTarget;b.disabled=true;const r=await post("/api/memes/check");if(!r.ok)alert(r.msg);setTimeout(()=>{loadMemes();b.disabled=false},8000)};
+function renderMemes(){
+  if (!MEMES) return;
+  $$("#memeSeg button").forEach(b => b.classList.toggle("on", b.dataset.m === MEME_TAB));
+  const E = t => `<div class="card empty"><h2>${t[0]}</h2><p>${t[1]}</p></div>`;
+  let html = "";
+  if (MEME_TAB === "radar") { const C = MEMES.radar?.coins || [];
+    html = C.length ? `<div class="tbl"><table><thead><tr><th>Token</th><th>Tipo</th><th>Antigüedad</th><th>Precio</th><th>Liquidez/día</th><th>Vol. rel.</th><th>7 d</th><th>30 d</th><th>Desde máx.</th><th>Cap.</th><th>FDV</th><th>Fase</th><th>Riesgo</th><th>On-chain</th></tr></thead><tbody>` +
+      C.map(c => `<tr title="${esc((c.meme_risk_reasons || []).join(" · "))}"><td class="sym">${esc(c.symbol)}</td><td><span class="tag">${esc(c.age_label)}</span></td><td>${esc(c.age_text)}</td><td>${px(c.price)}</td><td>${big(c.avg_volume_usd)}</td>
+        <td>${c.rel_volume != null ? "×" + nf1.format(c.rel_volume) : "—"}</td><td>${pct(c.chg_7d)}</td><td>${pct(c.chg_30d)}</td><td>${pct(c.from_high_pct)}</td><td>${big(c.market_cap)}</td><td>${big(c.fdv)}</td>
+        <td>${phase(c.phase)}</td><td class="${c.meme_risk >= 50 ? "neg" : c.meme_risk >= 25 ? "amb" : ""}">${c.meme_risk}</td><td class="muted" title="${esc(c.onchain?.holders || "")}">N/D</td></tr>`).join("") + "</tbody></table></div>"
+      : E(["El radar aún no se ha ejecutado", "Se actualiza cada hora."]); }
+  if (MEME_TAB === "signals") html = (MEMES.signals || []).map(x => `<div class="sig"><div class="head"><span class="sym">${esc(x.symbol)}</span><span class="badge ${x.paper ? "b-buy" : "b-watch"}">${x.paper ? "En práctica" : "Sin cupo"}</span></div>
+      <div class="meta"><span>Señal <b>${esc(x.signal_day)}</b></span><span>Entrada <b>${px(x.entry)}</b></span><span>Stop <b class="neg">${px(x.stop)}</b></span><span>Objetivo <b class="pos">${px(x.target)}</b></span></div></div>`).join("")
+      || E(["Aún no hay señales", "Son poco frecuentes por diseño."]);
+  if (MEME_TAB === "open") html = (MEMES.open || []).map(t => `<div class="sig"><div class="head"><span class="sym">${esc(t.symbol)}</span>${pct((t.last / t.entry - 1) * 100)}</div>
+      <div class="meta"><span>Entrada <b>${px(t.entry)}</b></span><span>Ahora <b>${px(t.last)}</b></span><span>Vence <b>${when(t.expires)}</b></span></div>${progBar(t.stop, t.target, t.last, "Stop", "Objetivo")}</div>`).join("")
+      || E(["Sin operaciones abiertas", "Cuando salga una señal aparecerá aquí."]);
+  if (MEME_TAB === "closed") html = (MEMES.closed || []).length ? `<div class="tbl"><table><thead><tr><th>Token</th><th>Señal</th><th>Entrada</th><th>Salida</th><th>Cómo terminó</th><th>Resultado</th></tr></thead><tbody>` +
+      MEMES.closed.map(t => `<tr><td class="sym">${esc(t.symbol)}</td><td>${esc(t.signal_day)}</td><td>${px(t.entry)}</td><td>${px(t.exit)}</td><td>${esc(REASON[t.reason] || t.reason)}</td><td>${pct(t.pnl_pct)}</td></tr>`).join("") + "</tbody></table></div>"
+      : E(["Aún no hay operaciones cerradas", "El historial muestra todas, ganadoras y perdedoras."]);
+  $("#memeList").innerHTML = html;
+}
+$("#memeSeg").onclick = e => { const b = e.target.closest("[data-m]"); if (b) { MEME_TAB = b.dataset.m; renderMemes(); } };
+$("#memeCheck").onclick = async ev => {
+  const b = ev.currentTarget; b.disabled = true;
+  try { const r = await post("/api/memes/check"); toast(r.ok ? "Revisando memecoins…" : (r.msg || r.error || "No se pudo revisar")); } catch (e) {}
+  setTimeout(() => { loadMemes(); b.disabled = false; }, 8000);
+};
 
+/* ---------- 8. Backtesting ---------- */
+function mrow(label, m){
+  if (!m) return "";
+  return `<tr><td>${label}</td><td>${pct(m.total_return_pct)}</td><td>${m.cagr_pct != null ? pct(m.cagr_pct) : "—"}</td><td>${m.trades}</td><td>${m.win_rate_pct ?? "—"}%</td>
+    <td>${m.profit_factor ?? "—"}</td><td>${m.avg_R ?? "—"}</td><td>${m.sharpe ?? "—"}</td><td>${m.sortino ?? "—"}</td><td class="neg">${num(m.max_drawdown_pct)}%</td><td>${m.avg_exposure_pct ?? "—"}%</td><td>${px(m.fees_usd)}</td>
+    <td>${m.btc_buy_hold_pct != null ? pct(m.btc_buy_hold_pct) : "—"}</td></tr>`;
+}
+const MH = `<thead><tr><th>Periodo</th><th>Retorno</th><th>CAGR</th><th>Operaciones</th><th>Acierto</th><th>Profit factor</th><th>R medio</th><th>Sharpe</th><th>Sortino</th><th>Máx. caída</th><th>Exposición</th><th>Comisiones</th><th>BTC comprar y mantener</th></tr></thead>`;
+function groupTable(title, g){
+  const rows = Object.entries(g || {}).sort((a, b) => b[1].trades - a[1].trades);
+  return rows.length ? `<div class="card"><h3 class="h3">${title}</h3><div class="tbl"><table><thead><tr><th></th><th>Operaciones</th><th>Acierto</th><th>Resultado (USD)</th></tr></thead><tbody>${rows.map(([k, v]) =>
+    `<tr><td>${esc(PH[k] || k)}</td><td>${v.trades}</td><td>${v.win_rate_pct}%</td><td><span class="${v.pnl_usd >= 0 ? "pos" : "neg"}">${px(v.pnl_usd)}</span></td></tr>`).join("")}</tbody></table></div></div>` : "";
+}
+async function loadBacktest(){
+  let r; try { r = await api("/api/backtest/results"); } catch (e) { return; }
+  if (!r || r.available === false || !r.base_full) { $("#btBox").innerHTML = `<div class="card empty"><h2>Aún no hay resultados</h2><p>${esc(r?.note || "")}</p></div>`; return; }
+  const c = r.calibration || {}, wf = r.walk_forward || {}, sv = r.score_validation || {};
+  $("#btBox").innerHTML = `
+    <p class="note">Simulación de cartera con ${r.coins} monedas de Binance (${esc(r.period?.[0])} → ${esc(r.period?.[1])}), universo de las ${r.universe_size} más negociadas cada día, señal al cierre y entrada desde la vela siguiente, comisión ${r.defaults?.fee_pct}% + deslizamiento ${r.defaults?.slippage_pct}% + spread, stops pesimistas. Generado ${esc(r.generated)}.</p>
+    <div class="tbl"><table>${MH}<tbody>${mrow("Completo (parámetros por defecto)", r.base_full)}${mrow("Dentro de muestra (hasta " + esc(r.split) + ")", r.base_is)}${mrow("Fuera de muestra (desde " + esc(r.split) + ")", r.base_oos)}
+      ${mrow("Calibrado en muestra → resultado fuera de muestra", c.oos)}</tbody></table></div>
+    <div class="card"><h3 class="h3">Walk-forward anual (parámetros elegidos con los 2 años previos)</h3><div class="tbl"><table><thead><tr><th>Año</th><th>Retorno</th><th>Operaciones</th><th>Profit factor</th><th>Sharpe</th><th>Máx. caída</th><th>BTC</th></tr></thead><tbody>
+      ${(wf.years || []).map(w => `<tr><td>${w.year}</td><td>${pct(w.test.total_return_pct)}</td><td>${w.test.trades}</td><td>${w.test.profit_factor ?? "—"}</td><td>${w.test.sharpe ?? "—"}</td><td class="neg">${num(w.test.max_drawdown_pct)}%</td><td>${pct(w.test.btc_buy_hold_pct)}</td></tr>`).join("")}
+      <tr><td><b>Encadenado</b></td><td colspan="6">${pct(wf.chained_return_pct)}</td></tr></tbody></table></div></div>
+    <div class="card"><h3 class="h3">Sensibilidad (periodo completo)</h3><div class="tbl"><table>${MH}<tbody>${Object.entries(r.sensitivity || {}).map(([k, m]) => mrow(esc(k), m)).join("")}</tbody></table></div></div>
+    <div class="card"><h3 class="h3">¿La puntuación predice? Rendimiento a 20 días por quintil de puntaje (fuera de muestra)</h3><div class="tbl"><table><thead><tr><th>Quintil</th><th>Puntaje</th><th>Muestras</th><th>Media 20 d</th><th>Exceso vs universo</th><th>% que supera al universo</th></tr></thead><tbody>
+      ${(sv.oos?.quintiles || []).map(q => `<tr><td>${q.quintile}</td><td>${q.score_min}–${q.score_max}</td><td>${q.n}</td><td>${pct(q.fwd20_mean_pct)}</td><td>${pct(q.excess_mean_pct)}</td><td>${q.hit_rate_pct}%</td></tr>`).join("")}</tbody></table></div>
+      <p class="note">Correlación por rangos (IC) con el exceso de rendimiento: ${Object.entries(sv.oos?.rank_ic || {}).map(([k, v]) => `${esc(k)} ${v ?? "—"}`).join(" · ")}</p></div>
+    <div class="grid2">${groupTable("Por régimen", r.base_full.by_regime)}${groupTable("Por fase de entrada", r.base_full.by_phase)}${groupTable("Por liquidez", r.base_full.by_cap_bucket)}${groupTable("Por motivo de salida", r.base_full.by_exit)}</div>
+    <p class="note">Resultados pasados no garantizan resultados futuros. Sesgo de supervivencia parcial: las monedas retiradas de Binance antes de la descarga no están en los datos.</p>`;
+}
+
+/* ---------- 9. Rendimiento ---------- */
+let JOURNAL = [];
 async function loadJournal(){
-  const j=await api("/api/journal"),s=j.stats;
-  $("#jStats").innerHTML=[["Señales",s.signals],["Cerradas",s.closed],["Abiertas",s.open],["Acierto",s.win_rate!=null?s.win_rate+"%":"—"],["R medio",s.avg_R??"—"],["R total",s.total_R]]
-   .map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("");
-  $("#jTable").innerHTML=`<thead><tr><th>Fecha</th><th>Token</th><th>Score</th><th>Fase</th><th>Régimen</th><th>Entrada</th><th>Stop</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Alcanzado</th><th>Estado</th><th>Resultado (R)</th></tr></thead><tbody>`+
-   (j.items.map(x=>`<tr><td>${when(x.at)}</td><td class="sym">${x.symbol}</td><td>${sc(x.score)}</td><td>${x.phase}</td><td>${x.regime}</td><td>${px(x.entry)}</td><td>${px(x.stop)}</td><td>${px(x.tp1)}</td><td>${px(x.tp2)}</td><td>${px(x.tp3)}</td>
-   <td>${(x.hits||[]).join(", ").toUpperCase()||"—"}</td><td>${x.status==="OPEN"?"Abierta":"Cerrada"}</td><td class="${(x.r_multiple||0)>=0?"pos":"neg"}">${x.r_multiple??"—"}</td></tr>`).join("")||`<tr><td colspan="13" class="muted">Aún no hay señales registradas.</td></tr>`)+"</tbody>";
+  let j; try { j = await api("/api/journal"); } catch (e) { return; }
+  const s = j.stats || {}; JOURNAL = j.items || [];
+  $("#jStats").innerHTML = mini("Señales publicadas", s.signals ?? 0) + mini("En curso", s.open ?? 0) + mini("Terminadas", s.closed ?? 0) +
+    mini("Aciertos", s.win_rate != null ? nf0.format(s.win_rate) + "%" : "—", "de las terminadas") +
+    mini("Resultado medio", s.avg_R != null ? `<span class="${s.avg_R >= 0 ? "pos" : "neg"}">${rTxt(s.avg_R)}</span>` : "—", "veces lo arriesgado") +
+    mini("Acumulado", `<span class="${(s.total_R || 0) >= 0 ? "pos" : "neg"}">${rTxt(s.total_R || 0)}</span>`, "veces lo arriesgado");
+  $("#jTable").innerHTML = `<thead><tr><th>Fecha</th><th>Token</th><th>Puntaje</th><th>Fase</th><th>Mercado</th><th>Entrada</th><th>Stop</th><th>TP1</th><th>TP2</th><th>TP3</th><th>Alcanzado</th><th>Estado</th><th>Resultado</th></tr></thead><tbody>` +
+    (JOURNAL.length ? JOURNAL.map(x => `<tr><td>${when(x.at)}</td><td class="sym">${esc(x.symbol)}</td><td>${sc(x.score)}</td><td>${phase(x.phase)}</td><td>${esc(cap(x.regime))}</td>
+      <td>${px(x.entry)}</td><td class="neg">${px(x.stop)}</td><td>${px(x.tp1)}</td><td>${px(x.tp2)}</td><td>${px(x.tp3)}</td><td>${(x.hits || []).join(", ").toUpperCase() || "—"}</td>
+      <td>${x.status === "OPEN" ? '<span class="badge b-watch">En curso</span>' : '<span class="badge b-wait">Terminada</span>'}</td>
+      <td class="${(x.r_multiple || 0) >= 0 ? "pos" : "neg"}">${x.r_multiple != null ? rTxt(x.r_multiple) : "—"}</td></tr>`).join("")
+      : emptyRow(13, "Aún no hay señales registradas.")) + "</tbody>";
 }
 
-$("#btForm").onsubmit=async e=>{e.preventDefault();const f=e.target;$("#btOut").innerHTML=`<p class="muted">Calculando… (puede tardar ~20 s)</p>`;
-  const r=await api(`/api/backtest?symbol=${encodeURIComponent(f.symbol.value.trim())}&min_score=${f.min_score.value}`);
-  if(r.error){$("#btOut").innerHTML=`<p class="neg">${esc(r.error)}</p>`;return}
-  $("#btOut").innerHTML=`<div class="grid kpis" style="margin-top:12px">${[["Días simulados",r.days],["Operaciones",r.trades],["Acierto",r.win_rate!=null?r.win_rate+"%":"—"],["R medio",r.avg_R??"—"],["Profit factor",r.profit_factor??"—"],
-   ["Retorno (1% riesgo)",pct(r.return_pct_1pct_risk)],["Máx. drawdown",pct(r.max_drawdown_pct)],["Comprar y mantener",pct(r.buy_hold_pct)]].map(([l,v])=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join("")}</div>
-   <p class="muted small">${esc(r.note)}</p><div class="tablewrap"><table><thead><tr><th>Fecha</th><th>Fase</th><th>Score</th><th>Entrada</th><th>Stop</th><th>TP1</th><th>TP2</th><th>Alcanzado</th><th>Días</th><th>R</th></tr></thead><tbody>
-   ${r.list.slice().reverse().map(t=>`<tr><td>${new Date(t.date).toLocaleDateString("es-CO")}</td><td>${t.phase}</td><td>${sc(t.score)}</td><td>${px(t.entry)}</td><td>${px(t.stop)}</td><td>${px(t.tp1)}</td><td>${px(t.tp2)}</td><td>${t.hits.join(", ").toUpperCase()}</td><td>${t.days}</td><td class="${t.R_real>=0?"pos":"neg"}">${t.R_real}</td></tr>`).join("")}</tbody></table></div>`};
+/* ---------- Exportar (CSV) ---------- */
+$("#exportBtn").onclick = () => {
+  const rep = STATE?.report || {}; let rows = [];
+  if (VIEW === "dash") rows = [["#", "Token", "Puntaje", "Fase", "Entrada desde", "Entrada hasta", "Stop", "TP1", "TP2", "TP3", "R/B", "Manipulación", "Acción"],
+    ...(rep.ranking || []).map(r => [r.rank, r.symbol, Math.round(r.score), r.phase, r.entry_low, r.entry_high, r.stop, r.tp1, r.tp2, r.tp3, r.rr?.toFixed(2), r.manipulation_risk, r.action])];
+  else if (VIEW === "market") rows = [["Token", "Precio", "Capitalización", "Puntaje", "Fase", "Acción"], ...(rep.assets || []).filter(a => !a.locked).map(a => [a.symbol, a.price, a.market_cap, Math.round(a.score), a.phase, a.action])];
+  else if (VIEW === "perf") rows = [["Fecha", "Token", "Puntaje", "Fase", "Entrada", "Stop", "TP1", "TP2", "TP3", "Estado", "Resultado (R)"], ...JOURNAL.map(x => [x.at, x.symbol, Math.round(x.score), x.phase, x.entry, x.stop, x.tp1, x.tp2, x.tp3, x.status, x.r_multiple])];
+  if (rows.length < 2) return toast("No hay datos para exportar");
+  const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n");
+  const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(new Blob(["﻿" + csv], {type: "text/csv"})), download: `crypto-radar-${VIEW}-${new Date().toISOString().slice(0, 10)}.csv`});
+  document.body.append(a); a.click(); a.remove();
+};
 
+/* ---------- 11. Configuración ---------- */
 async function loadSettings(){
-  const s=await api("/api/settings"),f=$("#setForm");
-  for(const [k,v] of Object.entries(s)){const el=f.elements[k];if(!el)continue;
-    if(el.type==="checkbox")el.checked=!!v;else if(Array.isArray(v))el.value=v.join(", ");else if(typeof v==="object")el.value=Object.entries(v).map(([a,b])=>`${a}: ${b}`).join("\n");else el.value=v}
+  if (ACCOUNTS && ME) {
+    const until = ME.plan_until ? new Date(ME.plan_until * 1000).toLocaleDateString("es-CO") : null;
+    $("#accBox").innerHTML = `<div class="meta col"><span>Correo <b>${esc(ME.email)}</b></span><span>Plan <b>${esc(ME.plan_label)}</b>${until ? ` hasta ${until}` : ""}</span></div>`;
+    try {
+      const b = await api("/api/billing/status");
+      const P = b.prices_usd || {}, can = b.wompi || b.crypto;
+      $("#plansBox").innerHTML = `<div class="plans">${[["pro", "Pro"], ["elite", "Élite"]].map(([k, l]) => `<div class="card"><h3>${l}</h3><p>US$${P[k + "_month"]}/mes · US$${P[k + "_year"]}/año</p>
+        <div class="row">${b.wompi ? `<button class="btn a" data-buy="${k}" data-per="month" data-prov="wompi">Mensual con tarjeta/PSE</button><button class="btn" data-buy="${k}" data-per="year" data-prov="wompi">Anual</button>` : ""}
+        ${b.crypto ? `<button class="btn" data-buy="${k}" data-per="month" data-prov="crypto">Mensual con USDT</button>` : ""}</div></div>`).join("")}</div>
+        ${can ? "" : `<p class="note">Los pagos aún no están habilitados en este servidor. Ningún plan se activa sin un pago confirmado por el proveedor.</p>`}`;
+    } catch (e) {}
+    const us = ME.settings || {}, f = $("#userSet");
+    f.capital_usd.value = us.capital_usd ?? ""; f.risk_per_trade_pct.value = us.risk_per_trade_pct ?? ""; f.watchlist.value = (us.watchlist || []).join(", "); f.alerts_telegram.checked = us.alerts_telegram !== false;
+    if (ME.is_admin) loadAdmin();
+    if (!ME.is_admin) return;
+  }
+  let s; try { s = await api("/api/settings"); } catch (e) { return; }
+  const f = $("#setForm");
+  for (const [k, v] of Object.entries(s || {})) {
+    const el = f.elements[k]; if (!el) continue;
+    if (el.type === "checkbox") el.checked = !!v;
+    else if (Array.isArray(v)) el.value = v.join(", ");
+    else if (v && typeof v === "object") continue;
+    else el.value = v ?? "";
+  }
 }
-$("#setForm").onsubmit=async e=>{e.preventDefault();const f=e.target,b={};
-  for(const el of f.elements){if(!el.name)continue;b[el.name]=el.type==="checkbox"?el.checked:el.value}
-  const cat={};(b.catalysts||"").split("\n").forEach(l=>{const i=l.indexOf(":");if(i>0)cat[l.slice(0,i).trim().toUpperCase()]=l.slice(i+1).trim()});b.catalysts=cat;
-  await post("/api/settings",b);$("#setMsg").textContent="Guardado ✓ (se aplica en el próximo escaneo)";setTimeout(()=>$("#setMsg").textContent="",4000)};
-$("#tgTest").onclick=async(ev)=>{const b=ev.currentTarget;if(b.disabled)return;b.disabled=true;$("#setMsg").textContent="Enviando…";
-  try{const r=await post("/api/telegram/test");$("#setMsg").textContent=r.ok?"Mensaje enviado a Telegram ✓":"Telegram: "+r.msg}
-  catch(e){$("#setMsg").textContent="No se pudo contactar el servidor"} finally{setTimeout(()=>b.disabled=false,5000)}};
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-buy]"); if (!b) return;
+  b.disabled = true;
+  try { const r = await post("/api/billing/checkout", {plan: b.dataset.buy, period: b.dataset.per, provider: b.dataset.prov});
+    if (r.url) location.href = r.url; else toast(r.error || "No se pudo iniciar el pago"); }
+  finally { b.disabled = false; }
+});
+async function loadAdmin(){
+  $("#adminBox").classList.remove("hidden");
+  const u = await api("/api/admin/users");
+  $("#adminUsers").innerHTML = Array.isArray(u) ? `<div class="tbl"><table><thead><tr><th>Correo</th><th>Plan</th><th>Hasta</th><th>Telegram</th><th>Alta</th></tr></thead><tbody>${u.map(x =>
+    `<tr><td>${esc(x.email)}${x.is_admin ? ' <span class="tag">admin</span>' : ""}</td><td>${esc(x.plan)}</td><td>${x.plan_until ? new Date(x.plan_until * 1000).toLocaleDateString("es-CO") : "—"}</td><td>${x.telegram ? "Sí" : "No"}</td><td>${when(tsIso(x.created_at))}</td></tr>`).join("")}</tbody></table></div>` : "";
+}
+$("#setForm").onsubmit = async e => {
+  e.preventDefault(); const f = e.target, b = {};
+  for (const el of f.elements) { if (!el.name) continue; b[el.name] = el.type === "checkbox" ? el.checked : el.value; }
+  try { const r = await post("/api/settings", b); $("#setMsg").textContent = r.error ? r.error : "Guardado. Se aplica en el próximo escaneo."; }
+  catch (err) { $("#setMsg").textContent = "No se pudo guardar"; }
+  setTimeout(() => $("#setMsg").textContent = "", 5000);
+};
+$("#userSet").onsubmit = async e => {
+  e.preventDefault(); const f = e.target;
+  const r = await post("/api/me/settings", {capital_usd: f.capital_usd.value.replace(",", "."), risk_per_trade_pct: f.risk_per_trade_pct.value.replace(",", "."), watchlist: f.watchlist.value, alerts_telegram: f.alerts_telegram.checked});
+  $("#userSetMsg").textContent = r.error || "Guardado"; if (r.settings && ME) ME.settings = r.settings;
+};
+$("#pwForm").onsubmit = async e => {
+  e.preventDefault(); const f = e.target;
+  const r = await post("/api/auth/password", {old: f.old.value, new: f.new.value});
+  $("#accMsg").textContent = r.error || r.msg || ""; if (r.ok) setTimeout(() => location.reload(), 1500);
+};
+$("#logoutBtn").onclick = async () => { await post("/api/auth/logout"); location.reload(); };
+$("#logoutAll").onclick = async () => { await post("/api/auth/logout_all"); location.reload(); };
+$("#tgTest").onclick = async ev => {
+  const b = ev.currentTarget; if (b.disabled) return; b.disabled = true; $("#setMsg").textContent = "Enviando…";
+  try { const r = await post("/api/telegram/test"); $("#setMsg").textContent = r.ok ? "Mensaje enviado a Telegram." : "Telegram: " + (r.msg || r.error); }
+  catch (e) { $("#setMsg").textContent = "No se pudo contactar el servidor"; }
+  finally { setTimeout(() => b.disabled = false, 5000); }
+};
 
-refresh(); setInterval(refresh, 15000);
+/* ---------- Inicio ---------- */
+async function boot(){
+  paintIcons();
+  try {
+    const st = await api("/api/public/status");
+    ACCOUNTS = !!st?.accounts;
+    if (st?.sales_url) { const a = $("#salesLink"); a.href = st.sales_url; a.classList.remove("hidden"); }
+  } catch (e) {}
+  if (ACCOUNTS) {
+    try { const me = await api("/api/me"); if (me?.user) { ME = me.user; CSRF = me.csrf; } } catch (e) {}
+    if (!ME) { showAuth(); return; }
+  }
+  hideAuth(); applyUser();
+  const start = (location.hash || "").slice(1);
+  show(TITLES[start] ? start : "dash");
+  refresh(); setInterval(refresh, 20000);
+}
+boot();

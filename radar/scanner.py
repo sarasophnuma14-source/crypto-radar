@@ -1,15 +1,18 @@
-"""Orquesta un escaneo completo y genera el informe, el ranking y las alertas."""
+"""Orquesta un escaneo completo con el motor cuantitativo (radar/quant): informe, ranking temprano y alertas."""
 from __future__ import annotations
 import datetime as dt
 import time
 import traceback
 import uuid
-from . import data, storage, alerts
-from .analysis import analyze, technicals, EXPOSURE, MIN_BUY_SCORE
-from .config import CATEGORIES, STABLES, load_settings
-from .regime import detect
+from concurrent.futures import ThreadPoolExecutor
+from . import data, storage, alerts, notify
+from .config import ACCOUNTS, CATEGORIES, STABLES, load_settings
+from .quant import engine as qengine, features as qfeatures, regime as qregime
 
 status = {"scanning": False, "progress": "", "last_error": None, "last_watch": None, "fail_streak": 0}
+FETCH_WORKERS = 4      # descargas simultáneas (respeta los límites de las APIs con pausa por host)
+BOOK_TOP = 25          # libros de órdenes en vivo para los mejores candidatos
+BUY_ACTIONS = ("COMPRAR EN ZONA", "ESPERAR RETROCESO", "ESPERAR RUPTURA")
 ALERT_AFTER_FAILS = 3   # avisar por Telegram solo si falla 3 veces seguidas (~1 h), no por un bloqueo pasajero
 
 
@@ -133,72 +136,122 @@ def run_scan(settings=None):
         for sym in must - {m["symbol"].upper() for m in universe}:
             if sym in tradable:
                 universe.append({"symbol": sym.lower(), "id": sym.lower(), "name": sym})
-        # BTC primero
-        _progress("Analizando Bitcoin y régimen de mercado…")
-        btc_d1 = data.klines("BTC" + settings["quote"], "1d", 400)
-        btc_t = technicals(btc_d1, data.klines("BTC" + settings["quote"], "4h", 200), weekly_from_daily(btc_d1))
-        btc_30 = btc_t["chg_30d"]
+        # ---------- datos diarios (solo velas cerradas), en paralelo y con límite de concurrencia
+        _progress("Descargando velas diarias…")
         cache = {}
-        for i, m in enumerate(universe):
+
+        def fetch(m):
             sym = m["symbol"].upper()
-            _progress(f"Analizando {sym} ({i + 1}/{len(universe)})…")
             try:
-                pair = sym + settings["quote"]
-                d1 = btc_d1 if sym == "BTC" else data.klines(pair, "1d", 400)
+                d1 = data.klines(sym + settings["quote"], "1d", 400, closed=True)
+                return sym, m, d1, None
+            except Exception as e:
+                return sym, m, None, e
+        btc_m = next((m for m in universe if m["symbol"].upper() == "BTC"), {"symbol": "btc", "id": "bitcoin", "name": "Bitcoin"})
+        sym, m, btc_d1, err = fetch(btc_m)
+        if err or not btc_d1 or len(btc_d1["c"]) < 210:
+            raise RuntimeError(f"No se pudieron leer las velas de BTC ({err or 'historial insuficiente'}).")
+        cache["BTC"] = (btc_m, btc_d1)
+        rest = [m for m in universe if m["symbol"].upper() != "BTC"]
+        done = 0
+        with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as ex:
+            for sym, m, d1, err in ex.map(fetch, rest):
+                done += 1
+                if done % 10 == 0:
+                    _progress(f"Velas diarias {done}/{len(rest)}…")
+                if err:
+                    skipped.append({"symbol": sym, "reason": f"error de datos: {err}"}); continue
                 if len(d1["c"]) < 60:
                     skipped.append({"symbol": sym, "reason": "historial < 60 días"}); continue
-                h4 = data.klines(pair, "4h", 200)
-                cache[sym] = (m, d1, h4)
-                time.sleep(0.08)
-            except Exception as e:
-                skipped.append({"symbol": sym, "reason": f"error de datos: {e}"})
-        # amplitud
-        above = [1 if (lambda t: t["ema50"] and t["price"] > t["ema50"])(technicals(d1)) else 0
-                 for s, (m, d1, h4) in cache.items() if s != "BTC"]
-        breadth = sum(above) / len(above) * 100 if above else 50
+                cache[sym] = (m, d1)
+        sources["klines"] = f"{data.source_used.get('klines', 'binance').capitalize()} ({len(cache)} activos)"
+
+        # ---------- indicadores, amplitud y régimen (motor cuantitativo común con el backtest)
+        _progress("Calculando régimen de mercado…")
+        feats = {s: qfeatures.compute(d1) for s, (m, d1) in cache.items()}
+        bf = feats["BTC"]; bi = len(bf.c) - 1
+        above, rs = [], []
+        b30 = qfeatures.chg(bf, bi, 30)
+        for s, f in feats.items():
+            if s == "BTC":
+                continue
+            i = len(f.c) - 1
+            e50 = qfeatures.val(f.ema50, i)
+            if e50 and i >= 50:
+                above.append(f.c[i] > e50)
+            c30 = qfeatures.chg(f, i, 30)
+            if c30 is not None and b30 is not None:
+                rs.append(c30 - b30)
+        breadth = sum(above) / len(above) * 100 if above else None
+        alt_rs = sorted(rs)[len(rs) // 2] if rs else None
         dom = (g.get("market_cap_percentage") or {}).get("btc")
         prev = storage.read("latest.json", {}) or {}
         dom_prev = (prev.get("market") or {}).get("btc_dominance")
-        reg = detect(btc_t, breadth, fng["value"] if fng else None, dom, dom_prev,
-                     g.get("market_cap_change_percentage_24h_usd"))
+        ef = feats.get("ETH")
+        reg = qregime.detect(bf, bi, breadth, ef, (len(ef.c) - 1) if ef else None, alt_rs, dom, dom_prev)
         regime = reg["regime"]
+
+        # ---------- análisis por activo
         _progress("Calculando puntuaciones y planes…")
-        cats_map = cats
+        now_ms = int(time.time() * 1000)
+        pos_map = {}
+        for p in positions:
+            pos_map.setdefault(p["symbol"], p)
         results = []
-        for sym, (m, d1, h4) in cache.items():
+        for sym, (m, d1) in cache.items():
             try:
-                t30 = (d1["c"][-1] / d1["c"][-31] - 1) * 100 if len(d1["c"]) > 31 else None
-                ctx = {"fng": fng["value"] if fng else None,
-                       "funding": funding.get(sym + "USDT"),
-                       "rel_strength": (t30 - btc_30) if (t30 is not None and btc_30 is not None and sym != "BTC") else None,
-                       "catalyst": (settings.get("catalysts") or {}).get(sym)}
-                a = analyze(sym, d1, h4, weekly_from_daily(d1), m if m.get("market_cap") else None, ctx, settings, regime)
-                a.update({"name": m.get("name", sym), "id": m.get("id"), "image": m.get("image"),
-                          "market_cap": m.get("market_cap"), "fdv": m.get("fully_diluted_valuation"),
-                          "rank_mcap": m.get("market_cap_rank"), "volume_24h": m.get("total_volume"),
-                          "price_cg": m.get("current_price"), "chg_24h": m.get("price_change_percentage_24h"),
-                          "categories": [cap_bucket(m.get("market_cap"))] + cats_map.get(sym, []),
-                          "funding": ctx["funding"], "catalyst": ctx["catalyst"],
-                          "in_watchlist": sym in watch})
+                f = feats[sym]; i = len(f.c) - 1
+                pos = pos_map.get(sym)
+                a = qengine.analyze(sym, f, i, bf, bi, regime=reg, settings=settings, market=m,
+                                    position={"entry": pos["entry"], "stop": pos.get("stop") or pos["entry"] * 0.9,
+                                              "highest_close": pos.get("highest_close")} if pos else None,
+                                    now_ms=now_ms)
+                a.update(_asset_meta(m, sym, cats, watch))
                 results.append(a)
             except Exception as e:
                 skipped.append({"symbol": sym, "reason": f"error de análisis: {e}"})
-        # OI solo para los mejores candidatos con futuros (dato de sentimiento)
-        results.sort(key=lambda r: r["score"], reverse=True)
-        for r in results[:15]:
-            if r["symbol"] + "USDT" in funding:
-                r["oi_change_24h"] = data.open_interest_change(r["symbol"] + "USDT")
-                if r["oi_change_24h"] is not None and abs(r["oi_change_24h"]) > 25:
-                    r["signals_exit"].append(f"Open interest inestable ({r['oi_change_24h']:+.0f}% 24h)")
-        report = build_report(results, reg, btc_t, g, fng, breadth, settings)
+
+        # ---------- libro de órdenes en vivo para los mejores candidatos (spread, profundidad, manipulación)
+        _progress("Leyendo libros de órdenes de los mejores candidatos…")
+        books_prev = storage.read("books.json", {}) or {}
+        books = {}
+        top = sorted(results, key=lambda r: -r["score"])[:BOOK_TOP]
+        for r in top:
+            sym = r["symbol"]
+            bk = data.order_book(sym + settings["quote"])
+            if not bk:
+                continue
+            books[sym] = bk
+            f = feats[sym]; i = len(f.c) - 1; m = cache[sym][0]
+            pos = pos_map.get(sym)
+            a = qengine.analyze(sym, f, i, bf, bi, regime=reg, settings=settings, market=m, book=bk,
+                                book_prev=books_prev.get(sym),
+                                position={"entry": pos["entry"], "stop": pos.get("stop") or pos["entry"] * 0.9,
+                                          "highest_close": pos.get("highest_close")} if pos else None,
+                                now_ms=now_ms)
+            a.update(_asset_meta(m, sym, cats, watch)); a["book"] = bk
+            results[results.index(r)] = a
+        if books:
+            storage.write("books.json", {**books_prev, **books})
+        sources["order_books"] = f"Binance ({len(books)} libros)" if books else "N/D"
+        for r in results:
+            r["rank_score"] = rank_score(r)
+        results.sort(key=lambda r: -r["rank_score"])
+        report = build_report(results, reg, g, fng, settings)
         report.update({
-            "scan_id": uuid.uuid4().hex[:10], "at": now().isoformat(), "duration_s": round(time.time() - t0),
-            "analyzed": len(results), "skipped": skipped[:400], "sources": sources,
-            "assets": results,
+            "engine": "quant-2.0", "scan_id": uuid.uuid4().hex[:10], "at": now().isoformat(),
+            "duration_s": round(time.time() - t0), "analyzed": len(results), "skipped": skipped[:400],
+            "sources": sources, "assets": results,
         })
         save_candles(cache, report)
         fire_alerts(prev, report, settings)
         update_positions(report, settings)
+        if ACCOUNTS:
+            try:
+                from . import multiuser
+                multiuser.after_scan(report, feats, regime)
+            except Exception:
+                traceback.print_exc()
         log_journal(report)
         evaluate_journal(settings)
         storage.write("latest.json", report)
@@ -209,7 +262,8 @@ def run_scan(settings=None):
             hist[r["symbol"]] = hist[r["symbol"]][-180:]
         storage.write("history.json", hist)
         storage.append_list("scans.json", [{k: report[k] for k in ("scan_id", "at", "verdict", "analyzed", "duration_s")} | {
-            "regime": reg["regime"], "top": [x["symbol"] for x in report["ranking"][:5]]}], keep=500)
+            "regime": regime, "top": [x["symbol"] for x in report["ranking"][:5]]}], keep=500)
+        notify.maybe_summaries(report, settings)
         _progress("")
         status["fail_streak"] = 0
         return report
@@ -239,80 +293,115 @@ def save_candles(cache, report):
     storage.write("candles.json", store)
 
 
-def build_report(results, reg, btc_t, g, fng, breadth, settings):
+def _asset_meta(m, sym, cats, watch):
+    return {"name": m.get("name", sym), "id": m.get("id"), "image": m.get("image"),
+            "market_cap": m.get("market_cap"), "fdv": m.get("fully_diluted_valuation"),
+            "rank_mcap": m.get("market_cap_rank"), "volume_24h": m.get("total_volume"),
+            "cap_bucket": cap_bucket(m.get("market_cap")),
+            "categories": [cap_bucket(m.get("market_cap"))] + cats.get(sym, []), "in_watchlist": sym in watch}
+
+
+PHASE_PRIORITY = {"PRE-EXPLOSION": 10, "ACCUMULATION": 8, "BREAKOUT": 4, "MOMENTUM": 0}
+
+
+def rank_score(r):
+    """Prioriza oportunidades TEMPRANAS: fase temprana, poco recorrido previo, bajo riesgo de manipulación y buen R:R.
+    Las que ya subieron mucho (sobreextendidas) o muestran distribución quedan fuera del ranking."""
+    if r["phase"] not in PHASE_PRIORITY or r["action"] in ("DESCARTAR", "EVITAR", "NO PERSEGUIR"):
+        return -1.0
+    s = r["score"] + PHASE_PRIORITY[r["phase"]]
+    c30 = r["metrics"].get("chg_30d") or 0
+    if c30 > 40:
+        s -= min(20, (c30 - 40) / 3)          # ya recorrió mucho: penalizar
+    s -= r["manipulation"]["risk"] * 0.15
+    q = (r.get("quality") or {}).get("score")
+    if q is not None and q < 80:
+        s -= (80 - q) * 0.2
+    s += min(5, max(0, (r["plan"]["rr"] - 2.5) * 2))
+    return round(s, 1)
+
+
+def _row(r):
+    """Fila compacta del ranking con los campos que se muestran en el escáner."""
+    pl, mt = r["plan"], r["metrics"]
+    return {"symbol": r["symbol"], "name": r.get("name"), "price": r["price"], "score": r["score"],
+            "rank_score": r.get("rank_score"), "phase": r["phase"], "phase_label": r["phase_label"],
+            "action": r["action"], "action_reason": r["action_reason"], "rel_volume": mt.get("rel_volume"),
+            "chg_24h": mt.get("chg_24h"), "chg_7d": mt.get("chg_7d"), "chg_30d": mt.get("chg_30d"),
+            "rs_btc_30d": mt.get("rs_btc_30d"), "liquidity": mt.get("liquidity"),
+            "manipulation_risk": r["manipulation"]["risk"], "manipulation_level": r["manipulation"]["level"],
+            "entry_low": pl["entry_low"], "entry_high": pl["entry_high"], "trigger": pl["trigger_breakout"],
+            "stop": pl["stop"], "tp1": pl["tp1"], "tp2": pl["tp2"], "tp3": pl["tp3"], "rr": pl["rr"],
+            "position_usd": pl["position_usd"], "market_cap": r.get("market_cap"), "cap_bucket": r.get("cap_bucket"),
+            "quality": (r.get("quality") or {}).get("score")}
+
+
+def build_report(results, reg, g, fng, settings):
     regime = reg["regime"]
-    min_buy = MIN_BUY_SCORE.get(regime, 75)
-    avoid_phase = ("SOBREEXTENDIDO", "DISTRIBUCIÓN")
-    ok = [r for r in results if not r["action"].startswith(("EVITAR", "RECHAZAR"))]
-    ranking = sorted(ok, key=lambda r: (r["score"], r["plan"]["rr"]), reverse=True)[:10]
-    for i, r in enumerate(ranking, 1):
-        r["rank"] = i
-    buyable = [r for r in ok if r["action"] in ("COMPRAR EN ZONA", "ESPERAR RETROCESO", "ESPERAR RUPTURA")]
-    def best(key, pool, cond=lambda r: True):
-        c = [r for r in pool if cond(r)]
-        return max(c, key=key)["symbol"] if c else None
-    pool = [r for r in ok if r["score"] >= 60 and r["plan"]["rr"] >= settings["min_risk_reward"]]
-    extra = {
-        "top3": [r["symbol"] for r in ranking[:3]],
-        "best_early_entry": best(lambda r: (r["early_score"], r["score"]), pool, lambda r: r["phase"] in ("ACUMULACIÓN", "RUPTURA INICIAL", "RETROCESO")),
-        "best_risk_reward": best(lambda r: r["plan"]["rr"], pool),
-        "highest_growth": best(lambda r: r["plan"]["return_tp3_pct"], [r for r in pool if r["score"] >= 65]),
-        "short_term_trade": best(lambda r: (r["momentum_score"], r["score"]), pool, lambda r: r["tech"].get("h4_trend_up") and r["phase"] in ("RUPTURA INICIAL", "MOMENTUM")),
-        "avoid": [{"symbol": r["symbol"], "why": r["phase"] + (": " + ", ".join(r["signals_exit"][:2]) if r["signals_exit"] else "")}
-                  for r in sorted([r for r in results if r["phase"] in avoid_phase or r["exit_risk"] >= 50],
-                                  key=lambda r: (r.get("market_cap") or 0), reverse=True)[:8]],
-    }
-    actionable = [r for r in buyable if r["score"] >= min_buy and r["plan"]["rr"] >= settings["min_risk_reward"]]
-    if not actionable:
-        verdict = "MANTENER LIQUIDEZ"
-        verdict_text = (f"Ningún activo cumple a la vez puntuación ≥ {min_buy} (exigida en régimen {regime}) y R:R ≥ "
-                        f"{settings['min_risk_reward']}. No forzar entradas: esperar.")
-    elif any(r["action"] == "COMPRAR EN ZONA" for r in actionable):
+    pol = reg["policy"]
+    ranked = [r for r in results if r["rank_score"] >= 0]
+    ranking = [dict(_row(r), rank=k) for k, r in enumerate(ranked[:20], 1)]
+    buy = [r for r in ranked if r["action"] in BUY_ACTIONS]
+    early = [_row(r) for r in ranked if r["phase"] in ("PRE-EXPLOSION", "ACCUMULATION")][:15]
+    breakouts = [_row(r) for r in ranked if r["phase"] == "BREAKOUT"][:15]
+    avoid = [{"symbol": r["symbol"], "phase": r["phase_label"], "why": r["action_reason"],
+              "manipulation_risk": r["manipulation"]["risk"]}
+             for r in sorted(results, key=lambda r: -(r.get("market_cap") or 0))
+             if r["phase"] in ("OVEREXTENDED", "DISTRIBUTION") or r["manipulation"]["risk"] >= qengine.MANIP_BLOCK][:12]
+    if not buy:
+        verdict, vtext = "MANTENER LIQUIDEZ", (f"Ningún activo cumple las condiciones del régimen {reg['label'].lower()} "
+                                               f"(puntaje ≥ {pol['min_score']}, R:R ≥ {settings['min_risk_reward']}). No forzar entradas.")
+    elif any(r["action"] == "COMPRAR EN ZONA" for r in buy):
         verdict = "OPORTUNIDADES ACTIVAS"
-        verdict_text = f"{sum(r['action'] == 'COMPRAR EN ZONA' for r in actionable)} activo(s) en zona de entrada con plan completo."
+        vtext = f"{sum(r['action'] == 'COMPRAR EN ZONA' for r in buy)} activo(s) en zona de entrada con plan completo."
     else:
-        verdict = "ESPERAR ENTRADA"
-        verdict_text = "Hay candidatos de calidad, pero el precio aún no está en la zona ideal: esperar retroceso o ruptura."
-    expo = EXPOSURE.get(regime, 40)
-    outlook = (f"Régimen {regime}. " + ". ".join(reg["reasons"]) +
-               f". Exposición máxima recomendada en altcoins: {expo}% del capital; el resto en liquidez (stablecoins).")
+        verdict, vtext = "ESPERAR ENTRADA", "Hay candidatos, pero el precio aún no está en la zona: esperar retroceso o ruptura."
+    rm = reg["metrics"]
     market = {
-        "btc_price": btc_t["price"], "btc_rsi": btc_t["rsi"], "btc_ema50": btc_t["ema50"], "btc_ema200": btc_t["ema200"],
-        "btc_chg_30d": btc_t["chg_30d"], "btc_dominance": (g.get("market_cap_percentage") or {}).get("btc"),
+        "btc_price": rm["btc_price"], "btc_ema50": rm["btc_ema50"], "btc_ema200": rm["btc_ema200"],
+        "btc_chg_7d": rm["btc_chg_7d"], "btc_chg_30d": rm["btc_chg_30d"], "btc_vol_annual_pct": rm["btc_vol_annual_pct"],
+        "btc_drawdown_90d_pct": rm["btc_drawdown_90d_pct"], "btc_dominance": (g.get("market_cap_percentage") or {}).get("btc"),
         "eth_dominance": (g.get("market_cap_percentage") or {}).get("eth"),
         "total_mcap": (g.get("total_market_cap") or {}).get("usd"), "total_volume": (g.get("total_volume") or {}).get("usd"),
-        "mcap_chg_24h": g.get("market_cap_change_percentage_24h_usd"), "fear_greed": fng, "breadth": breadth,
-        "regime": regime, "alt_bias": reg["alt_bias"], "max_alt_exposure": expo, "min_buy_score": min_buy,
+        "mcap_chg_24h": g.get("market_cap_change_percentage_24h_usd"), "fear_greed": fng, "breadth": rm["breadth"],
+        "alt_rs_30d": rm["alt_rs_30d"], "regime": regime, "regime_label": reg["label"], "regime_reasons": reg["reasons"],
+        "policy": {k: (list(v) if isinstance(v, tuple) else v) for k, v in pol.items()},
+        "max_alt_exposure": pol["max_alt_exposure"], "min_buy_score": pol["min_score"],
     }
-    return {"verdict": verdict, "verdict_text": verdict_text, "market": market, "outlook": outlook,
-            "ranking": ranking, "extra": extra}
+    counts = {}
+    for r in results:
+        counts[r["phase"]] = counts.get(r["phase"], 0) + 1
+    return {"verdict": verdict, "verdict_text": vtext, "market": market, "phase_counts": counts,
+            "outlook": f"Régimen {reg['label']}. " + ". ".join(reg["reasons"]) +
+                       f". Exposición máxima recomendada en altcoins: {pol['max_alt_exposure']}% del capital.",
+            "ranking": ranking, "early": early, "breakouts": breakouts, "avoid": avoid}
 
 
 def fire_alerts(prev, rep, settings):
+    """Alertas por TRANSICIÓN (no se repiten mientras el estado no cambie) y con deduplicación temporal."""
     prev_assets = {r["symbol"]: r for r in (prev.get("assets") or [])}
-    prev_top = {r["symbol"] for r in (prev.get("ranking") or [])}
-    watch = {s.upper() for s in settings.get("watchlist", [])}
-    pos = {p["symbol"] for p in (storage.read("positions.json", []) or []) if p.get("status") == "OPEN"}
     pm = prev.get("market") or {}
     if pm.get("regime") and pm["regime"] != rep["market"]["regime"]:
-        alerts.emit(settings, "MARKET REGIME CHANGE", "MERCADO", f"{pm['regime']} → {rep['market']['regime']}. {rep['verdict']}.")
-    top = {r["symbol"] for r in rep["ranking"]}
+        alerts.emit(settings, "MARKET REGIME CHANGE", "MERCADO", notify.regime_text(pm, rep["market"], rep["verdict"]),
+                    dedupe_hours=6)
+    pos = {p["symbol"] for p in (storage.read("positions.json", []) or []) if p.get("status") == "OPEN"}
+    watch = {s.upper() for s in settings.get("watchlist", [])}
+    ranked = {r["symbol"] for r in rep["ranking"]}
     for r in rep["assets"]:
-        s, p = r["symbol"], prev_assets.get(r["symbol"], {})
-        relevant = s in top or s in watch or s in pos or s in prev_top
-        pl = r["plan"]
-        lv = f"Zona {fmt(pl['entry_ideal'])}–{fmt(pl['entry_zone_high'])} · SL {fmt(pl['stop'])} · TP1 {fmt(pl['tp1'])} · TP2 {fmt(pl['tp2'])} · Score {r['score']:.0f}"
-        if r["phase"] in ("ACUMULACIÓN", "RUPTURA INICIAL") and r["score"] >= 70 and r["early_score"] >= 45 \
-                and not r["action"].startswith(("EVITAR", "RECHAZAR", "VIGILAR")) and (p.get("score", 0) < 70 or p.get("phase") != r["phase"]):
-            alerts.emit(settings, "NEW EARLY ENTRY", s, f"{r['phase']} · {lv}")
-        if r["phase"] == "RUPTURA INICIAL" and p.get("phase") and p.get("phase") != "RUPTURA INICIAL" and r["score"] >= 65:
-            alerts.emit(settings, "BREAKOUT CONFIRMATION", s, f"Ruptura con volumen x{r['tech']['vol_ratio']:.1f}. {lv}")
-        if r["action"] == "COMPRAR EN ZONA" and p.get("action") != "COMPRAR EN ZONA" and relevant:
-            alerts.emit(settings, "ENTRY ZONE REACHED", s, lv)
-        if r["phase"] == "DISTRIBUCIÓN" and p.get("phase") != "DISTRIBUCIÓN" and relevant:
-            alerts.emit(settings, "DISTRIBUTION DETECTED", s, ", ".join(r["signals_exit"][:3]) or "Señales de distribución")
-        if r["exit_risk"] >= 50 and p.get("exit_risk", 0) < 50 and (s in pos or s in prev_top or s in watch):
-            alerts.emit(settings, "BEARISH REVERSAL", s, ", ".join(r["signals_exit"][:3]))
+        s, p = r["symbol"], prev_assets.get(r["symbol"]) or {}
+        buyable = r["action"] in BUY_ACTIONS
+        if r["phase"] == "PRE-EXPLOSION" and buyable and p.get("phase") != "PRE-EXPLOSION":
+            alerts.emit(settings, "PRE-EXPLOSION", s, notify.signal_text(r), extra=_row(r), dedupe_hours=48)
+        if r["phase"] == "BREAKOUT" and buyable and p.get("phase") != "BREAKOUT":
+            alerts.emit(settings, "BREAKOUT CONFIRMATION", s, notify.signal_text(r), extra=_row(r), dedupe_hours=48)
+        if r["action"] == "COMPRAR EN ZONA" and p.get("action") != "COMPRAR EN ZONA" and (s in ranked or s in watch):
+            alerts.emit(settings, "ENTRY ZONE REACHED", s, notify.signal_text(r), extra=_row(r), dedupe_hours=24)
+        relevant = s in pos or s in watch or s in ranked
+        hi_risk = r["manipulation"]["risk"] >= qengine.MANIP_BLOCK
+        if relevant and hi_risk and (p.get("manipulation") or {}).get("risk", 0) < qengine.MANIP_BLOCK:
+            alerts.emit(settings, "RISK", s, notify.risk_text(r), dedupe_hours=24)
+        if relevant and r["phase"] == "DISTRIBUTION" and p.get("phase") != "DISTRIBUTION":
+            alerts.emit(settings, "DISTRIBUTION DETECTED", s, notify.risk_text(r), dedupe_hours=24)
 
 
 def fmt(x):
@@ -322,6 +411,7 @@ def fmt(x):
 
 # ------------------------------------------------------------- posiciones
 def update_positions(rep, settings, prices=None):
+    """Precio, P&L, objetivos/stop y la decisión de Exit Intelligence (calculada en el escaneo con velas cerradas)."""
     positions = storage.read("positions.json", []) or []
     amap = {r["symbol"]: r for r in (rep.get("assets") or [])} if rep else {}
     changed = False
@@ -334,14 +424,13 @@ def update_positions(rep, settings, prices=None):
             continue
         p["last_price"] = price
         p["pnl_pct"] = (price / p["entry"] - 1) * 100
+        p["highest_close"] = max(p.get("highest_close") or p["entry"], (amap.get(s) or {}).get("price") or 0)
         p["updated"] = now().isoformat()
         hits = p.setdefault("hits", [])
         for tp in ("tp1", "tp2", "tp3"):
             if p.get(tp) and price >= p[tp] and tp not in hits:
                 hits.append(tp)
-                alerts.emit(settings, "TAKE PROFIT REACHED", s, f"{tp.upper()} {fmt(p[tp])} alcanzado ({p['pnl_pct']:+.1f}%). "
-                            + ("Sugerido: vender ~40% y subir stop a la entrada." if tp == "tp1" else
-                               "Sugerido: vender ~35% más y subir stop a TP1." if tp == "tp2" else "Objetivo final alcanzado."), dedupe_hours=72)
+                alerts.emit(settings, "TAKE PROFIT REACHED", s, notify.tp_text(p, tp, price), dedupe_hours=72)
         if p.get("stop"):
             if price <= p["stop"] and "stop" not in hits:
                 hits.append("stop")
@@ -349,10 +438,14 @@ def update_positions(rep, settings, prices=None):
             elif price <= p["stop"] * 1.03:
                 alerts.emit(settings, "STOP LOSS WARNING", s, f"Precio {fmt(price)} a {((price / p['stop']) - 1) * 100:.1f}% del stop {fmt(p['stop'])}.", dedupe_hours=8)
         a = amap.get(s)
-        if a:
-            p["exit_signals"] = a["signals_exit"]
-            p["exit_risk"] = a["exit_risk"]
+        if a and a.get("exit"):
+            ex = a["exit"]
+            prev_dec = (p.get("exit") or {}).get("decision")
+            p["exit"] = ex
             p["phase"] = a["phase"]
+            p["suggested_stop"] = ex["suggested_stop"]
+            if ex["decision"] != "MANTENER" and ex["decision"] != prev_dec:
+                alerts.emit(settings, "EXIT", s, notify.exit_text(p, a), extra={"decision": ex["decision"]}, dedupe_hours=24)
         changed = True
     if changed:
         storage.write("positions.json", positions)
@@ -431,8 +524,9 @@ def price_watch(settings=None):
         p = prices.get(s)
         if not p or r["action"] not in ("ESPERAR RETROCESO", "COMPRAR EN ZONA"):
             continue
-        pl = r["plan"]
-        if pl["stop"] < p <= pl["entry_zone_high"]:
+        if r["stop"] < p <= r["entry_high"]:
             alerts.emit(settings, "ENTRY ZONE REACHED", s,
-                        f"Precio {fmt(p)} dentro de la zona {fmt(pl['entry_ideal'])}–{fmt(pl['entry_zone_high'])} · SL {fmt(pl['stop'])} · TP1 {fmt(pl['tp1'])}. Revisa el panel antes de actuar.")
+                        f"Precio {fmt(p)} dentro de la zona {fmt(r['entry_low'])}–{fmt(r['entry_high'])} · Stop {fmt(r['stop'])} · "
+                        f"TP1 {fmt(r['tp1'])} · TP2 {fmt(r['tp2'])}. Puntaje {r['score']:.0f}. Revisa el panel antes de actuar.",
+                        extra=r, dedupe_hours=24)
     storage.write("prices.json", {"at": status["last_watch"], "prices": {k: prices[k] for k in list(prices)[:3000]}})

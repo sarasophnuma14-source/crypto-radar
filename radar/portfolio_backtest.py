@@ -198,6 +198,18 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
                                 "entry_fee": fill * qty * fee, "realized": 0.0, "risk_usd": (fill - po["stop"]) * qty,
                                 "score": po["score"], "phase": po["phase"], "regime": po["regime"]}
                 del pending[s]
+                if h["l"][i] <= po["stop"]:
+                    # la misma vela que llenó la compra perforó el stop: se asume el peor caso (salida ese día)
+                    p = positions[s]
+                    close_part(d, s, p, 1, po["stop"], "STOP", "STOP LOSS (mismo día de la entrada)")
+                    trades.append({"token": s, "entrada_fecha": day(d), "salida_fecha": day(d), "dias": 0,
+                                   "entrada": round(p["entry"], 8), "stop_inicial": round(p["stop0"], 8),
+                                   "tp1": round(p["tp1"], 8), "tp2": round(p["tp2"], 8), "tp3": round(p["tp3"], 8),
+                                   "score": p["score"], "fase": p["phase"], "regimen": p["regime"], "objetivos": "-",
+                                   "invertido_usd": round(p["entry"] * p["qty0"], 2), "pnl_usd": round(p["realized"], 2),
+                                   "pnl_pct": round(p["realized"] / (p["entry"] * p["qty0"]) * 100, 2),
+                                   "R": round(p["realized"] / p["risk_usd"], 2) if p["risk_usd"] else None})
+                    del positions[s]
             elif d >= po["expires"]:
                 orders.append({"fecha": day(d), "token": s, "lado": "COMPRA", "tipo": "LIMIT", "motivo": "EXPIRADA sin ejecutarse",
                                "precio": round(po["limit"], 8), "cantidad": 0, "valor_usd": 0, "comision_usd": 0, "pnl_usd": None, "caja_usd": round(cash, 2)})
@@ -207,7 +219,7 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
         mtm = cash
         for s, p in positions.items():
             i = idx[s].get(d)
-            px = hist[s]["c"][i] if i is not None else p["entry"]
+            px = hist[s]["c"][i] if i is not None else p.get("last", p["entry"])   # sin vela ese día: último cierre conocido
             p["last"] = px
             mtm += px * p["qty_left"]
         equity_curve.append([day(d), round(mtm, 2)])
@@ -235,7 +247,10 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
         min_buy = MIN_BUY_SCORE.get(reg, 75)
         expo_cap = EXPOSURE.get(reg, 40) / 100
         btc_30 = tech_cache["BTC"]["chg_30d"]
+        eq_today = equity_curve[-1][1]
         alt_exposure = sum(p.get("last", p["entry"]) * p["qty_left"] for s, p in positions.items() if s != "BTC")
+        # las órdenes pendientes también comprometen exposición (antes no se contaban)
+        alt_exposure += sum(po["reserve_usd"] for s, po in pending.items() if s != "BTC")
         for s in tech_cache:
             i = idx[s][d]
             h = hist[s]
@@ -256,12 +271,16 @@ def run(universe=None, start="2022-01-01", test_from="2023-01-01", capital=10_00
             if s == "BTC" and not trade_btc:
                 continue
             if a["action"] == "COMPRAR EN ZONA" and a["score"] >= min_buy and a["plan"]["rr"] >= min_rr:
-                if s != "BTC" and alt_exposure >= expo_cap * (equity_curve[-1][1]):
-                    continue
                 pl = a["plan"]
-                pending[s] = {"limit": pl["entry_zone_high"], "stop": pl["stop"], "tp1": pl["tp1"], "tp2": pl["tp2"], "tp3": pl["tp3"],
+                lim = pl["entry_zone_high"]
+                reserve = min(eq_today * risk_pct / 100 / max(lim - pl["stop"], 1e-12) * lim, eq_today * max_pos_pct / 100)
+                if s != "BTC" and alt_exposure + reserve > expo_cap * eq_today:
+                    continue
+                pending[s] = {"limit": lim, "stop": pl["stop"], "tp1": pl["tp1"], "tp2": pl["tp2"], "tp3": pl["tp3"],
                               "score": a["score"], "phase": a["phase"], "rr": pl["rr"], "regime": reg,
-                              "expires": d + limit_days * 86400000}
+                              "expires": d + limit_days * 86400000, "reserve_usd": reserve}
+                if s != "BTC":
+                    alt_exposure += reserve      # exposición actualizada tras cada orden
                 orders.append({"fecha": day(d), "token": s, "lado": "COMPRA", "tipo": "LIMIT (colocada)",
                                "motivo": f"Señal {a['phase']} score {a['score']:.0f} R:R {pl['rr']:.1f} · stop {pl['stop']:.6g} · TP1 {pl['tp1']:.6g} TP2 {pl['tp2']:.6g} TP3 {pl['tp3']:.6g}",
                                "precio": round(pl["entry_zone_high"], 8), "cantidad": 0, "valor_usd": 0, "comision_usd": 0,

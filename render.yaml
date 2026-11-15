@@ -8,7 +8,7 @@ services:
     runtime: python
     region: frankfurt          # Binance bloquea IPs de EE. UU.
     plan: free
-    buildCommand: "echo sin dependencias"
+    buildCommand: "pip install -r requirements.txt"
     startCommand: "python main.py serve"
     healthCheckPath: /healthz
     envVars:
@@ -24,3 +24,35 @@ services:
         sync: false            # opcional: alertas al celular
       - key: TELEGRAM_CHAT_ID
         sync: false
+      # ---- Modo SaaS (cuentas, planes y pagos). Ver docs/DESPLIEGUE.md antes de activarlo. ----
+      - key: CRYPTO_RADAR_ACCOUNTS
+        sync: false            # "1" activa cuentas; déjalo vacío para el modo de un solo usuario actual
+      - key: DATABASE_URL
+        sync: false            # PostgreSQL (Neon gratis). Obligatorio con cuentas: el disco de Render se borra
+      - key: CRYPTO_RADAR_ADMIN_EMAIL
+        sync: false            # el primer registro con este correo queda como administrador
+      - key: SALES_URL
+        sync: false
+      - key: WOMPI_PUBLIC_KEY
+        sync: false
+      - key: WOMPI_INTEGRITY_SECRET
+        sync: false
+      - key: WOMPI_EVENTS_SECRET
+        sync: false
+      - key: COP_PER_USD
+        sync: false
+      - key: NOWPAYMENTS_API_KEY
+        sync: false
+      - key: NOWPAYMENTS_IPN_SECRET
+        sync: false
+
+  # Web de ventas: sitio estático gratis (no se duerme ni consume las 750 h del plan gratis).
+  - type: web
+    name: crypto-radar-ventas
+    runtime: static
+    buildCommand: "echo sitio estatico"
+    staticPublishPath: ./ventas
+    headers:
+      - path: /*
+        name: X-Frame-Options
+        value: DENY

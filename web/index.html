@@ -2,160 +2,290 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07141A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Crypto Radar</title>
+<link rel="manifest" href="/static/manifest.webmanifest">
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/static/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<header class="top">
-  <div class="brand"><span class="dot"></span>CRYPTO RADAR <small>AI</small></div>
-  <nav id="tabs">
-    <button data-tab="radar" class="on">Radar</button>
-    <button data-tab="assets">Todos los activos</button>
-    <button data-tab="alerts">Alertas <span id="alertCount" class="pill hidden"></span></button>
-    <button data-tab="positions">Mis posiciones</button>
-    <button data-tab="memes">Memecoins 🐸</button>
-    <button data-tab="journal">Rendimiento</button>
-    <button data-tab="backtest">Backtest</button>
-    <button data-tab="settings">Ajustes</button>
-  </nav>
-  <div class="scanbox">
-    <div id="scanInfo" class="muted">—</div>
-    <button id="scanBtn" class="primary">Escanear ahora</button>
-  </div>
-</header>
-
-<main>
-  <section id="tab-radar" class="tab on">
-    <div id="empty" class="card hidden">
-      <h2>Aún no hay escaneos</h2>
-      <p>Pulsa <b>Escanear ahora</b>. El primer escaneo tarda unos minutos (analiza ~150 criptomonedas en 1D, 4H y 1W).</p>
-    </div>
-    <div id="verdict" class="verdict"></div>
-    <div id="market" class="grid kpis"></div>
-    <div class="card"><h3>Panorama del mercado</h3><p id="outlook" class="outlook"></p></div>
-    <div class="card">
-      <div class="row between"><h3>Ranking · Top 10 oportunidades</h3><span class="muted small">Haz clic en un activo para ver su plan completo</span></div>
-      <div class="tablewrap"><table id="rankTable"></table></div>
-    </div>
-    <div id="extra" class="grid cards3"></div>
-  </section>
-
-  <section id="tab-assets" class="tab">
-    <div class="card">
-      <div class="row between wrap">
-        <h3>Todos los activos analizados</h3>
-        <div class="row wrap gap">
-          <input id="fSearch" placeholder="Buscar símbolo…">
-          <select id="fPhase"><option value="">Todas las fases</option></select>
-          <select id="fCat"><option value="">Todas las categorías</option></select>
-        </div>
-      </div>
-      <div class="tablewrap"><table id="assetTable"></table></div>
-      <details class="muted small"><summary>Activos descartados del análisis</summary><div id="skipped"></div></details>
-    </div>
-  </section>
-
-  <section id="tab-alerts" class="tab">
-    <div class="card"><h3>Alertas</h3><div id="alertList"></div></div>
-  </section>
-
-  <section id="tab-positions" class="tab">
-    <div class="card">
-      <h3>Registrar una posición</h3>
-      <p class="muted small">Registra compras reales o simuladas (paper trading). El radar vigila el precio cada 15 minutos y te avisa de TP, stop y señales de salida. Si dejas stop/TP vacíos se usan los del plan del radar.</p>
-      <form id="posForm" class="row wrap gap">
-        <input name="symbol" placeholder="Símbolo (ej. SOL)" required>
-        <input name="entry" placeholder="Precio de entrada" required inputmode="decimal">
-        <input name="qty" placeholder="Cantidad (opcional)" inputmode="decimal">
-        <input name="stop" placeholder="Stop" inputmode="decimal">
-        <input name="tp1" placeholder="TP1" inputmode="decimal">
-        <input name="tp2" placeholder="TP2" inputmode="decimal">
-        <input name="tp3" placeholder="TP3" inputmode="decimal">
-        <label class="chk"><input type="checkbox" name="paper" checked> Simulada</label>
-        <button class="primary">Añadir</button>
-      </form>
-    </div>
-    <div class="card"><h3>Posiciones abiertas</h3><div class="tablewrap"><table id="posTable"></table></div></div>
-    <div class="card"><h3>Posiciones cerradas</h3><div class="tablewrap"><table id="posClosed"></table></div></div>
-  </section>
-
-  <section id="tab-memes" class="tab">
-    <div class="card">
-      <div class="row gap" style="justify-content:space-between;align-items:center;flex-wrap:wrap">
-        <h3 style="margin:0">Estrategia de memecoins: ruptura con volumen</h3>
-        <button id="memeCheck" class="primary">Revisar ahora</button>
-      </div>
-      <p class="muted small" id="memeRule"></p>
-      <div id="memeBT" class="grid kpis"></div>
-      <p class="muted small">Arriba: resultado del backtest en la prueba a ciegas (2025→hoy). Abajo: lo que la estrategia está haciendo <b>en vivo, en modo práctica</b> (la app no compra nada; te avisa por Telegram).</p>
-      <div id="memeStats" class="grid kpis"></div>
-      <p class="muted small" id="memeStatus"></p>
-    </div>
-    <div class="card"><h3>Operaciones abiertas (práctica)</h3><div class="tablewrap"><table id="memeOpen"></table></div></div>
-    <div class="card"><h3>Señales recientes</h3><div class="tablewrap"><table id="memeSig"></table></div></div>
-    <div class="card"><h3>Operaciones cerradas</h3><div class="tablewrap"><table id="memeClosed"></table></div></div>
-  </section>
-
-  <section id="tab-journal" class="tab">
-    <div class="card">
-      <h3>Rendimiento real del radar</h3>
-      <p class="muted small">Cada vez que el radar marca <b>COMPRAR EN ZONA</b>, la señal se guarda y se sigue automáticamente con velas de 1 hora: 40% en TP1 (stop a la entrada), 35% en TP2 y 25% en TP3. Así puedes comprobar si el sistema funciona antes de arriesgar dinero. "R" = múltiplos del riesgo asumido.</p>
-      <div id="jStats" class="grid kpis"></div>
-      <div class="tablewrap"><table id="jTable"></table></div>
-    </div>
-  </section>
-
-  <section id="tab-backtest" class="tab">
-    <div class="card">
-      <h3>Backtest de las reglas</h3>
-      <p class="muted small">Simula las reglas técnicas del radar sobre hasta 1000 días de velas diarias de Binance. No incluye fundamentales históricos. Resultados pasados no garantizan resultados futuros.</p>
-      <form id="btForm" class="row wrap gap">
-        <input name="symbol" placeholder="Símbolo (ej. ETH)" value="ETH" required>
-        <select name="min_score"><option>60</option><option selected>70</option><option>80</option></select>
-        <button class="primary">Ejecutar</button>
-      </form>
-      <div id="btOut"></div>
-    </div>
-  </section>
-
-  <section id="tab-settings" class="tab">
-    <form id="setForm" class="card">
-      <h3>Ajustes</h3>
-      <div class="grid form2">
-        <label>Escanear cada (horas)<input name="scan_every_hours" type="number" min="1" max="24"></label>
-        <label>Nº de criptos a analizar (top por capitalización)<input name="universe_size" type="number" min="20" max="500"></label>
-        <label>Volumen mínimo 24h (USD)<input name="min_volume_usd" type="number"></label>
-        <label>Capitalización mínima (USD)<input name="min_mcap_usd" type="number"></label>
-        <label>Tu capital (USD) para calcular tamaño de posición<input name="capital_usd" type="number"></label>
-        <label>% del capital arriesgado por operación<input name="risk_per_trade_pct" type="number" step="0.1"></label>
-        <label>% máximo por activo<input name="max_position_pct" type="number" step="1"></label>
-        <label>R:R mínimo<input name="min_risk_reward" type="number" step="0.1"></label>
-        <label class="chk"><input name="include_memecoins" type="checkbox"> Incluir memecoins</label>
-        <label class="chk"><input name="desktop_notifications" type="checkbox"> Notificaciones en el computador</label>
-      </div>
-      <label>Watchlist (símbolos separados por coma, se analizan siempre)<input name="watchlist"></label>
-      <label>Excluir siempre (separados por coma)<input name="exclude"></label>
-      <label>Catalizadores verificables (uno por línea: SÍMBOLO: descripción y fuente)<textarea name="catalysts" rows="3" placeholder="ONDO: lanzamiento mainnet 2026-12-01 (blog oficial)"></textarea></label>
-      <h3>Alertas por Telegram (opcional)</h3>
-      <ol class="muted small">
-        <li>En Telegram abre <b>@BotFather</b>, envía <code>/newbot</code> y copia el <b>token</b>.</li>
-        <li>Escríbele cualquier mensaje a tu nuevo bot.</li>
-        <li>Abre <b>@userinfobot</b> y copia tu <b>Id</b> (chat id).</li>
-        <li>Pégalos aquí, guarda y pulsa "Probar Telegram".</li>
-      </ol>
-      <div class="grid form2">
-        <label>Token del bot<input name="telegram_bot_token" autocomplete="off"></label>
-        <label>Chat id<input name="telegram_chat_id"></label>
-      </div>
-      <div class="row gap"><button class="primary">Guardar</button><button type="button" id="tgTest">Probar Telegram</button><span id="setMsg" class="muted"></span></div>
+<!-- Inicio de sesión / registro (solo en modo cuentas) -->
+<div class="auth hidden" id="auth">
+  <div class="auth-box card">
+    <div class="logo"><span class="mark" aria-hidden="true"></span>Crypto Radar</div>
+    <h1 id="authTitle">Inicia sesión</h1>
+    <p class="note" id="authSub">Análisis cuantitativo de criptomonedas en español. Te dice cuándo comprar, cuándo esperar y cuándo no entrar.</p>
+    <form id="authForm" autocomplete="on">
+      <label>Correo<input name="email" type="email" required autocomplete="email" maxlength="254"></label>
+      <label>Contraseña<input name="password" type="password" required minlength="10" maxlength="200" autocomplete="current-password"><small id="pwHint" class="hidden">Mínimo 10 caracteres.</small></label>
+      <button class="btn a" type="submit" id="authBtn">Entrar</button>
+      <p class="msg" id="authMsg" role="alert"></p>
     </form>
-  </section>
-</main>
+    <p class="note"><button class="linkbtn small" type="button" id="authSwitch">¿No tienes cuenta? Crear cuenta gratis</button></p>
+    <p class="note"><a id="salesLink" href="#" class="hidden">Ver planes y precios</a></p>
+    <p class="note fine">Software de análisis, no asesoría financiera. Puedes perder todo lo que inviertas.</p>
+  </div>
+</div>
 
-<div id="modal" class="modal hidden"><div class="modal-body"><button class="close" id="modalClose">✕</button><div id="modalContent"></div></div></div>
+<div class="app" id="app">
+  <aside class="side">
+    <div class="logo"><span class="mark" aria-hidden="true"></span>Crypto Radar</div>
+    <nav class="sidenav" aria-label="Secciones">
+      <button data-view="dash" class="on"><i data-ic="radar"></i>Dashboard</button>
+      <button data-view="early"><i data-ic="target"></i>Oportunidades tempranas</button>
+      <button data-view="market"><i data-ic="globe"></i>Mercado</button>
+      <button data-view="breakouts"><i data-ic="up"></i>Rupturas</button>
+      <button data-view="memes"><i data-ic="bolt"></i>Memecoins</button>
+      <button data-view="exits"><i data-ic="down"></i>Salidas</button>
+      <button data-view="portfolio"><i data-ic="wallet"></i>Cartera</button>
+      <button data-view="backtest"><i data-ic="history"></i>Backtesting</button>
+      <button data-view="perf"><i data-ic="list"></i>Rendimiento</button>
+      <button data-view="alerts"><i data-ic="bell"></i>Alertas<span class="count hidden" data-count></span></button>
+      <button data-view="settings"><i data-ic="gear"></i>Configuración</button>
+    </nav>
+    <div class="side-foot" id="sideFoot">—</div>
+  </aside>
 
-<footer>Crypto Radar · solo análisis cuantitativo, no es asesoría financiera. Spot, sin apalancamiento. Datos: CoinGecko, Binance, alternative.me. Nunca se inventan datos: lo no verificable se muestra como N/D.</footer>
+  <div class="main">
+    <header class="top">
+      <div class="logo m-only"><span class="mark" aria-hidden="true"></span>Crypto Radar</div>
+      <h1 class="d-only" id="viewTitle">Dashboard</h1>
+      <div class="status" id="status"><i></i><span>Conectando…</span></div>
+      <span class="plan-pill hidden" id="planPill"></span>
+      <button class="btn d-only" id="exportBtn" type="button"><i data-ic="download"></i>Exportar</button>
+      <button class="btn a d-only admin-only" id="scanBtn" type="button"><i data-ic="refresh"></i><span>Escanear ahora</span></button>
+      <button class="iconbtn m-only admin-only" id="scanBtnM" type="button" aria-label="Escanear ahora"><i data-ic="refresh"></i></button>
+    </header>
+
+    <div class="err hidden" id="errBar"></div>
+    <div class="lockbar hidden" id="lockBar"></div>
+
+    <main class="views">
+      <!-- 1. DASHBOARD -->
+      <section class="view on" id="v-dash">
+        <div class="empty card hidden" id="empty">
+          <h2>Aún no hay un escaneo completo</h2>
+          <p>El primer escaneo analiza el mercado y puede tardar unos minutos.</p>
+        </div>
+        <div class="kpis" id="kpis"></div>
+        <p class="outlook" id="outlook"></p>
+        <div class="phasebar" id="phaseBar"></div>
+        <div class="sec"><h2>Ranking temprano</h2><span id="rankMeta"></span></div>
+        <div class="cards m-only" id="rankCards"></div>
+        <div class="tbl d-only"><table id="rankTable"></table></div>
+        <div class="grid2">
+          <div class="card"><h3 class="h3">Para evitar</h3><div id="avoidList"></div></div>
+          <div class="card"><h3 class="h3">Últimas alertas</h3><div id="dashAlerts"></div></div>
+        </div>
+      </section>
+
+      <!-- 2. OPORTUNIDADES TEMPRANAS -->
+      <section class="view" id="v-early">
+        <p class="note">Pre-explosión y acumulación: compresión de volatilidad, volumen que crece sin que el precio haya corrido, cerca de la resistencia. El precio lateral sin volumen NO cuenta como acumulación.</p>
+        <div class="cards" id="earlyCards"></div>
+      </section>
+
+      <!-- 3. MERCADO -->
+      <section class="view" id="v-market">
+        <div class="kpis small" id="mktKpis"></div>
+        <div class="grid2">
+          <div class="card"><h3 class="h3">Régimen de mercado</h3><div id="regimeBox"></div></div>
+          <div class="card"><h3 class="h3">Reglas activas por el régimen</h3><div id="policyBox"></div></div>
+        </div>
+        <div class="filters">
+          <input id="fSearch" type="search" placeholder="Buscar token" autocomplete="off" aria-label="Buscar token">
+          <select id="fPhase" aria-label="Fase"><option value="">Todas las fases</option></select>
+        </div>
+        <div class="tbl"><table id="assetTable"></table></div>
+        <p class="note" id="skipped"></p>
+      </section>
+
+      <!-- 4. RUPTURAS -->
+      <section class="view" id="v-breakouts">
+        <p class="note">Rupturas con volumen sobre una resistencia confirmada. El plan compra el retest del nivel roto, sin perseguir más de 0,5 ATR por encima.</p>
+        <div class="tbl"><table id="boTable"></table></div>
+      </section>
+
+      <!-- 5. MEMECOINS -->
+      <section class="view" id="v-memes">
+        <div class="kpis small" id="memeStats"></div>
+        <div class="row between">
+          <div class="seg" id="memeSeg">
+            <button data-m="radar" class="on">Radar</button><button data-m="signals">Señales</button><button data-m="open">Abiertas</button><button data-m="closed">Historial</button>
+          </div>
+          <button class="btn admin-only" type="button" id="memeCheck"><i data-ic="refresh"></i>Revisar ahora</button>
+        </div>
+        <p class="note" id="memeStatus"></p>
+        <div id="memeList"></div>
+        <div class="lock"><i data-ic="lock"></i><span>Riesgo extremo. Antigüedad, liquidez y FDV vienen de Binance y CoinGecko. Holders, concentración y pools de liquidez on-chain se muestran como N/D: no se inventan.</span></div>
+      </section>
+
+      <!-- 6. SALIDAS (Exit Intelligence) -->
+      <section class="view" id="v-exits">
+        <p class="note">Decisión diaria para cada posición abierta: mantener, proteger ganancias, reducir o cerrar. Una sola señal débil nunca cierra una posición; se necesitan varias familias de evidencia o el stop.</p>
+        <div class="cards" id="exitCards"></div>
+      </section>
+
+      <!-- 7. CARTERA -->
+      <section class="view" id="v-portfolio">
+        <div class="kpis small" id="posKpis"></div>
+        <div class="sec"><h2>Abiertas</h2><button class="btn" type="button" id="newPos"><i data-ic="plus"></i>Registrar posición</button></div>
+        <form id="posForm" class="card form hidden" autocomplete="off">
+          <div class="fgrid">
+            <label>Token<input name="symbol" required placeholder="SOL" maxlength="15"></label>
+            <label>Precio de entrada<input name="entry" required inputmode="decimal" placeholder="0,00"></label>
+            <label>Cantidad<input name="qty" inputmode="decimal" placeholder="opcional"></label>
+            <label>Stop<input name="stop" inputmode="decimal" placeholder="del plan"></label>
+            <label>TP1<input name="tp1" inputmode="decimal" placeholder="del plan"></label>
+            <label>TP2<input name="tp2" inputmode="decimal" placeholder="del plan"></label>
+            <label>TP3<input name="tp3" inputmode="decimal" placeholder="del plan"></label>
+          </div>
+          <label class="check"><input type="checkbox" name="paper" checked> Es simulada (práctica, sin dinero real)</label>
+          <p class="note">Si dejas stop y objetivos vacíos, se toman del plan del último escaneo.</p>
+          <div class="row"><button class="btn a" type="submit">Guardar</button><button class="btn" type="button" id="posCancel">Cancelar</button><span class="msg" id="posMsg"></span></div>
+        </form>
+        <div class="poslist" id="posOpen"></div>
+        <div class="card"><h3 class="h3">Calculadora de tamaño (Smart Portfolio)</h3>
+          <div class="fgrid" id="sizer">
+            <label>Capital (USD)<input name="cap" inputmode="decimal" value="1000"></label>
+            <label>Riesgo por operación (%)<input name="risk" inputmode="decimal" value="1"></label>
+            <label>Entrada<input name="entry" inputmode="decimal"></label>
+            <label>Stop<input name="stop" inputmode="decimal"></label>
+          </div>
+          <p class="note" id="sizerOut">Spot, sin apalancamiento. Máximo 20 % del capital por activo y 5 % de riesgo abierto en total.</p>
+        </div>
+        <div class="sec"><h2>Cerradas</h2></div>
+        <div class="tbl"><table id="posClosed"></table></div>
+      </section>
+
+      <!-- 8. BACKTESTING -->
+      <section class="view" id="v-backtest">
+        <div id="btBox"><p class="note">Cargando resultados…</p></div>
+      </section>
+
+      <!-- 9. RENDIMIENTO -->
+      <section class="view" id="v-perf">
+        <div class="kpis small" id="jStats"></div>
+        <p class="note">Registro real en vivo: cada oportunidad «comprar en zona» que publica el radar se sigue hasta el stop o los objetivos. Incluye aciertos y fallos, sin filtrar.</p>
+        <div class="tbl"><table id="jTable"></table></div>
+      </section>
+
+      <!-- 10. ALERTAS -->
+      <section class="view" id="v-alerts">
+        <div class="card user-only hidden" id="tgLink"><h3 class="h3">Telegram</h3><p class="note" id="tgState"></p>
+          <div class="row"><button class="btn" type="button" id="tgLinkBtn">Vincular Telegram</button><span class="msg" id="tgCode"></span></div></div>
+        <div class="alerts" id="alertList"></div>
+      </section>
+
+      <!-- 11. CONFIGURACIÓN -->
+      <section class="view" id="v-settings">
+        <div class="card user-only hidden" id="account">
+          <h3 class="h3">Cuenta</h3>
+          <div id="accBox"></div>
+          <div id="plansBox"></div>
+          <form id="pwForm" class="fgrid" autocomplete="off">
+            <label>Contraseña actual<input name="old" type="password" autocomplete="current-password"></label>
+            <label>Nueva contraseña<input name="new" type="password" minlength="10" autocomplete="new-password"></label>
+            <div class="row"><button class="btn" type="submit">Cambiar contraseña</button><button class="btn" type="button" id="logoutBtn">Cerrar sesión</button><button class="btn" type="button" id="logoutAll">Cerrar todas las sesiones</button></div>
+          </form>
+          <p class="msg" id="accMsg"></p>
+        </div>
+        <form id="userSet" class="card user-only hidden" autocomplete="off">
+          <h3 class="h3">Mi riesgo y alertas</h3>
+          <div class="fgrid">
+            <label>Capital (USD)<input name="capital_usd" inputmode="decimal"></label>
+            <label>Riesgo por operación (%)<input name="risk_per_trade_pct" inputmode="decimal"></label>
+            <label class="wide">Mi lista de seguimiento<input name="watchlist" placeholder="BTC, ETH, SOL"></label>
+          </div>
+          <label class="check"><input type="checkbox" name="alerts_telegram"> Recibir alertas por Telegram</label>
+          <div class="row"><button class="btn a" type="submit">Guardar</button><span class="msg" id="userSetMsg"></span></div>
+        </form>
+        <form id="setForm" class="settings admin-only" autocomplete="off">
+          <fieldset class="card">
+            <legend>Riesgo (sistema)</legend>
+            <div class="fgrid">
+              <label>Capital (USD)<input name="capital_usd" inputmode="decimal"></label>
+              <label>Riesgo por operación (%)<input name="risk_per_trade_pct" inputmode="decimal"><small>Lo máximo que aceptas perder si salta el stop.</small></label>
+              <label>Tamaño máximo por posición (%)<input name="max_position_pct" inputmode="decimal"></label>
+              <label>Riesgo/beneficio mínimo<input name="min_risk_reward" inputmode="decimal"></label>
+            </div>
+          </fieldset>
+          <fieldset class="card">
+            <legend>Alertas</legend>
+            <div class="fgrid">
+              <label>Token del bot de Telegram<input name="telegram_bot_token" placeholder="123456:ABC…"></label>
+              <label>Chat ID de Telegram<input name="telegram_chat_id"></label>
+            </div>
+            <label class="check"><input type="checkbox" name="desktop_notifications"> Notificaciones de escritorio</label>
+            <div class="row"><button class="btn" type="button" id="tgTest">Enviar mensaje de prueba</button></div>
+          </fieldset>
+          <details class="card adv">
+            <summary>Avanzado</summary>
+            <div class="fgrid">
+              <label>Escanear cada (horas)<input name="scan_every_hours" inputmode="decimal"></label>
+              <label>Cantidad de monedas a analizar<input name="universe_size" inputmode="numeric"></label>
+              <label>Volumen mínimo 24 h (USD)<input name="min_volume_usd" inputmode="decimal"></label>
+              <label>Capitalización mínima (USD)<input name="min_mcap_usd" inputmode="decimal"></label>
+              <label class="wide">Lista de seguimiento<input name="watchlist" placeholder="BTC, ETH, SOL"></label>
+              <label class="wide">Excluir<input name="exclude" placeholder="separadas por coma"></label>
+            </div>
+            <label class="check"><input type="checkbox" name="include_memecoins"> Incluir memecoins en el radar</label>
+          </details>
+          <div class="row"><button class="btn a" type="submit">Guardar cambios</button><span class="msg" id="setMsg"></span></div>
+        </form>
+        <div class="card admin-only hidden" id="adminBox"><h3 class="h3">Usuarios (administración)</h3><div id="adminUsers"></div></div>
+      </section>
+
+      <footer class="disclaimer">Crypto Radar es software de análisis, no asesoría financiera. Las criptomonedas son de alto riesgo: puedes perder todo lo que inviertas. Resultados pasados no garantizan resultados futuros.</footer>
+    </main>
+  </div>
+
+  <nav class="tabbar" aria-label="Secciones">
+    <button data-view="dash" class="on"><i data-ic="radar"></i>Inicio</button>
+    <button data-view="early"><i data-ic="target"></i>Tempranas</button>
+    <button data-view="alerts"><i data-ic="bell"></i>Alertas<span class="count hidden" data-count></span></button>
+    <button data-view="portfolio"><i data-ic="wallet"></i>Cartera</button>
+    <button data-view="more"><i data-ic="more"></i>Más</button>
+  </nav>
+</div>
+
+<div class="overlay hidden" id="moreSheet">
+  <div class="sheet small">
+    <button data-view="market"><i data-ic="globe"></i>Mercado</button>
+    <button data-view="breakouts"><i data-ic="up"></i>Rupturas</button>
+    <button data-view="memes"><i data-ic="bolt"></i>Memecoins</button>
+    <button data-view="exits"><i data-ic="down"></i>Salidas</button>
+    <button data-view="backtest"><i data-ic="history"></i>Backtesting</button>
+    <button data-view="perf"><i data-ic="list"></i>Rendimiento</button>
+    <button data-view="settings"><i data-ic="gear"></i>Configuración</button>
+    <button class="ghost" data-close>Cerrar</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="detail" role="dialog" aria-modal="true" aria-labelledby="dTitle">
+  <div class="sheet full">
+    <div class="sheet-top"><button class="iconbtn" data-close aria-label="Cerrar"><i data-ic="x"></i></button></div>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="dialog" role="dialog" aria-modal="true">
+  <form class="sheet small dlg" id="dialogForm">
+    <h3 id="dlgTitle"></h3>
+    <p id="dlgText"></p>
+    <input id="dlgInput" class="hidden" inputmode="decimal">
+    <div class="row"><button class="btn a" type="submit" id="dlgOk">Aceptar</button><button class="btn" type="button" data-close>Cancelar</button></div>
+  </form>
+</div>
+
+<div class="toast hidden" id="toast" role="status"></div>
 <script src="/static/app.js"></script>
 </body>
 </html>

@@ -1,1 +1,6 @@
-# Sin dependencias externas: solo la librería estándar de Python.
+# El radar (escáner y panel) funciona con la librería estándar de Python.
+# psycopg solo se usa si defines DATABASE_URL (modo SaaS en producción con PostgreSQL).
+psycopg[binary]==3.3.9
+# Laboratorio de investigación (radar/edge) y paper trading (radar/paper_trading). Solo se importan en esos módulos.
+numpy==2.5.3
+pandas==3.0.5

@@ -167,7 +167,7 @@ def _okx_klines(symbol, interval, limit):
     if r.get("code") != "0":
         raise RuntimeError(f"OKX: {r.get('msg')}")
     rows = sorted(r["data"], key=lambda x: int(x[0]))
-    # [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]; se descarta la vela sin cerrar solo si no es la última
+    # [ts, o, h, l, c, vol, volCcy, volCcyQuote, confirm]; la vela sin cerrar se descarta con klines(closed=True)
     return [[int(x[0]), x[1], x[2], x[3], x[4], x[5], 0, x[7]] for x in rows]
 
 
@@ -275,10 +275,23 @@ def binance_symbols(quote="USDT"):
     raise RuntimeError(" | ".join(errs))
 
 
-def klines(symbol, interval="1d", limit=365, start=None):
+INTERVAL_MS = {"1h": 3_600_000, "4h": 14_400_000, "1d": 86_400_000, "1w": 604_800_000}
+
+
+def drop_open_candle(k, interval, now_ms=None):
+    """Quita la última vela si aún no ha cerrado (las decisiones se toman solo con velas cerradas)."""
+    now_ms = now_ms or int(time.time() * 1000)
+    step = INTERVAL_MS.get(interval)
+    if step and k["t"] and k["t"][-1] + step > now_ms:
+        k = {key: v[:-1] for key, v in k.items()}
+    return k
+
+
+def klines(symbol, interval="1d", limit=365, start=None, closed=False):
+    """Velas OHLCV. Con closed=True se descarta la vela en curso (sin cerrar)."""
     rows = kline_rows(symbol, interval, limit, start)
     # [openTime, open, high, low, close, volume, closeTime, quoteVolume, ...]
-    return {
+    k = {
         "t": [int(r[0]) for r in rows],
         "o": [float(r[1]) for r in rows],
         "h": [float(r[2]) for r in rows],
@@ -286,6 +299,7 @@ def klines(symbol, interval="1d", limit=365, start=None):
         "c": [float(r[4]) for r in rows],
         "v": [float(r[7]) for r in rows],  # volumen en USDT
     }
+    return drop_open_candle(k, interval) if closed else k
 
 
 def funding_rates():
@@ -315,5 +329,24 @@ def fear_greed():
         d = get_json("https://api.alternative.me/fng/", {"limit": 7})["data"]
         return {"value": int(d[0]["value"]), "label": d[0]["value_classification"],
                 "week": [int(x["value"]) for x in d]}
+    except Exception:
+        return None
+
+
+def order_book(symbol, limit=100):
+    """Libro de órdenes spot de Binance: spread y profundidad a ±2 % (en USD). None si no responde (N/D)."""
+    try:
+        b = _binance("/api/v3/depth", {"symbol": symbol, "limit": limit})
+        bids = [(float(p), float(q)) for p, q in b.get("bids", [])]
+        asks = [(float(p), float(q)) for p, q in b.get("asks", [])]
+        if not bids or not asks:
+            return None
+        bb, ba = bids[0][0], asks[0][0]
+        mid = (bb + ba) / 2
+        bid_d = sum(p * q for p, q in bids if p >= mid * 0.98)
+        ask_d = sum(p * q for p, q in asks if p <= mid * 1.02)
+        return {"spread_pct": (ba - bb) / mid * 100, "depth_usd_2pct": bid_d + ask_d, "bid_depth_usd": bid_d,
+                "ask_depth_usd": ask_d, "imbalance": (bid_d - ask_d) / (bid_d + ask_d) if bid_d + ask_d else 0,
+                "at": int(time.time() * 1000)}
     except Exception:
         return None

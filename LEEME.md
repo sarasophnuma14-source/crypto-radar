@@ -5,6 +5,16 @@ escanea el mercado cada 4 horas, vigila precios cada 15 minutos y te avisa (noti
 
 **Solo análisis. No es asesoría financiera. Solo spot, sin apalancamiento.**
 
+## Versión 2.0
+- Motor cuantitativo nuevo (`radar/quant`), backtest profesional, radar de memecoins, cartera con límites de riesgo,
+  Telegram por usuario y modo SaaS con cuentas, planes y pagos verificados (Wompi y NOWPayments).
+- Documentos: [CHANGELOG](CHANGELOG.md) (incluye la comparativa con la versión original) ·
+  [Auditoría](AUDIT_REPORT.md) · [Pruebas](TEST_REPORT.md) · [Backtest](BACKTEST_REPORT.md) ·
+  [Instalación, variables y despliegue](docs/INSTALACION_Y_DESPLIEGUE.md) · [Arquitectura](docs/ARQUITECTURA.md) ·
+  [Pendientes](PENDIENTES.md).
+- Importante: el backtest 2.0 **no supera la validación fuera de muestra** (ver BACKTEST_REPORT.md). Úsalo como
+  herramienta de análisis y riesgo, no como promesa de rentabilidad.
+
 ## Instalar (Mac)
 1. Descomprime la carpeta `crypto-radar`.
 2. Haz clic derecho en **instalar.command** → **Abrir** → **Abrir** (la primera vez macOS pide confirmarlo).
@@ -53,6 +63,9 @@ python3 main.py backtest SOL   # backtest rápido
 ```
 
 ## Desplegar en Render gratis (24/7 sin tu Mac)
+
+Para el modo con cuentas y pagos sigue [docs/INSTALACION_Y_DESPLIEGUE.md](docs/INSTALACION_Y_DESPLIEGUE.md). El modo de un solo usuario:
+
 1. En Render: **New → Blueprint** y elige este repositorio. Render lee `render.yaml`.
 2. Escribe la contraseña del panel en `CRYPTO_RADAR_PASSWORD` (usuario: cualquiera). Opcional: `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID` para alertas al celular.
 3. Confirma. Queda en Frankfurt (Binance bloquea EE. UU.).

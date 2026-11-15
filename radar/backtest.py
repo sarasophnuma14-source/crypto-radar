@@ -1,6 +1,8 @@
 """Backtest de las reglas técnicas sobre velas diarias históricas de Binance.
 Solo usa la parte técnica/volumen/R:R (los fundamentales históricos no están disponibles gratis).
-Simulación: entrada cuando el sistema diría COMPRAR EN ZONA; 40% en TP1 (stop a entrada), 35% TP2, 25% TP3."""
+Simulación: señal al cierre (COMPRAR EN ZONA) y entrada a la apertura del día siguiente; 40% en TP1 (stop a entrada),
+35% TP2, 25% TP3. Si en una vela se tocan stop y objetivo, se asume primero el stop (conservador).
+Versión rápida por activo; el backtest profesional de cartera está en radar/quant/backtest_pro.py."""
 from __future__ import annotations
 from . import data
 from .analysis import analyze
@@ -23,15 +25,23 @@ def run(symbol, quote="USDT", days=1000, min_score=70, settings=None, d1=None):
             a = analyze(symbol, sl, None, None, None, {}, settings, "LATERAL")
             if a["action"] == "COMPRAR EN ZONA" and a["score"] >= min_score:
                 pl = a["plan"]
-                open_t = {"entry_i": i, "date": d1["t"][i], "entry": d1["c"][i], "stop": pl["stop"], "tp1": pl["tp1"],
+                # Señal al cierre de i -> se compra a la APERTURA de i+1 (antes compraba al mismo cierre: look-ahead).
+                entry = d1["o"][i + 1]
+                if entry <= pl["stop"]:
+                    i += 1
+                    continue
+                i += 1
+                open_t = {"entry_i": i, "date": d1["t"][i], "entry": entry, "stop": pl["stop"], "tp1": pl["tp1"],
                           "tp2": pl["tp2"], "tp3": pl["tp3"], "score": a["score"], "phase": a["phase"],
                           "cur_stop": pl["stop"], "left": 1.0, "R_real": 0.0, "hits": []}
+                continue                     # la vela de entrada también se evalúa (stop/objetivos ese mismo día)
         else:
             t = open_t
             R = t["entry"] - t["stop"]
             hi, lo = d1["h"][i], d1["l"][i]
             if lo <= t["cur_stop"]:
-                t["R_real"] += t["left"] * (t["cur_stop"] - t["entry"]) / R
+                fill = min(d1["o"][i], t["cur_stop"]) if i > t["entry_i"] else t["cur_stop"]   # hueco bajista: se vende a la apertura
+                t["R_real"] += t["left"] * (fill - t["entry"]) / R
                 t["left"] = 0; t["hits"].append("stop")
             else:
                 for tp, w in (("tp1", .40), ("tp2", .35), ("tp3", .25)):

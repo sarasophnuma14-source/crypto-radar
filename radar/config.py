@@ -9,6 +9,8 @@ DATA_DIR = Path(os.environ.get("CRYPTO_RADAR_DATA", ROOT / "data"))
 WEB_DIR = ROOT / "web"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 SETTINGS_FILE = DATA_DIR / "settings.json"
+# Modo SaaS: cuentas de usuario, planes y pagos verificados. Sin esta variable la app es de un solo usuario (local).
+ACCOUNTS = os.environ.get("CRYPTO_RADAR_ACCOUNTS") == "1"
 
 # Pesos de la puntuación (suman 100). Si un bloque no tiene datos verificables
 # se marca N/D y su peso se reparte entre los bloques con datos (nunca se inventa).

@@ -1,0 +1,4453 @@
+{
+ "generated": "2026-11-15T03:55:17+00:00",
+ "frozen_selection": {
+  "A": {
+   "chosen": "A_tsmom_L28_btcf1",
+   "dev_sharpe": 1.65,
+   "val": {
+    "net_return_pct": 1.84,
+    "profit_factor": 1.08,
+    "sharpe": 0.19,
+    "trades": 145,
+    "max_drawdown_pct": -8.35
+   },
+   "passes_validation": false
+  },
+  "B": {
+   "chosen": "B_donchian_N20_trail3",
+   "dev_sharpe": 1.067,
+   "val": {
+    "net_return_pct": -0.05,
+    "profit_factor": 0.998,
+    "sharpe": 0.042,
+    "trades": 100,
+    "max_drawdown_pct": -9.11
+   },
+   "passes_validation": false
+  },
+  "C": {
+   "chosen": "C_early_p35_trail3",
+   "dev_sharpe": 0.679,
+   "val": {
+    "net_return_pct": -2.74,
+    "profit_factor": 0.852,
+    "sharpe": -0.186,
+    "trades": 73,
+    "max_drawdown_pct": -10.63
+   },
+   "passes_validation": false
+  },
+  "D": {
+   "chosen": "D_volmom_L28",
+   "dev_sharpe": 0.941,
+   "val": {
+    "net_return_pct": 19.63,
+    "profit_factor": 1.69,
+    "sharpe": 0.898,
+    "trades": 78,
+    "max_drawdown_pct": -13.51
+   },
+   "passes_validation": true
+  },
+  "E": {
+   "chosen": "E_hybrid_N20_trail2.5",
+   "dev_sharpe": 1.048,
+   "val": {
+    "net_return_pct": -0.27,
+    "profit_factor": 0.991,
+    "sharpe": 0.04,
+    "trades": 103,
+    "max_drawdown_pct": -14.19
+   },
+   "passes_validation": false
+  }
+ },
+ "all": {
+  "A_tsmom_L28_btcf1": {
+   "base": {
+    "net_return_pct": -8.38,
+    "cagr_pct": -3.62,
+    "profit_factor": 0.715,
+    "sharpe": -0.694,
+    "sortino": -0.979,
+    "calmar": -0.313,
+    "max_drawdown_pct": -11.57,
+    "expectancy_usd": -5.23,
+    "expectancy_R": -0.084,
+    "win_rate_pct": 26.2,
+    "avg_win_usd": 49.99,
+    "avg_loss_usd": -24.89,
+    "trades": 160,
+    "turnover_x_per_year": 2.21,
+    "avg_exposure_pct": 4.1,
+    "costs_usd": 152.53,
+    "avg_days_held": 13.4,
+    "net_without_top5_usd": -1968.53,
+    "yearly_pct": {
+     "2024": 1.25,
+     "2025": -4.44,
+     "2026": -5.3
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 139,
+      "pnl_usd": -791.07
+     },
+     "BTC bajista": {
+      "trades": 21,
+      "pnl_usd": -46.43
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 9.71
+     },
+     "Se\u00f1al de salida": {
+      "trades": 129,
+      "pnl_usd": 345.72
+     },
+     "Stop": {
+      "trades": 24,
+      "pnl_usd": -1096.25
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -96.68
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -9.83,
+    "cagr_pct": -4.26,
+    "profit_factor": 0.675,
+    "sharpe": -0.823,
+    "sortino": -1.149,
+    "calmar": -0.335,
+    "max_drawdown_pct": -12.72,
+    "expectancy_usd": -6.14,
+    "expectancy_R": -0.122,
+    "win_rate_pct": 26.2,
+    "avg_win_usd": 48.68,
+    "avg_loss_usd": -25.66,
+    "trades": 160,
+    "turnover_x_per_year": 2.21,
+    "avg_exposure_pct": 4.1,
+    "costs_usd": 302.79,
+    "avg_days_held": 13.4,
+    "net_without_top5_usd": -2101.26,
+    "yearly_pct": {
+     "2024": 0.91,
+     "2025": -5.13,
+     "2026": -5.81
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 139,
+      "pnl_usd": -922.72
+     },
+     "BTC bajista": {
+      "trades": 21,
+      "pnl_usd": -60.15
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": -2.27
+     },
+     "Se\u00f1al de salida": {
+      "trades": 129,
+      "pnl_usd": 234.38
+     },
+     "Stop": {
+      "trades": 24,
+      "pnl_usd": -1117.85
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -97.13
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -11.47,
+    "cagr_pct": -5.0,
+    "profit_factor": 0.634,
+    "sharpe": -0.966,
+    "sortino": -1.334,
+    "calmar": -0.356,
+    "max_drawdown_pct": -14.05,
+    "expectancy_usd": -7.12,
+    "expectancy_R": -0.167,
+    "win_rate_pct": 24.2,
+    "avg_win_usd": 50.95,
+    "avg_loss_usd": -25.69,
+    "trades": 161,
+    "turnover_x_per_year": 2.23,
+    "avg_exposure_pct": 4.2,
+    "costs_usd": 452.73,
+    "avg_days_held": 13.3,
+    "net_without_top5_usd": -2252.14,
+    "yearly_pct": {
+     "2024": 0.57,
+     "2025": -6.02,
+     "2026": -6.32
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 140,
+      "pnl_usd": -1073.53
+     },
+     "BTC bajista": {
+      "trades": 21,
+      "pnl_usd": -73.32
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": -13.88
+     },
+     "Se\u00f1al de salida": {
+      "trades": 130,
+      "pnl_usd": 101.9
+     },
+     "Stop": {
+      "trades": 24,
+      "pnl_usd": -1137.56
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -97.32
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.8522,
+    "sharpe_ci90": [
+     -1.857,
+     0.407
+    ],
+    "mean_ci90": [
+     -0.00024732799845019745,
+     5.88179650643898e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": 1.24,
+    "2025": -4.2,
+    "2026": -5.3
+   }
+  },
+  "A_tsmom_L28_btcf0": {
+   "base": {
+    "net_return_pct": -14.53,
+    "cagr_pct": -6.4,
+    "profit_factor": 0.633,
+    "sharpe": -1.078,
+    "sortino": -1.501,
+    "calmar": -0.351,
+    "max_drawdown_pct": -18.24,
+    "expectancy_usd": -5.3,
+    "expectancy_R": -0.143,
+    "win_rate_pct": 25.5,
+    "avg_win_usd": 35.79,
+    "avg_loss_usd": -19.4,
+    "trades": 274,
+    "turnover_x_per_year": 2.98,
+    "avg_exposure_pct": 6.2,
+    "costs_usd": 224.06,
+    "avg_days_held": 13.7,
+    "net_without_top5_usd": -2636.85,
+    "yearly_pct": {
+     "2024": 2.15,
+     "2025": -7.01,
+     "2026": -10.03
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 134,
+      "pnl_usd": -668.81
+     },
+     "BTC bajista": {
+      "trades": 140,
+      "pnl_usd": -784.39
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 9.06
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 115.16
+     },
+     "Se\u00f1al de salida": {
+      "trades": 215,
+      "pnl_usd": 201.93
+     },
+     "Stop": {
+      "trades": 47,
+      "pnl_usd": -1617.5
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -161.86
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -16.56,
+    "cagr_pct": -7.34,
+    "profit_factor": 0.593,
+    "sharpe": -1.244,
+    "sortino": -1.717,
+    "calmar": -0.368,
+    "max_drawdown_pct": -19.93,
+    "expectancy_usd": -6.04,
+    "expectancy_R": -0.177,
+    "win_rate_pct": 25.5,
+    "avg_win_usd": 34.51,
+    "avg_loss_usd": -19.96,
+    "trades": 274,
+    "turnover_x_per_year": 2.98,
+    "avg_exposure_pct": 6.2,
+    "costs_usd": 443.08,
+    "avg_days_held": 13.7,
+    "net_without_top5_usd": -2826.82,
+    "yearly_pct": {
+     "2024": 1.78,
+     "2025": -7.9,
+     "2026": -10.99
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 134,
+      "pnl_usd": -789.07
+     },
+     "BTC bajista": {
+      "trades": 140,
+      "pnl_usd": -867.02
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": -2.1
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 113.24
+     },
+     "Se\u00f1al de salida": {
+      "trades": 215,
+      "pnl_usd": 34.33
+     },
+     "Stop": {
+      "trades": 47,
+      "pnl_usd": -1638.86
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -162.69
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -19.14,
+    "cagr_pct": -8.55,
+    "profit_factor": 0.544,
+    "sharpe": -1.456,
+    "sortino": -1.984,
+    "calmar": -0.386,
+    "max_drawdown_pct": -22.15,
+    "expectancy_usd": -6.96,
+    "expectancy_R": -0.222,
+    "win_rate_pct": 24.0,
+    "avg_win_usd": 34.56,
+    "avg_loss_usd": -20.07,
+    "trades": 275,
+    "turnover_x_per_year": 3.0,
+    "avg_exposure_pct": 6.2,
+    "costs_usd": 655.72,
+    "avg_days_held": 13.6,
+    "net_without_top5_usd": -3037.69,
+    "yearly_pct": {
+     "2024": 1.42,
+     "2025": -9.45,
+     "2026": -11.94
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 135,
+      "pnl_usd": -962.25
+     },
+     "BTC bajista": {
+      "trades": 140,
+      "pnl_usd": -951.27
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": -12.68
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 62.27
+     },
+     "Se\u00f1al de salida": {
+      "trades": 216,
+      "pnl_usd": -149.73
+     },
+     "Stop": {
+      "trades": 47,
+      "pnl_usd": -1651.06
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -162.33
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.9628,
+    "sharpe_ci90": [
+     -2.189,
+     -0.003
+    ],
+    "mean_ci90": [
+     -0.00033803232357565926,
+     -5.320702496770807e-07
+    ]
+   },
+   "sub": {
+    "2024-S2": 2.14,
+    "2025": -6.88,
+    "2026": -10.14
+   }
+  },
+  "D_volmom_L28": {
+   "base": {
+    "net_return_pct": -22.93,
+    "cagr_pct": -10.39,
+    "profit_factor": 0.68,
+    "sharpe": -0.935,
+    "sortino": -1.353,
+    "calmar": -0.304,
+    "max_drawdown_pct": -34.2,
+    "expectancy_usd": -13.9,
+    "expectancy_R": -0.175,
+    "win_rate_pct": 26.1,
+    "avg_win_usd": 113.26,
+    "avg_loss_usd": -58.72,
+    "trades": 165,
+    "turnover_x_per_year": 4.22,
+    "avg_exposure_pct": 8.9,
+    "costs_usd": 343.05,
+    "avg_days_held": 13.2,
+    "net_without_top5_usd": -5143.47,
+    "yearly_pct": {
+     "2024": 12.8,
+     "2025": -11.93,
+     "2026": -22.43
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -707.64
+     },
+     "BTC bajista": {
+      "trades": 103,
+      "pnl_usd": -1585.74
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -27.89
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 86.12
+     },
+     "Se\u00f1al de salida": {
+      "trades": 128,
+      "pnl_usd": 431.85
+     },
+     "Stop": {
+      "trades": 30,
+      "pnl_usd": -2634.7
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -148.76
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -25.61,
+    "cagr_pct": -11.71,
+    "profit_factor": 0.648,
+    "sharpe": -1.068,
+    "sortino": -1.533,
+    "calmar": -0.325,
+    "max_drawdown_pct": -36.08,
+    "expectancy_usd": -15.52,
+    "expectancy_R": -0.199,
+    "win_rate_pct": 25.5,
+    "avg_win_usd": 112.31,
+    "avg_loss_usd": -59.17,
+    "trades": 165,
+    "turnover_x_per_year": 4.21,
+    "avg_exposure_pct": 9.0,
+    "costs_usd": 674.91,
+    "avg_days_held": 13.2,
+    "net_without_top5_usd": -5368.72,
+    "yearly_pct": {
+     "2024": 12.23,
+     "2025": -13.14,
+     "2026": -23.69
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -817.89
+     },
+     "BTC bajista": {
+      "trades": 103,
+      "pnl_usd": -1743.34
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -30.95
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 83.52
+     },
+     "Se\u00f1al de salida": {
+      "trades": 128,
+      "pnl_usd": 187.04
+     },
+     "Stop": {
+      "trades": 30,
+      "pnl_usd": -2652.25
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -148.59
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -28.9,
+    "cagr_pct": -13.38,
+    "profit_factor": 0.609,
+    "sharpe": -1.237,
+    "sortino": -1.759,
+    "calmar": -0.352,
+    "max_drawdown_pct": -37.95,
+    "expectancy_usd": -17.51,
+    "expectancy_R": -0.23,
+    "win_rate_pct": 24.2,
+    "avg_win_usd": 112.46,
+    "avg_loss_usd": -59.11,
+    "trades": 165,
+    "turnover_x_per_year": 4.21,
+    "avg_exposure_pct": 9.0,
+    "costs_usd": 987.44,
+    "avg_days_held": 13.2,
+    "net_without_top5_usd": -5644.63,
+    "yearly_pct": {
+     "2024": 11.66,
+     "2025": -15.17,
+     "2026": -24.93
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -909.42
+     },
+     "BTC bajista": {
+      "trades": 103,
+      "pnl_usd": -1980.54
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -33.44
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": -25.89
+     },
+     "Se\u00f1al de salida": {
+      "trades": 128,
+      "pnl_usd": -36.05
+     },
+     "Stop": {
+      "trades": 30,
+      "pnl_usd": -2647.63
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -146.94
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.8808,
+    "sharpe_ci90": [
+     -2.336,
+     0.38
+    ],
+    "mean_ci90": [
+     -0.0006678139860615114,
+     0.0001214044337924905
+    ]
+   },
+   "sub": {
+    "2024-S2": 12.79,
+    "2025": -11.34,
+    "2026": -23.35
+   }
+  },
+  "A_tsmom_L56_btcf1": {
+   "base": {
+    "net_return_pct": -11.25,
+    "cagr_pct": -4.9,
+    "profit_factor": 0.518,
+    "sharpe": -0.716,
+    "sortino": -0.938,
+    "calmar": -0.434,
+    "max_drawdown_pct": -11.29,
+    "expectancy_usd": -8.52,
+    "expectancy_R": -0.168,
+    "win_rate_pct": 28.8,
+    "avg_win_usd": 31.81,
+    "avg_loss_usd": -24.83,
+    "trades": 132,
+    "turnover_x_per_year": 1.87,
+    "avg_exposure_pct": 4.5,
+    "costs_usd": 123.96,
+    "avg_days_held": 16.5,
+    "net_without_top5_usd": -1586.74,
+    "yearly_pct": {
+     "2024": -3.88,
+     "2025": -5.84,
+     "2026": -1.94
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 117,
+      "pnl_usd": -1282.36
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": 157.7
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 25.01
+     },
+     "Se\u00f1al de salida": {
+      "trades": 99,
+      "pnl_usd": 139.61
+     },
+     "Stop": {
+      "trades": 27,
+      "pnl_usd": -1242.78
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -46.51
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -12.42,
+    "cagr_pct": -5.43,
+    "profit_factor": 0.484,
+    "sharpe": -0.798,
+    "sortino": -1.041,
+    "calmar": -0.437,
+    "max_drawdown_pct": -12.42,
+    "expectancy_usd": -9.41,
+    "expectancy_R": -0.192,
+    "win_rate_pct": 28.8,
+    "avg_win_usd": 30.61,
+    "avg_loss_usd": -25.59,
+    "trades": 132,
+    "turnover_x_per_year": 1.87,
+    "avg_exposure_pct": 4.5,
+    "costs_usd": 246.31,
+    "avg_days_held": 16.5,
+    "net_without_top5_usd": -1696.79,
+    "yearly_pct": {
+     "2024": -4.15,
+     "2025": -6.48,
+     "2026": -2.3
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 117,
+      "pnl_usd": -1386.21
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": 144.28
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 16.2
+     },
+     "Se\u00f1al de salida": {
+      "trades": 99,
+      "pnl_usd": 58.17
+     },
+     "Stop": {
+      "trades": 27,
+      "pnl_usd": -1269.47
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -46.83
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -13.58,
+    "cagr_pct": -5.96,
+    "profit_factor": 0.452,
+    "sharpe": -0.88,
+    "sortino": -1.144,
+    "calmar": -0.439,
+    "max_drawdown_pct": -13.58,
+    "expectancy_usd": -10.29,
+    "expectancy_R": -0.215,
+    "win_rate_pct": 27.3,
+    "avg_win_usd": 31.09,
+    "avg_loss_usd": -25.8,
+    "trades": 132,
+    "turnover_x_per_year": 1.87,
+    "avg_exposure_pct": 4.5,
+    "costs_usd": 367.09,
+    "avg_days_held": 16.5,
+    "net_without_top5_usd": -1805.38,
+    "yearly_pct": {
+     "2024": -4.43,
+     "2025": -7.1,
+     "2026": -2.66
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 117,
+      "pnl_usd": -1488.67
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": 131.0
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 7.63
+     },
+     "Se\u00f1al de salida": {
+      "trades": 99,
+      "pnl_usd": -22.26
+     },
+     "Stop": {
+      "trades": 27,
+      "pnl_usd": -1295.91
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -47.13
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.939,
+    "sharpe_ci90": [
+     -1.513,
+     -0.017
+    ],
+    "mean_ci90": [
+     -0.0002715115219209666,
+     -2.9564404300065684e-06
+    ]
+   },
+   "sub": {
+    "2024-S2": -3.89,
+    "2025": -6.63,
+    "2026": -1.94
+   }
+  },
+  "A_tsmom_L56_btcf0": {
+   "base": {
+    "net_return_pct": -14.68,
+    "cagr_pct": -6.47,
+    "profit_factor": 0.54,
+    "sharpe": -0.852,
+    "sortino": -1.136,
+    "calmar": -0.393,
+    "max_drawdown_pct": -16.47,
+    "expectancy_usd": -7.09,
+    "expectancy_R": -0.201,
+    "win_rate_pct": 24.6,
+    "avg_win_usd": 33.77,
+    "avg_loss_usd": -20.45,
+    "trades": 207,
+    "turnover_x_per_year": 2.36,
+    "avg_exposure_pct": 6.6,
+    "costs_usd": 175.04,
+    "avg_days_held": 18.4,
+    "net_without_top5_usd": -2172.59,
+    "yearly_pct": {
+     "2024": -1.38,
+     "2025": -8.09,
+     "2026": -5.87
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 105,
+      "pnl_usd": -1070.1
+     },
+     "BTC bajista": {
+      "trades": 102,
+      "pnl_usd": -397.88
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 24.05
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 208.24
+     },
+     "Se\u00f1al de salida": {
+      "trades": 152,
+      "pnl_usd": -69.31
+     },
+     "Stop": {
+      "trades": 46,
+      "pnl_usd": -1538.42
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -92.55
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -16.27,
+    "cagr_pct": -7.21,
+    "profit_factor": 0.504,
+    "sharpe": -0.957,
+    "sortino": -1.27,
+    "calmar": -0.406,
+    "max_drawdown_pct": -17.74,
+    "expectancy_usd": -7.86,
+    "expectancy_R": -0.228,
+    "win_rate_pct": 24.6,
+    "avg_win_usd": 32.48,
+    "avg_loss_usd": -21.05,
+    "trades": 207,
+    "turnover_x_per_year": 2.35,
+    "avg_exposure_pct": 6.6,
+    "costs_usd": 346.93,
+    "avg_days_held": 18.4,
+    "net_without_top5_usd": -2320.64,
+    "yearly_pct": {
+     "2024": -1.64,
+     "2025": -8.87,
+     "2026": -6.59
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 105,
+      "pnl_usd": -1166.18
+     },
+     "BTC bajista": {
+      "trades": 102,
+      "pnl_usd": -461.32
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 15.5
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 206.3
+     },
+     "Se\u00f1al de salida": {
+      "trades": 152,
+      "pnl_usd": -188.41
+     },
+     "Stop": {
+      "trades": 46,
+      "pnl_usd": -1567.5
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -93.38
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -18.41,
+    "cagr_pct": -8.21,
+    "profit_factor": 0.452,
+    "sharpe": -1.096,
+    "sortino": -1.446,
+    "calmar": -0.42,
+    "max_drawdown_pct": -19.56,
+    "expectancy_usd": -8.9,
+    "expectancy_R": -0.261,
+    "win_rate_pct": 23.2,
+    "avg_win_usd": 31.63,
+    "avg_loss_usd": -21.13,
+    "trades": 207,
+    "turnover_x_per_year": 2.35,
+    "avg_exposure_pct": 6.6,
+    "costs_usd": 512.28,
+    "avg_days_held": 18.4,
+    "net_without_top5_usd": -2451.19,
+    "yearly_pct": {
+     "2024": -1.91,
+     "2025": -10.27,
+     "2026": -7.31
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 105,
+      "pnl_usd": -1321.95
+     },
+     "BTC bajista": {
+      "trades": 102,
+      "pnl_usd": -519.38
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 5,
+      "pnl_usd": 7.22
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 134.81
+     },
+     "Se\u00f1al de salida": {
+      "trades": 152,
+      "pnl_usd": -303.35
+     },
+     "Stop": {
+      "trades": 46,
+      "pnl_usd": -1586.47
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -93.54
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.9756,
+    "sharpe_ci90": [
+     -1.701,
+     -0.149
+    ],
+    "mean_ci90": [
+     -0.0003252081300486139,
+     -2.987365243429426e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": -1.39,
+    "2025": -8.88,
+    "2026": -5.87
+   }
+  },
+  "D_volmom_L56": {
+   "base": {
+    "net_return_pct": -16.74,
+    "cagr_pct": -7.42,
+    "profit_factor": 0.675,
+    "sharpe": -0.562,
+    "sortino": -0.827,
+    "calmar": -0.283,
+    "max_drawdown_pct": -26.21,
+    "expectancy_usd": -12.5,
+    "expectancy_R": -0.214,
+    "win_rate_pct": 26.1,
+    "avg_win_usd": 99.41,
+    "avg_loss_usd": -52.06,
+    "trades": 134,
+    "turnover_x_per_year": 3.55,
+    "avg_exposure_pct": 9.8,
+    "costs_usd": 280.71,
+    "avg_days_held": 16.0,
+    "net_without_top5_usd": -3706.41,
+    "yearly_pct": {
+     "2024": 7.85,
+     "2025": -6.97,
+     "2026": -17.02
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 52,
+      "pnl_usd": -464.18
+     },
+     "BTC bajista": {
+      "trades": 82,
+      "pnl_usd": -1210.27
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 50.45
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 96.03
+     },
+     "Se\u00f1al de salida": {
+      "trades": 98,
+      "pnl_usd": 672.58
+     },
+     "Stop": {
+      "trades": 32,
+      "pnl_usd": -2419.55
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -73.96
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -19.1,
+    "cagr_pct": -8.54,
+    "profit_factor": 0.637,
+    "sharpe": -0.66,
+    "sortino": -0.966,
+    "calmar": -0.305,
+    "max_drawdown_pct": -28.0,
+    "expectancy_usd": -14.26,
+    "expectancy_R": -0.24,
+    "win_rate_pct": 26.1,
+    "avg_win_usd": 95.72,
+    "avg_loss_usd": -53.14,
+    "trades": 134,
+    "turnover_x_per_year": 3.55,
+    "avg_exposure_pct": 9.8,
+    "costs_usd": 553.89,
+    "avg_days_held": 16.0,
+    "net_without_top5_usd": -3900.16,
+    "yearly_pct": {
+     "2024": 7.4,
+     "2025": -7.95,
+     "2026": -18.17
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 52,
+      "pnl_usd": -565.05
+     },
+     "BTC bajista": {
+      "trades": 82,
+      "pnl_usd": -1345.35
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 45.95
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 94.82
+     },
+     "Se\u00f1al de salida": {
+      "trades": 98,
+      "pnl_usd": 452.85
+     },
+     "Stop": {
+      "trades": 32,
+      "pnl_usd": -2429.0
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -75.02
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -21.82,
+    "cagr_pct": -9.84,
+    "profit_factor": 0.591,
+    "sharpe": -0.776,
+    "sortino": -1.129,
+    "calmar": -0.327,
+    "max_drawdown_pct": -30.13,
+    "expectancy_usd": -16.28,
+    "expectancy_R": -0.271,
+    "win_rate_pct": 25.4,
+    "avg_win_usd": 92.9,
+    "avg_loss_usd": -53.4,
+    "trades": 134,
+    "turnover_x_per_year": 3.55,
+    "avg_exposure_pct": 9.8,
+    "costs_usd": 815.96,
+    "avg_days_held": 16.0,
+    "net_without_top5_usd": -4124.7,
+    "yearly_pct": {
+     "2024": 6.95,
+     "2025": -9.42,
+     "2026": -19.3
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 52,
+      "pnl_usd": -656.87
+     },
+     "BTC bajista": {
+      "trades": 82,
+      "pnl_usd": -1524.75
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 41.46
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 36.06
+     },
+     "Se\u00f1al de salida": {
+      "trades": 98,
+      "pnl_usd": 242.59
+     },
+     "Stop": {
+      "trades": 32,
+      "pnl_usd": -2426.06
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -75.66
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.8412,
+    "sharpe_ci90": [
+     -1.578,
+     0.337
+    ],
+    "mean_ci90": [
+     -0.0004927807099073738,
+     0.00011697482536654868
+    ]
+   },
+   "sub": {
+    "2024-S2": 7.83,
+    "2025": -8.54,
+    "2026": -17.15
+   }
+  },
+  "A_tsmom_L84_btcf1": {
+   "base": {
+    "net_return_pct": -4.93,
+    "cagr_pct": -2.11,
+    "profit_factor": 0.73,
+    "sharpe": -0.265,
+    "sortino": -0.348,
+    "calmar": -0.269,
+    "max_drawdown_pct": -7.83,
+    "expectancy_usd": -5.03,
+    "expectancy_R": -0.046,
+    "win_rate_pct": 27.6,
+    "avg_win_usd": 49.44,
+    "avg_loss_usd": -25.75,
+    "trades": 98,
+    "turnover_x_per_year": 1.61,
+    "avg_exposure_pct": 5.3,
+    "costs_usd": 105.29,
+    "avg_days_held": 22.1,
+    "net_without_top5_usd": -1146.46,
+    "yearly_pct": {
+     "2024": -2.12,
+     "2025": -1.39,
+     "2026": -1.5
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 83,
+      "pnl_usd": -798.58
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": 305.26
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": -19.53
+     },
+     "Se\u00f1al de salida": {
+      "trades": 69,
+      "pnl_usd": 613.67
+     },
+     "Stop": {
+      "trades": 24,
+      "pnl_usd": -1038.56
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -48.91
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -5.96,
+    "cagr_pct": -2.55,
+    "profit_factor": 0.685,
+    "sharpe": -0.33,
+    "sortino": -0.431,
+    "calmar": -0.314,
+    "max_drawdown_pct": -8.13,
+    "expectancy_usd": -6.08,
+    "expectancy_R": -0.072,
+    "win_rate_pct": 27.6,
+    "avg_win_usd": 47.91,
+    "avg_loss_usd": -26.62,
+    "trades": 98,
+    "turnover_x_per_year": 1.61,
+    "avg_exposure_pct": 5.3,
+    "costs_usd": 209.49,
+    "avg_days_held": 22.1,
+    "net_without_top5_usd": -1240.37,
+    "yearly_pct": {
+     "2024": -2.37,
+     "2025": -1.98,
+     "2026": -1.73
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 83,
+      "pnl_usd": -885.92
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": 289.8
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": -22.73
+     },
+     "Se\u00f1al de salida": {
+      "trades": 69,
+      "pnl_usd": 539.05
+     },
+     "Stop": {
+      "trades": 24,
+      "pnl_usd": -1061.93
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -50.5
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -6.98,
+    "cagr_pct": -3.0,
+    "profit_factor": 0.642,
+    "sharpe": -0.393,
+    "sortino": -0.513,
+    "calmar": -0.356,
+    "max_drawdown_pct": -8.43,
+    "expectancy_usd": -7.12,
+    "expectancy_R": -0.098,
+    "win_rate_pct": 27.6,
+    "avg_win_usd": 46.4,
+    "avg_loss_usd": -27.47,
+    "trades": 98,
+    "turnover_x_per_year": 1.61,
+    "avg_exposure_pct": 5.3,
+    "costs_usd": 312.62,
+    "avg_days_held": 22.1,
+    "net_without_top5_usd": -1333.3,
+    "yearly_pct": {
+     "2024": -2.62,
+     "2025": -2.56,
+     "2026": -1.96
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 83,
+      "pnl_usd": -972.36
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": 274.52
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": -25.88
+     },
+     "Se\u00f1al de salida": {
+      "trades": 69,
+      "pnl_usd": 465.23
+     },
+     "Stop": {
+      "trades": 24,
+      "pnl_usd": -1085.12
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -52.08
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.7234,
+    "sharpe_ci90": [
+     -1.134,
+     0.486
+    ],
+    "mean_ci90": [
+     -0.00019409013271258518,
+     8.749917005045492e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": -2.13,
+    "2025": -1.39,
+    "2026": -1.5
+   }
+  },
+  "A_tsmom_L84_btcf0": {
+   "base": {
+    "net_return_pct": -8.39,
+    "cagr_pct": -3.62,
+    "profit_factor": 0.678,
+    "sharpe": -0.438,
+    "sortino": -0.574,
+    "calmar": -0.301,
+    "max_drawdown_pct": -12.03,
+    "expectancy_usd": -5.41,
+    "expectancy_R": -0.169,
+    "win_rate_pct": 23.2,
+    "avg_win_usd": 49.02,
+    "avg_loss_usd": -21.88,
+    "trades": 155,
+    "turnover_x_per_year": 1.93,
+    "avg_exposure_pct": 7.4,
+    "costs_usd": 141.57,
+    "avg_days_held": 23.6,
+    "net_without_top5_usd": -1739.07,
+    "yearly_pct": {
+     "2024": 2.14,
+     "2025": -4.26,
+     "2026": -6.32
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 75,
+      "pnl_usd": -706.21
+     },
+     "BTC bajista": {
+      "trades": 80,
+      "pnl_usd": -132.63
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 3,
+      "pnl_usd": -20.24
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 27.6
+     },
+     "Se\u00f1al de salida": {
+      "trades": 106,
+      "pnl_usd": 717.3
+     },
+     "Stop": {
+      "trades": 42,
+      "pnl_usd": -1464.08
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -99.41
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -9.72,
+    "cagr_pct": -4.21,
+    "profit_factor": 0.638,
+    "sharpe": -0.517,
+    "sortino": -0.675,
+    "calmar": -0.324,
+    "max_drawdown_pct": -13.02,
+    "expectancy_usd": -6.27,
+    "expectancy_R": -0.226,
+    "win_rate_pct": 23.2,
+    "avg_win_usd": 47.56,
+    "avg_loss_usd": -22.55,
+    "trades": 155,
+    "turnover_x_per_year": 1.93,
+    "avg_exposure_pct": 7.4,
+    "costs_usd": 281.13,
+    "avg_days_held": 23.6,
+    "net_without_top5_usd": -1860.95,
+    "yearly_pct": {
+     "2024": 1.95,
+     "2025": -4.89,
+     "2026": -6.89
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 75,
+      "pnl_usd": -778.79
+     },
+     "BTC bajista": {
+      "trades": 80,
+      "pnl_usd": -192.75
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 3,
+      "pnl_usd": -22.69
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 27.33
+     },
+     "Se\u00f1al de salida": {
+      "trades": 106,
+      "pnl_usd": 609.12
+     },
+     "Stop": {
+      "trades": 42,
+      "pnl_usd": -1483.77
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -101.52
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -11.17,
+    "cagr_pct": -4.86,
+    "profit_factor": 0.595,
+    "sharpe": -0.604,
+    "sortino": -0.787,
+    "calmar": -0.341,
+    "max_drawdown_pct": -14.26,
+    "expectancy_usd": -7.21,
+    "expectancy_R": -0.288,
+    "win_rate_pct": 22.6,
+    "avg_win_usd": 46.94,
+    "avg_loss_usd": -23.0,
+    "trades": 155,
+    "turnover_x_per_year": 1.93,
+    "avg_exposure_pct": 7.4,
+    "costs_usd": 418.05,
+    "avg_days_held": 23.6,
+    "net_without_top5_usd": -1995.06,
+    "yearly_pct": {
+     "2024": 1.76,
+     "2025": -5.68,
+     "2026": -7.45
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 75,
+      "pnl_usd": -849.19
+     },
+     "BTC bajista": {
+      "trades": 80,
+      "pnl_usd": -267.98
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 3,
+      "pnl_usd": -25.03
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 10.42
+     },
+     "Se\u00f1al de salida": {
+      "trades": 106,
+      "pnl_usd": 501.95
+     },
+     "Stop": {
+      "trades": 42,
+      "pnl_usd": -1501.1
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -103.41
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.8182,
+    "sharpe_ci90": [
+     -1.401,
+     0.36
+    ],
+    "mean_ci90": [
+     -0.00026049045712638297,
+     7.424845996319419e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": 2.12,
+    "2025": -3.02,
+    "2026": -5.36
+   }
+  },
+  "D_volmom_L84": {
+   "base": {
+    "net_return_pct": -2.89,
+    "cagr_pct": -1.23,
+    "profit_factor": 0.911,
+    "sharpe": -0.076,
+    "sortino": -0.107,
+    "calmar": -0.089,
+    "max_drawdown_pct": -13.73,
+    "expectancy_usd": -3.17,
+    "expectancy_R": -0.066,
+    "win_rate_pct": 29.7,
+    "avg_win_usd": 108.99,
+    "avg_loss_usd": -50.49,
+    "trades": 91,
+    "turnover_x_per_year": 2.51,
+    "avg_exposure_pct": 10.8,
+    "costs_usd": 189.64,
+    "avg_days_held": 26.0,
+    "net_without_top5_usd": -1955.97,
+    "yearly_pct": {
+     "2024": 3.63,
+     "2025": -1.52,
+     "2026": -4.84
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 29,
+      "pnl_usd": -295.72
+     },
+     "BTC bajista": {
+      "trades": 62,
+      "pnl_usd": 6.83
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": 187.56
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 90.13
+     },
+     "Se\u00f1al de salida": {
+      "trades": 66,
+      "pnl_usd": 1291.64
+     },
+     "Stop": {
+      "trades": 19,
+      "pnl_usd": -1579.34
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -278.88
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -4.7,
+    "cagr_pct": -2.01,
+    "profit_factor": 0.858,
+    "sharpe": -0.157,
+    "sortino": -0.221,
+    "calmar": -0.134,
+    "max_drawdown_pct": -15.03,
+    "expectancy_usd": -5.17,
+    "expectancy_R": -0.146,
+    "win_rate_pct": 29.7,
+    "avg_win_usd": 105.19,
+    "avg_loss_usd": -51.73,
+    "trades": 91,
+    "turnover_x_per_year": 2.51,
+    "avg_exposure_pct": 10.8,
+    "costs_usd": 375.72,
+    "avg_days_held": 26.0,
+    "net_without_top5_usd": -2101.3,
+    "yearly_pct": {
+     "2024": 3.31,
+     "2025": -2.23,
+     "2026": -5.66
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 29,
+      "pnl_usd": -360.62
+     },
+     "BTC bajista": {
+      "trades": 62,
+      "pnl_usd": -109.84
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": 181.48
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 89.13
+     },
+     "Se\u00f1al de salida": {
+      "trades": 66,
+      "pnl_usd": 1136.54
+     },
+     "Stop": {
+      "trades": 19,
+      "pnl_usd": -1595.79
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -281.81
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -6.98,
+    "cagr_pct": -3.0,
+    "profit_factor": 0.793,
+    "sharpe": -0.26,
+    "sortino": -0.364,
+    "calmar": -0.179,
+    "max_drawdown_pct": -16.74,
+    "expectancy_usd": -7.67,
+    "expectancy_R": -0.232,
+    "win_rate_pct": 27.5,
+    "avg_win_usd": 107.17,
+    "avg_loss_usd": -51.17,
+    "trades": 91,
+    "turnover_x_per_year": 2.51,
+    "avg_exposure_pct": 10.8,
+    "costs_usd": 555.6,
+    "avg_days_held": 26.0,
+    "net_without_top5_usd": -2287.97,
+    "yearly_pct": {
+     "2024": 2.99,
+     "2025": -3.43,
+     "2026": -6.47
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 29,
+      "pnl_usd": -422.64
+     },
+     "BTC bajista": {
+      "trades": 62,
+      "pnl_usd": -275.2
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": 174.64
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 33.94
+     },
+     "Se\u00f1al de salida": {
+      "trades": 66,
+      "pnl_usd": 982.47
+     },
+     "Stop": {
+      "trades": 19,
+      "pnl_usd": -1604.56
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 3,
+      "pnl_usd": -284.32
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.5566,
+    "sharpe_ci90": [
+     -0.996,
+     0.855
+    ],
+    "mean_ci90": [
+     -0.0002715701486867323,
+     0.0002226505370952726
+    ]
+   },
+   "sub": {
+    "2024-S2": 3.61,
+    "2025": -0.12,
+    "2026": -4.5
+   }
+  },
+  "B_donchian_N20_exitchan": {
+   "base": {
+    "net_return_pct": -14.06,
+    "cagr_pct": -6.18,
+    "profit_factor": 0.661,
+    "sharpe": -0.621,
+    "sortino": -0.858,
+    "calmar": -0.401,
+    "max_drawdown_pct": -15.41,
+    "expectancy_usd": -6.86,
+    "expectancy_R": -0.277,
+    "win_rate_pct": 18.0,
+    "avg_win_usd": 73.95,
+    "avg_loss_usd": -24.65,
+    "trades": 205,
+    "turnover_x_per_year": 3.24,
+    "avg_exposure_pct": 9.5,
+    "costs_usd": 229.83,
+    "avg_days_held": 17.1,
+    "net_without_top5_usd": -3284.62,
+    "yearly_pct": {
+     "2024": -5.37,
+     "2025": -2.52,
+     "2026": -6.83
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 98,
+      "pnl_usd": -738.77
+     },
+     "BTC bajista": {
+      "trades": 107,
+      "pnl_usd": -666.98
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": 58.35
+     },
+     "Retirada": {
+      "trades": 3,
+      "pnl_usd": -5.57
+     },
+     "Se\u00f1al de salida": {
+      "trades": 122,
+      "pnl_usd": 1133.42
+     },
+     "Stop": {
+      "trades": 72,
+      "pnl_usd": -2449.97
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 4,
+      "pnl_usd": -141.97
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -16.23,
+    "cagr_pct": -7.18,
+    "profit_factor": 0.621,
+    "sharpe": -0.734,
+    "sortino": -1.009,
+    "calmar": -0.437,
+    "max_drawdown_pct": -16.43,
+    "expectancy_usd": -7.92,
+    "expectancy_R": -0.37,
+    "win_rate_pct": 18.0,
+    "avg_win_usd": 71.75,
+    "avg_loss_usd": -25.46,
+    "trades": 205,
+    "turnover_x_per_year": 3.24,
+    "avg_exposure_pct": 9.5,
+    "costs_usd": 453.88,
+    "avg_days_held": 17.1,
+    "net_without_top5_usd": -3470.9,
+    "yearly_pct": {
+     "2024": -5.8,
+     "2025": -3.41,
+     "2026": -7.93
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 98,
+      "pnl_usd": -862.34
+     },
+     "BTC bajista": {
+      "trades": 107,
+      "pnl_usd": -760.78
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": 45.91
+     },
+     "Retirada": {
+      "trades": 3,
+      "pnl_usd": -8.12
+     },
+     "Se\u00f1al de salida": {
+      "trades": 122,
+      "pnl_usd": 990.97
+     },
+     "Stop": {
+      "trades": 72,
+      "pnl_usd": -2507.5
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 4,
+      "pnl_usd": -144.38
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -18.98,
+    "cagr_pct": -8.48,
+    "profit_factor": 0.574,
+    "sharpe": -0.879,
+    "sortino": -1.203,
+    "calmar": -0.444,
+    "max_drawdown_pct": -19.11,
+    "expectancy_usd": -9.26,
+    "expectancy_R": -0.475,
+    "win_rate_pct": 17.1,
+    "avg_win_usd": 72.97,
+    "avg_loss_usd": -26.19,
+    "trades": 205,
+    "turnover_x_per_year": 3.23,
+    "avg_exposure_pct": 9.5,
+    "costs_usd": 667.95,
+    "avg_days_held": 17.1,
+    "net_without_top5_usd": -3703.12,
+    "yearly_pct": {
+     "2024": -6.22,
+     "2025": -5.03,
+     "2026": -9.02
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 98,
+      "pnl_usd": -1016.52
+     },
+     "BTC bajista": {
+      "trades": 107,
+      "pnl_usd": -881.12
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": 33.77
+     },
+     "Retirada": {
+      "trades": 3,
+      "pnl_usd": -76.79
+     },
+     "Se\u00f1al de salida": {
+      "trades": 122,
+      "pnl_usd": 844.1
+     },
+     "Stop": {
+      "trades": 72,
+      "pnl_usd": -2552.22
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 4,
+      "pnl_usd": -146.51
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.8344,
+    "sharpe_ci90": [
+     -1.922,
+     0.366
+    ],
+    "mean_ci90": [
+     -0.00042046305225775,
+     0.00011127495359476319
+    ]
+   },
+   "sub": {
+    "2024-S2": -5.39,
+    "2025": -2.66,
+    "2026": -6.87
+   }
+  },
+  "B_donchian_N20_trail3": {
+   "base": {
+    "net_return_pct": -2.06,
+    "cagr_pct": -0.87,
+    "profit_factor": 0.951,
+    "sharpe": -0.034,
+    "sortino": -0.051,
+    "calmar": -0.057,
+    "max_drawdown_pct": -15.3,
+    "expectancy_usd": -1.06,
+    "expectancy_R": -0.093,
+    "win_rate_pct": 23.6,
+    "avg_win_usd": 86.56,
+    "avg_loss_usd": -28.11,
+    "trades": 195,
+    "turnover_x_per_year": 2.98,
+    "avg_exposure_pct": 9.6,
+    "costs_usd": 232.46,
+    "avg_days_held": 18.6,
+    "net_without_top5_usd": -2786.49,
+    "yearly_pct": {
+     "2024": -1.57,
+     "2025": 4.79,
+     "2026": -5.05
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 90,
+      "pnl_usd": 432.58
+     },
+     "BTC bajista": {
+      "trades": 105,
+      "pnl_usd": -638.52
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": 80.9
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 291.71
+     },
+     "Stop": {
+      "trades": 184,
+      "pnl_usd": -373.97
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -204.58
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -4.34,
+    "cagr_pct": -1.85,
+    "profit_factor": 0.899,
+    "sharpe": -0.13,
+    "sortino": -0.193,
+    "calmar": -0.113,
+    "max_drawdown_pct": -16.32,
+    "expectancy_usd": -2.22,
+    "expectancy_R": -0.159,
+    "win_rate_pct": 22.6,
+    "avg_win_usd": 88.1,
+    "avg_loss_usd": -28.54,
+    "trades": 195,
+    "turnover_x_per_year": 2.98,
+    "avg_exposure_pct": 9.6,
+    "costs_usd": 459.5,
+    "avg_days_held": 18.6,
+    "net_without_top5_usd": -2974.53,
+    "yearly_pct": {
+     "2024": -2.05,
+     "2025": 3.97,
+     "2026": -6.06
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 90,
+      "pnl_usd": 308.2
+     },
+     "BTC bajista": {
+      "trades": 105,
+      "pnl_usd": -741.91
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": 69.22
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 286.74
+     },
+     "Stop": {
+      "trades": 184,
+      "pnl_usd": -577.91
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -211.76
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -7.78,
+    "cagr_pct": -3.35,
+    "profit_factor": 0.824,
+    "sharpe": -0.278,
+    "sortino": -0.409,
+    "calmar": -0.194,
+    "max_drawdown_pct": -17.33,
+    "expectancy_usd": -3.99,
+    "expectancy_R": -0.239,
+    "win_rate_pct": 22.6,
+    "avg_win_usd": 82.95,
+    "avg_loss_usd": -29.33,
+    "trades": 195,
+    "turnover_x_per_year": 2.97,
+    "avg_exposure_pct": 9.6,
+    "costs_usd": 673.65,
+    "avg_days_held": 18.6,
+    "net_without_top5_usd": -3168.63,
+    "yearly_pct": {
+     "2024": -2.52,
+     "2025": 1.8,
+     "2026": -7.07
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 90,
+      "pnl_usd": 57.0
+     },
+     "BTC bajista": {
+      "trades": 105,
+      "pnl_usd": -835.39
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": 57.25
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 160.8
+     },
+     "Stop": {
+      "trades": 184,
+      "pnl_usd": -778.87
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -217.56
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.4956,
+    "sharpe_ci90": [
+     -1.385,
+     1.086
+    ],
+    "mean_ci90": [
+     -0.0003306552587741347,
+     0.0003367405989803416
+    ]
+   },
+   "sub": {
+    "2024-S2": -1.58,
+    "2025": 4.31,
+    "2026": -5.44
+   }
+  },
+  "B_donchian_N55_exitchan": {
+   "base": {
+    "net_return_pct": -0.3,
+    "cagr_pct": -0.12,
+    "profit_factor": 0.988,
+    "sharpe": 0.042,
+    "sortino": 0.064,
+    "calmar": -0.007,
+    "max_drawdown_pct": -18.52,
+    "expectancy_usd": -0.3,
+    "expectancy_R": -0.09,
+    "win_rate_pct": 18.0,
+    "avg_win_usd": 129.91,
+    "avg_loss_usd": -28.88,
+    "trades": 100,
+    "turnover_x_per_year": 1.34,
+    "avg_exposure_pct": 9.2,
+    "costs_usd": 108.7,
+    "avg_days_held": 33.7,
+    "net_without_top5_usd": -1885.33,
+    "yearly_pct": {
+     "2024": 2.23,
+     "2025": 4.4,
+     "2026": -6.58
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 34,
+      "pnl_usd": 390.86
+     },
+     "BTC bajista": {
+      "trades": 66,
+      "pnl_usd": -420.37
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -37.97
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 156.82
+     },
+     "Se\u00f1al de salida": {
+      "trades": 39,
+      "pnl_usd": 1749.34
+     },
+     "Stop": {
+      "trades": 50,
+      "pnl_usd": -1682.14
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 7,
+      "pnl_usd": -215.56
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -1.19,
+    "cagr_pct": -0.5,
+    "profit_factor": 0.951,
+    "sharpe": 0.007,
+    "sortino": 0.01,
+    "calmar": -0.027,
+    "max_drawdown_pct": -18.89,
+    "expectancy_usd": -1.19,
+    "expectancy_R": -0.124,
+    "win_rate_pct": 18.0,
+    "avg_win_usd": 128.15,
+    "avg_loss_usd": -29.59,
+    "trades": 100,
+    "turnover_x_per_year": 1.34,
+    "avg_exposure_pct": 9.2,
+    "costs_usd": 215.63,
+    "avg_days_held": 33.7,
+    "net_without_top5_usd": -1965.35,
+    "yearly_pct": {
+     "2024": 2.08,
+     "2025": 3.98,
+     "2026": -6.91
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 34,
+      "pnl_usd": 346.95
+     },
+     "BTC bajista": {
+      "trades": 66,
+      "pnl_usd": -466.38
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -44.34
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 154.68
+     },
+     "Se\u00f1al de salida": {
+      "trades": 39,
+      "pnl_usd": 1705.04
+     },
+     "Stop": {
+      "trades": 50,
+      "pnl_usd": -1709.26
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 7,
+      "pnl_usd": -225.55
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -2.18,
+    "cagr_pct": -0.93,
+    "profit_factor": 0.91,
+    "sharpe": -0.032,
+    "sortino": -0.048,
+    "calmar": -0.05,
+    "max_drawdown_pct": -18.65,
+    "expectancy_usd": -2.23,
+    "expectancy_R": -0.161,
+    "win_rate_pct": 17.3,
+    "avg_win_usd": 129.41,
+    "avg_loss_usd": -29.86,
+    "trades": 98,
+    "turnover_x_per_year": 1.32,
+    "avg_exposure_pct": 9.2,
+    "costs_usd": 314.35,
+    "avg_days_held": 34.9,
+    "net_without_top5_usd": -1981.78,
+    "yearly_pct": {
+     "2024": 1.93,
+     "2025": 2.69,
+     "2026": -6.54
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 34,
+      "pnl_usd": 232.43
+     },
+     "BTC bajista": {
+      "trades": 64,
+      "pnl_usd": -450.91
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -51.52
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 68.25
+     },
+     "Se\u00f1al de salida": {
+      "trades": 39,
+      "pnl_usd": 1647.75
+     },
+     "Stop": {
+      "trades": 48,
+      "pnl_usd": -1647.93
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 7,
+      "pnl_usd": -235.03
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.4576,
+    "sharpe_ci90": [
+     -1.212,
+     1.07
+    ],
+    "mean_ci90": [
+     -0.0003011123749737941,
+     0.00034156853854580186
+    ]
+   },
+   "sub": {
+    "2024-S2": 2.21,
+    "2025": 5.03,
+    "2026": -7.22
+   }
+  },
+  "B_donchian_N55_trail3": {
+   "base": {
+    "net_return_pct": -1.69,
+    "cagr_pct": -0.72,
+    "profit_factor": 0.953,
+    "sharpe": -0.024,
+    "sortino": -0.035,
+    "calmar": -0.046,
+    "max_drawdown_pct": -15.48,
+    "expectancy_usd": -0.98,
+    "expectancy_R": -0.073,
+    "win_rate_pct": 24.9,
+    "avg_win_usd": 79.88,
+    "avg_loss_usd": -27.72,
+    "trades": 173,
+    "turnover_x_per_year": 2.49,
+    "avg_exposure_pct": 8.4,
+    "costs_usd": 190.9,
+    "avg_days_held": 18.6,
+    "net_without_top5_usd": -2245.4,
+    "yearly_pct": {
+     "2024": -0.37,
+     "2025": 4.53,
+     "2026": -5.6
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 76,
+      "pnl_usd": 369.13
+     },
+     "BTC bajista": {
+      "trades": 97,
+      "pnl_usd": -538.23
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 133.78
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 149.75
+     },
+     "Stop": {
+      "trades": 162,
+      "pnl_usd": -163.49
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 9,
+      "pnl_usd": -289.15
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -3.55,
+    "cagr_pct": -1.51,
+    "profit_factor": 0.904,
+    "sharpe": -0.105,
+    "sortino": -0.156,
+    "calmar": -0.092,
+    "max_drawdown_pct": -16.35,
+    "expectancy_usd": -2.05,
+    "expectancy_R": -0.106,
+    "win_rate_pct": 23.7,
+    "avg_win_usd": 81.74,
+    "avg_loss_usd": -28.08,
+    "trades": 173,
+    "turnover_x_per_year": 2.49,
+    "avg_exposure_pct": 8.4,
+    "costs_usd": 378.17,
+    "avg_days_held": 18.6,
+    "net_without_top5_usd": -2402.49,
+    "yearly_pct": {
+     "2024": -0.72,
+     "2025": 3.87,
+     "2026": -6.47
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 76,
+      "pnl_usd": 266.94
+     },
+     "BTC bajista": {
+      "trades": 97,
+      "pnl_usd": -622.25
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 125.76
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 147.99
+     },
+     "Stop": {
+      "trades": 162,
+      "pnl_usd": -329.89
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 9,
+      "pnl_usd": -299.17
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -5.95,
+    "cagr_pct": -2.55,
+    "profit_factor": 0.843,
+    "sharpe": -0.211,
+    "sortino": -0.312,
+    "calmar": -0.148,
+    "max_drawdown_pct": -17.21,
+    "expectancy_usd": -3.44,
+    "expectancy_R": -0.146,
+    "win_rate_pct": 23.1,
+    "avg_win_usd": 79.95,
+    "avg_loss_usd": -28.52,
+    "trades": 173,
+    "turnover_x_per_year": 2.48,
+    "avg_exposure_pct": 8.4,
+    "costs_usd": 558.8,
+    "avg_days_held": 18.6,
+    "net_without_top5_usd": -2562.86,
+    "yearly_pct": {
+     "2024": -1.07,
+     "2025": 2.58,
+     "2026": -7.33
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 76,
+      "pnl_usd": 105.9
+     },
+     "BTC bajista": {
+      "trades": 97,
+      "pnl_usd": -700.74
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 117.24
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 88.88
+     },
+     "Stop": {
+      "trades": 162,
+      "pnl_usd": -493.49
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 9,
+      "pnl_usd": -307.47
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.4796,
+    "sharpe_ci90": [
+     -1.38,
+     1.052
+    ],
+    "mean_ci90": [
+     -0.0003030938518044087,
+     0.00032229298970151194
+    ]
+   },
+   "sub": {
+    "2024-S2": -0.38,
+    "2025": 4.77,
+    "2026": -6.15
+   }
+  },
+  "B_donchian_N90_exitchan": {
+   "base": {
+    "net_return_pct": 1.73,
+    "cagr_pct": 0.73,
+    "profit_factor": 1.17,
+    "sharpe": 0.136,
+    "sortino": 0.202,
+    "calmar": 0.061,
+    "max_drawdown_pct": -11.9,
+    "expectancy_usd": 4.13,
+    "expectancy_R": 0.375,
+    "win_rate_pct": 26.2,
+    "avg_win_usd": 108.4,
+    "avg_loss_usd": -32.87,
+    "trades": 42,
+    "turnover_x_per_year": 0.52,
+    "avg_exposure_pct": 9.3,
+    "costs_usd": 42.62,
+    "avg_days_held": 60.6,
+    "net_without_top5_usd": -948.79,
+    "yearly_pct": {
+     "2024": 2.3,
+     "2025": -4.88,
+     "2026": 4.55
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 18,
+      "pnl_usd": -474.96
+     },
+     "BTC bajista": {
+      "trades": 24,
+      "pnl_usd": 648.3
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 28.7
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 6.7
+     },
+     "Se\u00f1al de salida": {
+      "trades": 13,
+      "pnl_usd": 1071.8
+     },
+     "Stop": {
+      "trades": 22,
+      "pnl_usd": -807.48
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -126.37
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": 1.31,
+    "cagr_pct": 0.55,
+    "profit_factor": 1.126,
+    "sharpe": 0.111,
+    "sortino": 0.166,
+    "calmar": 0.046,
+    "max_drawdown_pct": -12.04,
+    "expectancy_usd": 3.11,
+    "expectancy_R": 0.342,
+    "win_rate_pct": 26.2,
+    "avg_win_usd": 106.31,
+    "avg_loss_usd": -33.51,
+    "trades": 42,
+    "turnover_x_per_year": 0.52,
+    "avg_exposure_pct": 9.3,
+    "costs_usd": 85.07,
+    "avg_days_held": 60.6,
+    "net_without_top5_usd": -973.89,
+    "yearly_pct": {
+     "2024": 2.17,
+     "2025": -4.99,
+     "2026": 4.37
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 18,
+      "pnl_usd": -493.07
+     },
+     "BTC bajista": {
+      "trades": 24,
+      "pnl_usd": 623.82
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 27.38
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": 6.33
+     },
+     "Se\u00f1al de salida": {
+      "trades": 13,
+      "pnl_usd": 1048.26
+     },
+     "Stop": {
+      "trades": 22,
+      "pnl_usd": -821.75
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -129.47
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": 0.75,
+    "cagr_pct": 0.31,
+    "profit_factor": 1.07,
+    "sharpe": 0.079,
+    "sortino": 0.118,
+    "calmar": 0.026,
+    "max_drawdown_pct": -12.29,
+    "expectancy_usd": 1.78,
+    "expectancy_R": 0.296,
+    "win_rate_pct": 21.4,
+    "avg_win_usd": 126.77,
+    "avg_loss_usd": -32.31,
+    "trades": 42,
+    "turnover_x_per_year": 0.52,
+    "avg_exposure_pct": 9.3,
+    "costs_usd": 127.12,
+    "avg_days_held": 60.6,
+    "net_without_top5_usd": -1011.6,
+    "yearly_pct": {
+     "2024": 2.03,
+     "2025": -5.23,
+     "2026": 4.19
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 18,
+      "pnl_usd": -510.77
+     },
+     "BTC bajista": {
+      "trades": 24,
+      "pnl_usd": 585.52
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 26.05
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": -7.94
+     },
+     "Se\u00f1al de salida": {
+      "trades": 13,
+      "pnl_usd": 1023.99
+     },
+     "Stop": {
+      "trades": 22,
+      "pnl_usd": -834.89
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 5,
+      "pnl_usd": -132.46
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.396,
+    "sharpe_ci90": [
+     -0.84,
+     0.98
+    ],
+    "mean_ci90": [
+     -0.00014706609644257444,
+     0.00020011334932312801
+    ]
+   },
+   "sub": {
+    "2024-S2": 2.27,
+    "2025": -12.76,
+    "2026": -5.47
+   }
+  },
+  "B_donchian_N90_trail3": {
+   "base": {
+    "net_return_pct": -2.63,
+    "cagr_pct": -1.12,
+    "profit_factor": 0.922,
+    "sharpe": -0.065,
+    "sortino": -0.097,
+    "calmar": -0.067,
+    "max_drawdown_pct": -16.68,
+    "expectancy_usd": -1.58,
+    "expectancy_R": -0.111,
+    "win_rate_pct": 24.7,
+    "avg_win_usd": 75.78,
+    "avg_loss_usd": -26.96,
+    "trades": 166,
+    "turnover_x_per_year": 2.38,
+    "avg_exposure_pct": 8.1,
+    "costs_usd": 180.56,
+    "avg_days_held": 17.8,
+    "net_without_top5_usd": -2276.8,
+    "yearly_pct": {
+     "2024": 0.53,
+     "2025": 4.46,
+     "2026": -7.28
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 78,
+      "pnl_usd": 481.43
+     },
+     "BTC bajista": {
+      "trades": 88,
+      "pnl_usd": -744.46
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 129.79
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 33.31
+     },
+     "Stop": {
+      "trades": 152,
+      "pnl_usd": -91.52
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 11,
+      "pnl_usd": -334.6
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -4.38,
+    "cagr_pct": -1.87,
+    "profit_factor": 0.874,
+    "sharpe": -0.143,
+    "sortino": -0.211,
+    "calmar": -0.107,
+    "max_drawdown_pct": -17.45,
+    "expectancy_usd": -2.64,
+    "expectancy_R": -0.143,
+    "win_rate_pct": 24.1,
+    "avg_win_usd": 75.66,
+    "avg_loss_usd": -27.5,
+    "trades": 166,
+    "turnover_x_per_year": 2.38,
+    "avg_exposure_pct": 8.1,
+    "costs_usd": 357.86,
+    "avg_days_held": 17.8,
+    "net_without_top5_usd": -2422.74,
+    "yearly_pct": {
+     "2024": 0.21,
+     "2025": 3.78,
+     "2026": -8.06
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 78,
+      "pnl_usd": 373.37
+     },
+     "BTC bajista": {
+      "trades": 88,
+      "pnl_usd": -811.55
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 122.08
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": 31.99
+     },
+     "Stop": {
+      "trades": 152,
+      "pnl_usd": -251.75
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 11,
+      "pnl_usd": -340.5
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -6.57,
+    "cagr_pct": -2.82,
+    "profit_factor": 0.815,
+    "sharpe": -0.241,
+    "sortino": -0.355,
+    "calmar": -0.155,
+    "max_drawdown_pct": -18.21,
+    "expectancy_usd": -3.96,
+    "expectancy_R": -0.18,
+    "win_rate_pct": 22.9,
+    "avg_win_usd": 76.18,
+    "avg_loss_usd": -27.75,
+    "trades": 166,
+    "turnover_x_per_year": 2.37,
+    "avg_exposure_pct": 8.1,
+    "costs_usd": 529.49,
+    "avg_days_held": 17.8,
+    "net_without_top5_usd": -2604.66,
+    "yearly_pct": {
+     "2024": -0.11,
+     "2025": 2.6,
+     "2026": -8.84
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 78,
+      "pnl_usd": 216.09
+     },
+     "BTC bajista": {
+      "trades": 88,
+      "pnl_usd": -872.94
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": 114.01
+     },
+     "Retirada": {
+      "trades": 2,
+      "pnl_usd": -17.08
+     },
+     "Stop": {
+      "trades": 152,
+      "pnl_usd": -408.82
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 11,
+      "pnl_usd": -344.95
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.5062,
+    "sharpe_ci90": [
+     -1.459,
+     1.014
+    ],
+    "mean_ci90": [
+     -0.0003103729339696979,
+     0.0003117303407363241
+    ]
+   },
+   "sub": {
+    "2024-S2": 0.53,
+    "2025": 4.26,
+    "2026": -7.46
+   }
+  },
+  "C_early_p20_trail3": {
+   "base": {
+    "net_return_pct": -14.88,
+    "cagr_pct": -6.56,
+    "profit_factor": 0.455,
+    "sharpe": -1.055,
+    "sortino": -1.442,
+    "calmar": -0.341,
+    "max_drawdown_pct": -19.25,
+    "expectancy_usd": -13.16,
+    "expectancy_R": -0.41,
+    "win_rate_pct": 15.9,
+    "avg_win_usd": 69.02,
+    "avg_loss_usd": -28.74,
+    "trades": 113,
+    "turnover_x_per_year": 1.51,
+    "avg_exposure_pct": 4.4,
+    "costs_usd": 113.09,
+    "avg_days_held": 17.1,
+    "net_without_top5_usd": -2365.86,
+    "yearly_pct": {
+     "2024": 0.64,
+     "2025": -11.4,
+     "2026": -4.54
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -847.15
+     },
+     "BTC bajista": {
+      "trades": 51,
+      "pnl_usd": -640.49
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -34.11
+     },
+     "Stop": {
+      "trades": 102,
+      "pnl_usd": -1200.94
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 10,
+      "pnl_usd": -252.59
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -15.91,
+    "cagr_pct": -7.04,
+    "profit_factor": 0.433,
+    "sharpe": -1.133,
+    "sortino": -1.542,
+    "calmar": -0.352,
+    "max_drawdown_pct": -20.0,
+    "expectancy_usd": -14.08,
+    "expectancy_R": -0.439,
+    "win_rate_pct": 15.9,
+    "avg_win_usd": 67.57,
+    "avg_loss_usd": -29.55,
+    "trades": 113,
+    "turnover_x_per_year": 1.51,
+    "avg_exposure_pct": 4.4,
+    "costs_usd": 224.9,
+    "avg_days_held": 17.1,
+    "net_without_top5_usd": -2458.29,
+    "yearly_pct": {
+     "2024": 0.44,
+     "2025": -11.9,
+     "2026": -4.97
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -917.62
+     },
+     "BTC bajista": {
+      "trades": 51,
+      "pnl_usd": -673.39
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -34.51
+     },
+     "Stop": {
+      "trades": 102,
+      "pnl_usd": -1298.05
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 10,
+      "pnl_usd": -258.45
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -16.93,
+    "cagr_pct": -7.51,
+    "profit_factor": 0.413,
+    "sharpe": -1.211,
+    "sortino": -1.64,
+    "calmar": -0.362,
+    "max_drawdown_pct": -20.75,
+    "expectancy_usd": -14.98,
+    "expectancy_R": -0.468,
+    "win_rate_pct": 15.9,
+    "avg_win_usd": 66.13,
+    "avg_loss_usd": -30.35,
+    "trades": 113,
+    "turnover_x_per_year": 1.51,
+    "avg_exposure_pct": 4.4,
+    "costs_usd": 335.42,
+    "avg_days_held": 17.1,
+    "net_without_top5_usd": -2549.62,
+    "yearly_pct": {
+     "2024": 0.24,
+     "2025": -12.39,
+     "2026": -5.41
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -987.35
+     },
+     "BTC bajista": {
+      "trades": 51,
+      "pnl_usd": -705.81
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -34.9
+     },
+     "Stop": {
+      "trades": 102,
+      "pnl_usd": -1394.06
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 10,
+      "pnl_usd": -264.2
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.9736,
+    "sharpe_ci90": [
+     -2.118,
+     -0.142
+    ],
+    "mean_ci90": [
+     -0.00033394773635781074,
+     -2.6585672078705213e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": 0.64,
+    "2025": -11.41,
+    "2026": -4.45
+   }
+  },
+  "C_early_p20_time30": {
+   "base": {
+    "net_return_pct": -16.11,
+    "cagr_pct": -7.13,
+    "profit_factor": 0.461,
+    "sharpe": -1.263,
+    "sortino": -1.716,
+    "calmar": -0.356,
+    "max_drawdown_pct": -20.0,
+    "expectancy_usd": -14.13,
+    "expectancy_R": -0.346,
+    "win_rate_pct": 21.1,
+    "avg_win_usd": 57.45,
+    "avg_loss_usd": -33.22,
+    "trades": 114,
+    "turnover_x_per_year": 1.53,
+    "avg_exposure_pct": 4.0,
+    "costs_usd": 114.71,
+    "avg_days_held": 17.0,
+    "net_without_top5_usd": -2364.66,
+    "yearly_pct": {
+     "2024": 2.79,
+     "2025": -12.98,
+     "2026": -6.21
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 66,
+      "pnl_usd": -1097.23
+     },
+     "BTC bajista": {
+      "trades": 48,
+      "pnl_usd": -513.75
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -33.47
+     },
+     "Se\u00f1al de salida": {
+      "trades": 41,
+      "pnl_usd": 1116.97
+     },
+     "Stop": {
+      "trades": 62,
+      "pnl_usd": -2439.11
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 10,
+      "pnl_usd": -255.37
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -17.14,
+    "cagr_pct": -7.61,
+    "profit_factor": 0.44,
+    "sharpe": -1.35,
+    "sortino": -1.826,
+    "calmar": -0.365,
+    "max_drawdown_pct": -20.84,
+    "expectancy_usd": -15.03,
+    "expectancy_R": -0.375,
+    "win_rate_pct": 20.2,
+    "avg_win_usd": 58.6,
+    "avg_loss_usd": -33.64,
+    "trades": 114,
+    "turnover_x_per_year": 1.53,
+    "avg_exposure_pct": 4.0,
+    "costs_usd": 228.08,
+    "avg_days_held": 17.0,
+    "net_without_top5_usd": -2459.39,
+    "yearly_pct": {
+     "2024": 2.6,
+     "2025": -13.5,
+     "2026": -6.63
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 66,
+      "pnl_usd": -1169.85
+     },
+     "BTC bajista": {
+      "trades": 48,
+      "pnl_usd": -543.87
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -33.85
+     },
+     "Se\u00f1al de salida": {
+      "trades": 41,
+      "pnl_usd": 1071.14
+     },
+     "Stop": {
+      "trades": 62,
+      "pnl_usd": -2489.72
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 10,
+      "pnl_usd": -261.29
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -18.15,
+    "cagr_pct": -8.09,
+    "profit_factor": 0.421,
+    "sharpe": -1.436,
+    "sortino": -1.933,
+    "calmar": -0.373,
+    "max_drawdown_pct": -21.68,
+    "expectancy_usd": -15.92,
+    "expectancy_R": -0.403,
+    "win_rate_pct": 20.2,
+    "avg_win_usd": 57.31,
+    "avg_loss_usd": -34.43,
+    "trades": 114,
+    "turnover_x_per_year": 1.53,
+    "avg_exposure_pct": 4.0,
+    "costs_usd": 340.13,
+    "avg_days_held": 17.0,
+    "net_without_top5_usd": -2553.04,
+    "yearly_pct": {
+     "2024": 2.41,
+     "2025": -14.01,
+     "2026": -7.06
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 66,
+      "pnl_usd": -1241.69
+     },
+     "BTC bajista": {
+      "trades": 48,
+      "pnl_usd": -573.54
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -34.23
+     },
+     "Se\u00f1al de salida": {
+      "trades": 41,
+      "pnl_usd": 1025.8
+     },
+     "Stop": {
+      "trades": 62,
+      "pnl_usd": -2539.71
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 10,
+      "pnl_usd": -267.1
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.9764,
+    "sharpe_ci90": [
+     -2.306,
+     -0.245
+    ],
+    "mean_ci90": [
+     -0.00036359398679507155,
+     -3.6209968862108e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": 2.79,
+    "2025": -12.99,
+    "2026": -6.12
+   }
+  },
+  "C_early_p35_trail3": {
+   "base": {
+    "net_return_pct": -5.14,
+    "cagr_pct": -2.2,
+    "profit_factor": 0.812,
+    "sharpe": -0.21,
+    "sortino": -0.311,
+    "calmar": -0.164,
+    "max_drawdown_pct": -13.4,
+    "expectancy_usd": -4.14,
+    "expectancy_R": -0.16,
+    "win_rate_pct": 18.5,
+    "avg_win_usd": 96.37,
+    "avg_loss_usd": -27.04,
+    "trades": 124,
+    "turnover_x_per_year": 1.53,
+    "avg_exposure_pct": 4.9,
+    "costs_usd": 122.91,
+    "avg_days_held": 17.6,
+    "net_without_top5_usd": -2299.05,
+    "yearly_pct": {
+     "2024": 0.42,
+     "2025": 0.05,
+     "2026": -5.58
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": 123.41
+     },
+     "BTC bajista": {
+      "trades": 62,
+      "pnl_usd": -637.38
+     }
+    },
+    "by_exit": {
+     "Stop": {
+      "trades": 110,
+      "pnl_usd": -112.63
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 14,
+      "pnl_usd": -401.34
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -6.33,
+    "cagr_pct": -2.72,
+    "profit_factor": 0.775,
+    "sharpe": -0.271,
+    "sortino": -0.399,
+    "calmar": -0.196,
+    "max_drawdown_pct": -13.89,
+    "expectancy_usd": -5.11,
+    "expectancy_R": -0.189,
+    "win_rate_pct": 18.5,
+    "avg_win_usd": 94.6,
+    "avg_loss_usd": -27.81,
+    "trades": 124,
+    "turnover_x_per_year": 1.53,
+    "avg_exposure_pct": 4.9,
+    "costs_usd": 244.29,
+    "avg_days_held": 17.6,
+    "net_without_top5_usd": -2399.53,
+    "yearly_pct": {
+     "2024": 0.18,
+     "2025": -0.44,
+     "2026": -6.09
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": 50.02
+     },
+     "BTC bajista": {
+      "trades": 62,
+      "pnl_usd": -683.41
+     }
+    },
+    "by_exit": {
+     "Stop": {
+      "trades": 110,
+      "pnl_usd": -223.12
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 14,
+      "pnl_usd": -410.27
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -7.51,
+    "cagr_pct": -3.23,
+    "profit_factor": 0.74,
+    "sharpe": -0.331,
+    "sortino": -0.487,
+    "calmar": -0.225,
+    "max_drawdown_pct": -14.39,
+    "expectancy_usd": -6.06,
+    "expectancy_R": -0.219,
+    "win_rate_pct": 17.7,
+    "avg_win_usd": 97.09,
+    "avg_loss_usd": -28.31,
+    "trades": 124,
+    "turnover_x_per_year": 1.53,
+    "avg_exposure_pct": 4.9,
+    "costs_usd": 364.16,
+    "avg_days_held": 17.6,
+    "net_without_top5_usd": -2498.7,
+    "yearly_pct": {
+     "2024": -0.05,
+     "2025": -0.93,
+     "2026": -6.6
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 62,
+      "pnl_usd": -22.59
+     },
+     "BTC bajista": {
+      "trades": 62,
+      "pnl_usd": -728.74
+     }
+    },
+    "by_exit": {
+     "Stop": {
+      "trades": 110,
+      "pnl_usd": -332.31
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 14,
+      "pnl_usd": -419.02
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.6026,
+    "sharpe_ci90": [
+     -1.444,
+     0.742
+    ],
+    "mean_ci90": [
+     -0.0002813641051984638,
+     0.00020389748080661772
+    ]
+   },
+   "sub": {
+    "2024-S2": 0.41,
+    "2025": 0.03,
+    "2026": -5.49
+   }
+  },
+  "C_early_p35_time30": {
+   "base": {
+    "net_return_pct": -11.65,
+    "cagr_pct": -5.08,
+    "profit_factor": 0.634,
+    "sharpe": -0.819,
+    "sortino": -1.202,
+    "calmar": -0.333,
+    "max_drawdown_pct": -15.25,
+    "expectancy_usd": -8.96,
+    "expectancy_R": -0.232,
+    "win_rate_pct": 23.1,
+    "avg_win_usd": 67.22,
+    "avg_loss_usd": -31.82,
+    "trades": 130,
+    "turnover_x_per_year": 1.59,
+    "avg_exposure_pct": 4.4,
+    "costs_usd": 126.63,
+    "avg_days_held": 17.0,
+    "net_without_top5_usd": -2413.52,
+    "yearly_pct": {
+     "2024": 3.16,
+     "2025": -6.0,
+     "2026": -8.89
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 70,
+      "pnl_usd": -505.39
+     },
+     "BTC bajista": {
+      "trades": 60,
+      "pnl_usd": -659.73
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -35.79
+     },
+     "Se\u00f1al de salida": {
+      "trades": 48,
+      "pnl_usd": 1750.92
+     },
+     "Stop": {
+      "trades": 66,
+      "pnl_usd": -2475.63
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 15,
+      "pnl_usd": -404.63
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -12.81,
+    "cagr_pct": -5.61,
+    "profit_factor": 0.606,
+    "sharpe": -0.907,
+    "sortino": -1.325,
+    "calmar": -0.346,
+    "max_drawdown_pct": -16.18,
+    "expectancy_usd": -9.85,
+    "expectancy_R": -0.261,
+    "win_rate_pct": 22.3,
+    "avg_win_usd": 67.98,
+    "avg_loss_usd": -32.2,
+    "trades": 130,
+    "turnover_x_per_year": 1.59,
+    "avg_exposure_pct": 4.4,
+    "costs_usd": 251.65,
+    "avg_days_held": 17.0,
+    "net_without_top5_usd": -2514.7,
+    "yearly_pct": {
+     "2024": 2.93,
+     "2025": -6.49,
+     "2026": -9.4
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 70,
+      "pnl_usd": -579.75
+     },
+     "BTC bajista": {
+      "trades": 60,
+      "pnl_usd": -700.95
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -36.18
+     },
+     "Se\u00f1al de salida": {
+      "trades": 48,
+      "pnl_usd": 1690.05
+     },
+     "Stop": {
+      "trades": 66,
+      "pnl_usd": -2521.37
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 15,
+      "pnl_usd": -413.2
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -13.95,
+    "cagr_pct": -6.13,
+    "profit_factor": 0.58,
+    "sharpe": -0.995,
+    "sortino": -1.446,
+    "calmar": -0.358,
+    "max_drawdown_pct": -17.1,
+    "expectancy_usd": -10.73,
+    "expectancy_R": -0.29,
+    "win_rate_pct": 22.3,
+    "avg_win_usd": 66.49,
+    "avg_loss_usd": -32.9,
+    "trades": 130,
+    "turnover_x_per_year": 1.59,
+    "avg_exposure_pct": 4.4,
+    "costs_usd": 375.08,
+    "avg_days_held": 17.0,
+    "net_without_top5_usd": -2614.53,
+    "yearly_pct": {
+     "2024": 2.69,
+     "2025": -6.98,
+     "2026": -9.92
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 70,
+      "pnl_usd": -653.23
+     },
+     "BTC bajista": {
+      "trades": 60,
+      "pnl_usd": -741.56
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -36.55
+     },
+     "Se\u00f1al de salida": {
+      "trades": 48,
+      "pnl_usd": 1629.85
+     },
+     "Stop": {
+      "trades": 66,
+      "pnl_usd": -2566.48
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 15,
+      "pnl_usd": -421.6
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.9186,
+    "sharpe_ci90": [
+     -1.923,
+     0.169
+    ],
+    "mean_ci90": [
+     -0.00029604858269933473,
+     2.9056222610096515e-05
+    ]
+   },
+   "sub": {
+    "2024-S2": 3.16,
+    "2025": -6.01,
+    "2026": -8.8
+   }
+  },
+  "E_hybrid_N20_trail2.5": {
+   "base": {
+    "net_return_pct": -11.61,
+    "cagr_pct": -5.06,
+    "profit_factor": 0.685,
+    "sharpe": -0.586,
+    "sortino": -0.855,
+    "calmar": -0.313,
+    "max_drawdown_pct": -16.18,
+    "expectancy_usd": -8.67,
+    "expectancy_R": -0.234,
+    "win_rate_pct": 16.4,
+    "avg_win_usd": 114.98,
+    "avg_loss_usd": -32.95,
+    "trades": 134,
+    "turnover_x_per_year": 2.59,
+    "avg_exposure_pct": 5.3,
+    "costs_usd": 196.66,
+    "avg_days_held": 12.3,
+    "net_without_top5_usd": -3026.79,
+    "yearly_pct": {
+     "2024": -6.32,
+     "2025": 5.38,
+     "2026": -10.46
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 104,
+      "pnl_usd": -740.8
+     },
+     "BTC bajista": {
+      "trades": 30,
+      "pnl_usd": -420.43
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -19.65
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": -15.82
+     },
+     "Stop": {
+      "trades": 124,
+      "pnl_usd": -841.36
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 7,
+      "pnl_usd": -284.41
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -13.47,
+    "cagr_pct": -5.91,
+    "profit_factor": 0.647,
+    "sharpe": -0.691,
+    "sortino": -1.002,
+    "calmar": -0.349,
+    "max_drawdown_pct": -16.92,
+    "expectancy_usd": -10.05,
+    "expectancy_R": -0.27,
+    "win_rate_pct": 15.7,
+    "avg_win_usd": 117.7,
+    "avg_loss_usd": -33.8,
+    "trades": 134,
+    "turnover_x_per_year": 2.59,
+    "avg_exposure_pct": 5.3,
+    "costs_usd": 389.3,
+    "avg_days_held": 12.3,
+    "net_without_top5_usd": -3184.6,
+    "yearly_pct": {
+     "2024": -6.73,
+     "2025": 4.51,
+     "2026": -11.23
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 104,
+      "pnl_usd": -899.73
+     },
+     "BTC bajista": {
+      "trades": 30,
+      "pnl_usd": -447.59
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -28.89
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": -17.76
+     },
+     "Stop": {
+      "trades": 124,
+      "pnl_usd": -1012.06
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 7,
+      "pnl_usd": -288.62
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -15.67,
+    "cagr_pct": -6.93,
+    "profit_factor": 0.606,
+    "sharpe": -0.817,
+    "sortino": -1.176,
+    "calmar": -0.392,
+    "max_drawdown_pct": -17.65,
+    "expectancy_usd": -11.7,
+    "expectancy_R": -0.314,
+    "win_rate_pct": 14.9,
+    "avg_win_usd": 120.35,
+    "avg_loss_usd": -34.86,
+    "trades": 134,
+    "turnover_x_per_year": 2.59,
+    "avg_exposure_pct": 5.3,
+    "costs_usd": 575.66,
+    "avg_days_held": 12.3,
+    "net_without_top5_usd": -3369.91,
+    "yearly_pct": {
+     "2024": -7.15,
+     "2025": 3.18,
+     "2026": -11.98
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 104,
+      "pnl_usd": -1093.93
+     },
+     "BTC bajista": {
+      "trades": 30,
+      "pnl_usd": -473.48
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": -37.58
+     },
+     "Retirada": {
+      "trades": 1,
+      "pnl_usd": -58.68
+     },
+     "Stop": {
+      "trades": 124,
+      "pnl_usd": -1178.85
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 7,
+      "pnl_usd": -292.31
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.7796,
+    "sharpe_ci90": [
+     -2.107,
+     0.608
+    ],
+    "mean_ci90": [
+     -0.0003893938515062196,
+     0.00015687131615276168
+    ]
+   },
+   "sub": {
+    "2024-S2": -6.32,
+    "2025": 5.38,
+    "2026": -10.46
+   }
+  },
+  "E_hybrid_N20_trail3.5": {
+   "base": {
+    "net_return_pct": -7.54,
+    "cagr_pct": -3.25,
+    "profit_factor": 0.662,
+    "sharpe": -0.406,
+    "sortino": -0.582,
+    "calmar": -0.242,
+    "max_drawdown_pct": -13.41,
+    "expectancy_usd": -9.09,
+    "expectancy_R": -0.22,
+    "win_rate_pct": 19.3,
+    "avg_win_usd": 92.3,
+    "avg_loss_usd": -33.3,
+    "trades": 83,
+    "turnover_x_per_year": 1.17,
+    "avg_exposure_pct": 4.6,
+    "costs_usd": 93.14,
+    "avg_days_held": 24.9,
+    "net_without_top5_usd": -1906.12,
+    "yearly_pct": {
+     "2024": -1.3,
+     "2025": -0.8,
+     "2026": -5.57
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 65,
+      "pnl_usd": -635.56
+     },
+     "BTC bajista": {
+      "trades": 18,
+      "pnl_usd": -118.52
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": -9.8
+     },
+     "Stop": {
+      "trades": 78,
+      "pnl_usd": -695.52
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -48.76
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -8.44,
+    "cagr_pct": -3.65,
+    "profit_factor": 0.632,
+    "sharpe": -0.461,
+    "sortino": -0.659,
+    "calmar": -0.266,
+    "max_drawdown_pct": -13.72,
+    "expectancy_usd": -10.17,
+    "expectancy_R": -0.248,
+    "win_rate_pct": 19.3,
+    "avg_win_usd": 90.67,
+    "avg_loss_usd": -34.26,
+    "trades": 83,
+    "turnover_x_per_year": 1.17,
+    "avg_exposure_pct": 4.6,
+    "costs_usd": 185.4,
+    "avg_days_held": 24.9,
+    "net_without_top5_usd": -1984.29,
+    "yearly_pct": {
+     "2024": -1.48,
+     "2025": -1.2,
+     "2026": -5.95
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 65,
+      "pnl_usd": -713.04
+     },
+     "BTC bajista": {
+      "trades": 18,
+      "pnl_usd": -131.45
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": -19.82
+     },
+     "Stop": {
+      "trades": 78,
+      "pnl_usd": -775.16
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -49.52
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -9.34,
+    "cagr_pct": -4.04,
+    "profit_factor": 0.604,
+    "sharpe": -0.515,
+    "sortino": -0.734,
+    "calmar": -0.288,
+    "max_drawdown_pct": -14.03,
+    "expectancy_usd": -11.25,
+    "expectancy_R": -0.275,
+    "win_rate_pct": 18.1,
+    "avg_win_usd": 95.06,
+    "avg_loss_usd": -34.7,
+    "trades": 83,
+    "turnover_x_per_year": 1.17,
+    "avg_exposure_pct": 4.6,
+    "costs_usd": 276.8,
+    "avg_days_held": 24.9,
+    "net_without_top5_usd": -2061.71,
+    "yearly_pct": {
+     "2024": -1.66,
+     "2025": -1.59,
+     "2026": -6.32
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 65,
+      "pnl_usd": -789.77
+     },
+     "BTC bajista": {
+      "trades": 18,
+      "pnl_usd": -144.28
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 4,
+      "pnl_usd": -29.66
+     },
+     "Stop": {
+      "trades": 78,
+      "pnl_usd": -854.14
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -50.26
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.7156,
+    "sharpe_ci90": [
+     -1.703,
+     0.665
+    ],
+    "mean_ci90": [
+     -0.00029813322980950504,
+     0.00014898732997550956
+    ]
+   },
+   "sub": {
+    "2024-S2": -1.31,
+    "2025": -0.82,
+    "2026": -5.57
+   }
+  },
+  "E_hybrid_N55_trail2.5": {
+   "base": {
+    "net_return_pct": -5.99,
+    "cagr_pct": -2.57,
+    "profit_factor": 0.807,
+    "sharpe": -0.274,
+    "sortino": -0.411,
+    "calmar": -0.193,
+    "max_drawdown_pct": -13.31,
+    "expectancy_usd": -5.21,
+    "expectancy_R": -0.152,
+    "win_rate_pct": 17.4,
+    "avg_win_usd": 125.46,
+    "avg_loss_usd": -32.71,
+    "trades": 115,
+    "turnover_x_per_year": 2.33,
+    "avg_exposure_pct": 4.9,
+    "costs_usd": 173.04,
+    "avg_days_held": 13.2,
+    "net_without_top5_usd": -2613.29,
+    "yearly_pct": {
+     "2024": -3.26,
+     "2025": 4.93,
+     "2026": -7.39
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 90,
+      "pnl_usd": -251.82
+     },
+     "BTC bajista": {
+      "trades": 25,
+      "pnl_usd": -346.86
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -18.38
+     },
+     "Stop": {
+      "trades": 112,
+      "pnl_usd": -506.78
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -73.52
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -7.67,
+    "cagr_pct": -3.3,
+    "profit_factor": 0.762,
+    "sharpe": -0.364,
+    "sortino": -0.544,
+    "calmar": -0.237,
+    "max_drawdown_pct": -13.96,
+    "expectancy_usd": -6.67,
+    "expectancy_R": -0.188,
+    "win_rate_pct": 17.4,
+    "avg_win_usd": 122.76,
+    "avg_loss_usd": -33.91,
+    "trades": 115,
+    "turnover_x_per_year": 2.33,
+    "avg_exposure_pct": 4.9,
+    "costs_usd": 343.08,
+    "avg_days_held": 13.2,
+    "net_without_top5_usd": -2752.18,
+    "yearly_pct": {
+     "2024": -3.53,
+     "2025": 4.1,
+     "2026": -8.05
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 90,
+      "pnl_usd": -396.78
+     },
+     "BTC bajista": {
+      "trades": 25,
+      "pnl_usd": -369.88
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -25.77
+     },
+     "Stop": {
+      "trades": 112,
+      "pnl_usd": -666.0
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -74.9
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -9.32,
+    "cagr_pct": -4.03,
+    "profit_factor": 0.72,
+    "sharpe": -0.454,
+    "sortino": -0.673,
+    "calmar": -0.276,
+    "max_drawdown_pct": -14.61,
+    "expectancy_usd": -8.1,
+    "expectancy_R": -0.223,
+    "win_rate_pct": 17.4,
+    "avg_win_usd": 120.09,
+    "avg_loss_usd": -35.09,
+    "trades": 115,
+    "turnover_x_per_year": 2.33,
+    "avg_exposure_pct": 5.0,
+    "costs_usd": 510.17,
+    "avg_days_held": 13.2,
+    "net_without_top5_usd": -2888.51,
+    "yearly_pct": {
+     "2024": -3.81,
+     "2025": 3.27,
+     "2026": -8.71
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 90,
+      "pnl_usd": -539.19
+     },
+     "BTC bajista": {
+      "trades": 25,
+      "pnl_usd": -392.55
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 1,
+      "pnl_usd": -32.9
+     },
+     "Stop": {
+      "trades": 112,
+      "pnl_usd": -822.58
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 2,
+      "pnl_usd": -76.26
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.6266,
+    "sharpe_ci90": [
+     -1.586,
+     0.771
+    ],
+    "mean_ci90": [
+     -0.0002954565234888638,
+     0.0002029604968167448
+    ]
+   },
+   "sub": {
+    "2024-S2": -3.26,
+    "2025": 4.93,
+    "2026": -7.39
+   }
+  },
+  "E_hybrid_N55_trail3.5": {
+   "base": {
+    "net_return_pct": -4.55,
+    "cagr_pct": -1.94,
+    "profit_factor": 0.779,
+    "sharpe": -0.221,
+    "sortino": -0.322,
+    "calmar": -0.146,
+    "max_drawdown_pct": -13.29,
+    "expectancy_usd": -6.07,
+    "expectancy_R": -0.162,
+    "win_rate_pct": 21.3,
+    "avg_win_usd": 100.5,
+    "avg_loss_usd": -34.97,
+    "trades": 75,
+    "turnover_x_per_year": 1.15,
+    "avg_exposure_pct": 4.7,
+    "costs_usd": 88.45,
+    "avg_days_held": 24.2,
+    "net_without_top5_usd": -1691.99,
+    "yearly_pct": {
+     "2024": 1.88,
+     "2025": -1.12,
+     "2026": -5.26
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 60,
+      "pnl_usd": -305.15
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": -149.96
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": 22.36
+     },
+     "Stop": {
+      "trades": 72,
+      "pnl_usd": -427.39
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -50.08
+     }
+    }
+   },
+   "elevated": {
+    "net_return_pct": -5.41,
+    "cagr_pct": -2.32,
+    "profit_factor": 0.745,
+    "sharpe": -0.271,
+    "sortino": -0.393,
+    "calmar": -0.171,
+    "max_drawdown_pct": -13.56,
+    "expectancy_usd": -7.22,
+    "expectancy_R": -0.19,
+    "win_rate_pct": 21.3,
+    "avg_win_usd": 98.75,
+    "avg_loss_usd": -35.95,
+    "trades": 75,
+    "turnover_x_per_year": 1.15,
+    "avg_exposure_pct": 4.7,
+    "costs_usd": 176.12,
+    "avg_days_held": 24.2,
+    "net_without_top5_usd": -1765.97,
+    "yearly_pct": {
+     "2024": 1.77,
+     "2025": -1.55,
+     "2026": -5.59
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 60,
+      "pnl_usd": -381.31
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": -159.95
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": 14.43
+     },
+     "Stop": {
+      "trades": 72,
+      "pnl_usd": -504.82
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -50.87
+     }
+    }
+   },
+   "stress": {
+    "net_return_pct": -6.27,
+    "cagr_pct": -2.69,
+    "profit_factor": 0.713,
+    "sharpe": -0.321,
+    "sortino": -0.464,
+    "calmar": -0.194,
+    "max_drawdown_pct": -13.85,
+    "expectancy_usd": -8.36,
+    "expectancy_R": -0.218,
+    "win_rate_pct": 18.7,
+    "avg_win_usd": 110.99,
+    "avg_loss_usd": -35.75,
+    "trades": 75,
+    "turnover_x_per_year": 1.15,
+    "avg_exposure_pct": 4.7,
+    "costs_usd": 263.02,
+    "avg_days_held": 24.2,
+    "net_without_top5_usd": -1839.27,
+    "yearly_pct": {
+     "2024": 1.65,
+     "2025": -1.98,
+     "2026": -5.93
+    },
+    "by_regime": {
+     "BTC alcista": {
+      "trades": 60,
+      "pnl_usd": -456.79
+     },
+     "BTC bajista": {
+      "trades": 15,
+      "pnl_usd": -169.86
+     }
+    },
+    "by_exit": {
+     "Fin del periodo": {
+      "trades": 2,
+      "pnl_usd": 6.63
+     },
+     "Stop": {
+      "trades": 72,
+      "pnl_usd": -581.62
+     },
+     "Stop el d\u00eda de entrada": {
+      "trades": 1,
+      "pnl_usd": -51.65
+     }
+    }
+   },
+   "bootstrap": {
+    "p_value": 0.6192,
+    "sharpe_ci90": [
+     -1.415,
+     0.778
+    ],
+    "mean_ci90": [
+     -0.00025022336548401956,
+     0.00017575529720878513
+    ]
+   },
+   "sub": {
+    "2024-S2": 1.87,
+    "2025": -0.29,
+    "2026": -5.26
+   }
+  }
+ },
+ "frozen": {
+  "D": {
+   "strategy": "D_volmom_L28",
+   "verdict": "REJECTED",
+   "checks": {
+    "1_retorno_neto_pos": false,
+    "2_expectancy_pos": false,
+    "3_pf_gt_1_15": false,
+    "4_sharpe_gt_0_75": false,
+    "5_dd_le_25": false,
+    "6_consistencia": false,
+    "7_costes_elevados": false,
+    "8_sin_top5_y_30_ops": false,
+    "9_estadistica": false
+   },
+   "p_holm": 0.8808,
+   "p_bonferroni_23": 1.0,
+   "manip_filter": {
+    "net_return_pct": -21.57,
+    "sharpe": -0.872,
+    "profit_factor": 0.693,
+    "trades": 166
+   },
+   "universe50": {
+    "net_return_pct": 7.22,
+    "sharpe": 0.342,
+    "profit_factor": 1.162,
+    "trades": 140
+   }
+  },
+  "A": {
+   "strategy": "A_tsmom_L28_btcf1",
+   "verdict": "REJECTED",
+   "reason": "no pas\u00f3 la Validaci\u00f3n"
+  },
+  "B": {
+   "strategy": "B_donchian_N20_trail3",
+   "verdict": "REJECTED",
+   "reason": "no pas\u00f3 la Validaci\u00f3n"
+  },
+  "C": {
+   "strategy": "C_early_p35_trail3",
+   "verdict": "REJECTED",
+   "reason": "no pas\u00f3 la Validaci\u00f3n"
+  },
+  "E": {
+   "strategy": "E_hybrid_N20_trail2.5",
+   "verdict": "REJECTED",
+   "reason": "no pas\u00f3 la Validaci\u00f3n"
+  }
+ },
+ "benchmarks": {
+  "BTC comprar y mantener": {
+   "net_return_pct": 1.99,
+   "cagr_pct": 0.83,
+   "sharpe": 0.243,
+   "max_drawdown_pct": -52.97
+  },
+  "ETH comprar y mantener": {
+   "net_return_pct": -48.6,
+   "cagr_pct": -24.44,
+   "sharpe": -0.071,
+   "max_drawdown_pct": -67.55
+  },
+  "Equiponderada top 50": {
+   "net_return_pct": -85.49,
+   "cagr_pct": -55.63,
+   "sharpe": -0.69,
+   "max_drawdown_pct": -91.2
+  },
+  "Efectivo": {
+   "net_return_pct": 0.0,
+   "cagr_pct": 0.0,
+   "sharpe": 0.0,
+   "max_drawdown_pct": 0.0
+  }
+ },
+ "walk_forward": {
+  "A": {
+   "years": [
+    {
+     "year": 2022,
+     "chosen": "A_tsmom_L28_btcf1",
+     "test_return_pct": -0.84,
+     "test_sharpe": -0.666,
+     "trades": 12
+    },
+    {
+     "year": 2023,
+     "chosen": "A_tsmom_L28_btcf1",
+     "test_return_pct": -1.4,
+     "test_sharpe": -0.167,
+     "trades": 93
+    },
+    {
+     "year": 2024,
+     "chosen": "A_tsmom_L84_btcf1",
+     "test_return_pct": 1.65,
+     "test_sharpe": 0.302,
+     "trades": 53
+    },
+    {
+     "year": 2025,
+     "chosen": "A_tsmom_L84_btcf0",
+     "test_return_pct": -3.02,
+     "test_sharpe": -0.232,
+     "trades": 62
+    },
+    {
+     "year": 2026,
+     "chosen": "A_tsmom_L84_btcf0",
+     "test_return_pct": -5.36,
+     "test_sharpe": -1.391,
+     "trades": 61
+    }
+   ],
+   "chained_pct": -8.78
+  },
+  "B": {
+   "years": [
+    {
+     "year": 2022,
+     "chosen": "B_donchian_N20_trail3",
+     "test_return_pct": -4.14,
+     "test_sharpe": -0.978,
+     "trades": 59
+    },
+    {
+     "year": 2023,
+     "chosen": "B_donchian_N20_trail3",
+     "test_return_pct": 7.6,
+     "test_sharpe": 0.846,
+     "trades": 61
+    },
+    {
+     "year": 2024,
+     "chosen": "B_donchian_N90_exitchan",
+     "test_return_pct": -3.26,
+     "test_sharpe": -0.301,
+     "trades": 32
+    },
+    {
+     "year": 2025,
+     "chosen": "B_donchian_N90_trail3",
+     "test_return_pct": 4.26,
+     "test_sharpe": 0.38,
+     "trades": 57
+    },
+    {
+     "year": 2026,
+     "chosen": "B_donchian_N90_trail3",
+     "test_return_pct": -7.46,
+     "test_sharpe": -1.658,
+     "trades": 78
+    }
+   ],
+   "chained_pct": -3.73
+  },
+  "C": {
+   "years": [
+    {
+     "year": 2022,
+     "chosen": "C_early_p35_trail3",
+     "test_return_pct": -4.45,
+     "test_sharpe": -1.418,
+     "trades": 43
+    },
+    {
+     "year": 2023,
+     "chosen": "C_early_p35_trail3",
+     "test_return_pct": 2.54,
+     "test_sharpe": 0.35,
+     "trades": 49
+    },
+    {
+     "year": 2024,
+     "chosen": "C_early_p35_trail3",
+     "test_return_pct": -4.71,
+     "test_sharpe": -0.634,
+     "trades": 51
+    },
+    {
+     "year": 2025,
+     "chosen": "C_early_p35_time30",
+     "test_return_pct": -6.01,
+     "test_sharpe": -0.957,
+     "trades": 49
+    },
+    {
+     "year": 2026,
+     "chosen": "C_early_p35_trail3",
+     "test_return_pct": -5.49,
+     "test_sharpe": -1.1,
+     "trades": 55
+    }
+   ],
+   "chained_pct": -17.07
+  },
+  "D": {
+   "years": [
+    {
+     "year": 2022,
+     "chosen": "D_volmom_L56",
+     "test_return_pct": -11.48,
+     "test_sharpe": -0.331,
+     "trades": 70
+    },
+    {
+     "year": 2023,
+     "chosen": "D_volmom_L84",
+     "test_return_pct": 10.8,
+     "test_sharpe": 0.864,
+     "trades": 27
+    },
+    {
+     "year": 2024,
+     "chosen": "D_volmom_L56",
+     "test_return_pct": 11.01,
+     "test_sharpe": 1.021,
+     "trades": 38
+    },
+    {
+     "year": 2025,
+     "chosen": "D_volmom_L28",
+     "test_return_pct": -11.34,
+     "test_sharpe": -1.012,
+     "trades": 60
+    },
+    {
+     "year": 2026,
+     "chosen": "D_volmom_L84",
+     "test_return_pct": -4.5,
+     "test_sharpe": -0.436,
+     "trades": 41
+    }
+   ],
+   "chained_pct": -7.81
+  },
+  "E": {
+   "years": [
+    {
+     "year": 2022,
+     "chosen": "E_hybrid_N20_trail2.5",
+     "test_return_pct": -0.21,
+     "test_sharpe": -0.086,
+     "trades": 11
+    },
+    {
+     "year": 2023,
+     "chosen": "E_hybrid_N20_trail2.5",
+     "test_return_pct": 10.13,
+     "test_sharpe": 0.883,
+     "trades": 63
+    },
+    {
+     "year": 2024,
+     "chosen": "E_hybrid_N20_trail2.5",
+     "test_return_pct": -13.79,
+     "test_sharpe": -1.887,
+     "trades": 75
+    },
+    {
+     "year": 2025,
+     "chosen": "E_hybrid_N20_trail3.5",
+     "test_return_pct": -0.82,
+     "test_sharpe": -0.033,
+     "trades": 38
+    },
+    {
+     "year": 2026,
+     "chosen": "E_hybrid_N55_trail2.5",
+     "test_return_pct": -7.39,
+     "test_sharpe": -1.48,
+     "trades": 37
+    }
+   ],
+   "chained_pct": -12.98
+  }
+ }
+}

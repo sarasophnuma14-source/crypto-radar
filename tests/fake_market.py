@@ -54,7 +54,7 @@ def install():
         return rows
     data.cg_markets = markets
     data.binance_symbols = lambda quote="USDT": set(SYMS)
-    data.klines = lambda symbol, interval="1d", limit=365: _series(symbol[:-4], interval, limit)
+    data.klines = lambda symbol, interval="1d", limit=365, start=None, closed=False: _series(symbol[:-4], interval, limit)
     data.funding_rates = lambda: {s + "USDT": random.Random(s).uniform(-0.0002, 0.0007) for s in SYMS[:25]}
     data.open_interest_change = lambda s: random.Random(s).uniform(-30, 30)
 

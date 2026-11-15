@@ -27,6 +27,8 @@ MEMES = ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK", "WIF", "BOME", "MEME", "1000SA
 RULE = {"vol_mult": 5.0, "lookback": 20, "max_day_gain": 0.30, "take_profit": 0.60, "stop_loss": 0.15,
         "max_days": 5, "size_pct": 10.0, "max_open": 8, "min_avg_volume_usd": 2_000_000}
 
+# Cifras históricas de referencia interna, NO validadas: el periodo "a ciegas" se miró antes del ajuste final
+# (AUDIT_REPORT A11). No se muestran en el panel ni deben usarse para vender.
 BACKTEST = {"periodo": "2025-01-01 → 2026-11-13 (prueba a ciegas)", "acierto_pct": 44.9, "retorno_pct": 31.3,
             "max_dd_pct": -12.3, "profit_factor": 1.89, "operaciones": 49}
 
@@ -168,7 +170,7 @@ def stats(st=None):
     losses = [-t["pnl_pct"] for t in closed if t["pnl_pct"] <= 0]
     return {"signals": len(st["signals"]), "open": sum(t["status"] == "OPEN" for t in st["trades"]),
             "closed": len(closed), "win_rate": round(len(wins) / len(closed) * 100, 1) if closed else None,
-            "profit_factor": round(sum(wins) / sum(losses), 2) if losses else (None if not wins else 99.0),
+            "profit_factor": round(sum(wins) / sum(losses), 2) if losses and sum(losses) > 0 else None,  # sin pérdidas aún: N/D
             "avg_pnl_pct": round(sum(t["pnl_pct"] for t in closed) / len(closed), 2) if closed else None,
             # cada operación usa 10 % del capital
             "portfolio_pct": round(sum(t["pnl_pct"] for t in closed) * RULE["size_pct"] / 100, 2)}
@@ -182,6 +184,11 @@ def run(settings=None):
         settings = settings or load_settings()
         _, errors = check_signals(settings)
         update_trades(settings)
+        try:
+            from . import meme_radar
+            meme_radar.scan(settings)
+        except Exception as e:
+            errors.append(f"radar: {e}")
         status["last_check"] = _now().isoformat()
         status["last_error"] = (f"{len(errors)} monedas sin datos: " + "; ".join(errors[:3])) if errors else None
     except Exception as e:
@@ -193,8 +200,11 @@ def run(settings=None):
 
 def state():
     st = _load()
-    return {"rule": RULE, "backtest": BACKTEST, "status": status, "stats": stats(st),
-            "signals": list(reversed(st["signals"][-60:])),
+    # El panel no expone la regla, el backtest ni la lista de monedas vigiladas:
+    # solo resultados (señal, niveles y desenlace), para que la estrategia no se pueda copiar.
+    hidden = {"vol_x", "day_gain_pct"}
+    signals = [{k: v for k, v in s.items() if k not in hidden} for s in reversed(st["signals"][-60:])]
+    from . import meme_radar
+    return {"status": status, "stats": stats(st), "signals": signals, "radar": meme_radar.state(),
             "open": [t for t in st["trades"] if t["status"] == "OPEN"],
-            "closed": list(reversed([t for t in st["trades"] if t["status"] == "CLOSED"]))[:200],
-            "memes": load_settings().get("meme_list") or MEMES}
+            "closed": list(reversed([t for t in st["trades"] if t["status"] == "CLOSED"]))[:200]}
