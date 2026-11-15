@@ -7,6 +7,8 @@
   python3 main.py paper init|step|report|replay [nombre]  -> paper trading de D_volmom_L28 (sin dinero real)
   python3 main.py backup create|verify|compare|restore    -> copias de seguridad verificables de la base
   python3 main.py preflight        -> revisa la configuración de producción (no cambia nada)
+  python3 main.py admin enroll-token [minutos] -> código de un solo uso para el primer TOTP del administrador
+  python3 main.py secrets status|encrypt       -> estado / cifrado y rotación de los secretos TOTP en la base
   python3 main.py payments-selftest -> prueba de extremo a extremo de pagos en sandbox simulado (sin red, sin cobros)
 Solo análisis. No es asesoría financiera."""
 import json
@@ -77,6 +79,24 @@ def main():
     elif cmd == "preflight":
         from radar import preflight
         sys.exit(preflight.cli())
+    elif cmd == "admin" and len(sys.argv) > 2 and sys.argv[2] == "enroll-token":
+        from radar import auth, db
+        db.init()
+        tok, ttl = auth.new_enroll_token(sys.argv[3] if len(sys.argv) > 3 else None)
+        print("Código de alta del administrador (se muestra solo esta vez; un solo uso; caduca en "
+              f"{round(ttl / 60)} min):\n\n  {tok}\n\nEscríbelo en Cuenta → Verificación en dos pasos. "
+              "No lo envíes por chat ni correo.")
+    elif cmd == "secrets" and len(sys.argv) > 2 and sys.argv[2] in ("status", "encrypt"):
+        from radar import auth, db, secretbox
+        db.init()
+        try:
+            if sys.argv[2] == "encrypt":
+                print("Resultado:", json.dumps(auth.encrypt_totp_secrets(), ensure_ascii=False))
+            st = auth.totp_secrets_status()
+        except secretbox.SecretError as e:
+            print("ERROR:", e); sys.exit(2)
+        print("Secretos TOTP:", json.dumps(st, ensure_ascii=False))
+        sys.exit(1 if st["en_claro"] or st["ilegibles"] else 0)
     elif cmd == "payments-selftest":
         from radar import payments_selftest
         sys.exit(payments_selftest.cli())

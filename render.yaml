@@ -38,6 +38,8 @@ services:
         value: "2"             # devuelve memoria al sistema tras picos de carga (prueba de carga: 345 → 162 MB en reposo)
       - key: CRYPTO_RADAR_ADMIN_TOTP
         value: required        # el administrador debe activar TOTP antes de usar el panel de administración
+      - key: CRYPTO_RADAR_TOTP_KEY
+        sync: false            # 32+ caracteres aleatorios; cifra los secretos TOTP en la base (docs/PROTECCION_SECRETOS.md)
       - key: CRYPTO_RADAR_PAYMENTS
         value: "off"           # off | sandbox | live. "live" solo lo cambia a mano el responsable del negocio
       - key: WOMPI_PUBLIC_KEY

@@ -207,9 +207,9 @@ def handle(h, method):
             auth.change_password(user["id"], b.get("old"), b.get("new"), ip)
             return h._send_cookie(200, {"ok": True, "msg": "Contraseña cambiada; vuelve a iniciar sesión"}, "", 0)
         if p == "/api/auth/totp/setup":
-            return h._send(200, auth.totp_setup(user["id"], b.get("password"), ip))
+            return h._send(200, auth.totp_setup(user["id"], b.get("password"), ip, b.get("enroll_token")))
         if p == "/api/auth/totp/enable":
-            auth.totp_enable(user["id"], b.get("code"), ip)
+            auth.totp_enable(user["id"], b.get("code"), ip, b.get("enroll_token"))
             return h._send_cookie(200, {"ok": True, "msg": "Verificación en dos pasos activada. Vuelve a entrar con el siguiente código que muestre la app (el actual ya se usó)"}, "", 0)
         if p == "/api/auth/totp/disable":
             auth.totp_disable(user["id"], b.get("password"), b.get("code"), ip)

@@ -570,6 +570,27 @@ def serve(port=None, host=None, schedule=True):
         if not adm or not adm.get("user"):
             raise SystemExit("No arranco: no se pudo confirmar el administrador del modo cuentas.")
         print(f"Administrador: {adm['user']} · {adm['result']}", flush=True)
+        st = auth.register_env_enroll_token()
+        if st:
+            print(f"Código de alta del administrador (CRYPTO_RADAR_ADMIN_ENROLL_TOKEN): {st}", flush=True)
+        from . import secretbox
+        try:
+            key_ok = bool(secretbox.current_key())
+        except secretbox.SecretError as e:
+            raise SystemExit(f"No arranco: {e}")
+        if key_ok:
+            r = auth.encrypt_totp_secrets()
+            if r["cifrados"] or r["recifrados"]:
+                print(f"Secretos TOTP: {r['cifrados']} cifrados ahora, {r['recifrados']} con la clave nueva", flush=True)
+        elif auth.totp_key_required():
+            raise SystemExit("No arranco: falta CRYPTO_RADAR_TOTP_KEY (32+ caracteres). Los secretos TOTP no se guardan "
+                             "sin cifrar en producción (docs/PROTECCION_SECRETOS.md).")
+        ts = auth.totp_secrets_status()
+        if ts["ilegibles"]:
+            print(f"ERROR: {ts['ilegibles']} secretos TOTP no se pueden descifrar con las claves definidas: esos usuarios "
+                  "no podrán entrar. Define la clave anterior en CRYPTO_RADAR_TOTP_KEY_OLD (docs/PROTECCION_SECRETOS.md).", flush=True)
+        elif ts["en_claro"]:
+            print(f"AVISO: {ts['en_claro']} secretos TOTP sin cifrar. Define CRYPTO_RADAR_TOTP_KEY.", flush=True)
         if schedule:
             telegram_bot.start()
     if schedule:
