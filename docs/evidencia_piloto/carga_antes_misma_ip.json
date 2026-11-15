@@ -1,0 +1,119 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 30.0,
+  "pausa_s": 1.0,
+  "activos_en_informe": 40,
+  "preparacion_s": 33.0,
+  "rss_mb_reposo": 81.3,
+  "rss_mb_final": 256.8
+ },
+ "niveles": [
+  {
+   "usuarios": 10,
+   "login": {
+    "n": 10,
+    "p50_ms": 169.8,
+    "p95_ms": 198.7,
+    "p99_ms": 199.7,
+    "max_ms": 200.0,
+    "codigos": {
+     "200": 10
+    },
+    "segundos_rafaga": 0.2
+   },
+   "panel": {
+    "n": 298,
+    "p50_ms": 13.2,
+    "p95_ms": 34.3,
+    "p99_ms": 59.4,
+    "max_ms": 1062.4,
+    "codigos": {
+     "402": 23,
+     "200": 275
+    },
+    "rps": 9.9
+   },
+   "errores": {},
+   "respuestas_402_por_plan": 23,
+   "rss_mb_max": 240.6,
+   "rss_mb_min": 81.3,
+   "hilos_max": 3,
+   "cpu_pct_medio": 7.7,
+   "pg_conexiones_max": 3,
+   "muestras_con_esperas_por_bloqueo": "0/119"
+  },
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 1007.7,
+    "p95_ms": 1222.7,
+    "p99_ms": 1226.0,
+    "max_ms": 1226.7,
+    "codigos": {
+     "429": 25,
+     "200": 10,
+     "EXC:ConnectionResetError": 15
+    },
+    "segundos_rafaga": 1.26
+   },
+   "panel": {
+    "n": 300,
+    "p50_ms": 14.8,
+    "p95_ms": 37.3,
+    "p99_ms": 48.2,
+    "max_ms": 54.9,
+    "codigos": {
+     "200": 280,
+     "402": 20
+    },
+    "rps": 10.0
+   },
+   "errores": {},
+   "respuestas_402_por_plan": 20,
+   "rss_mb_max": 256.9,
+   "rss_mb_min": 240.6,
+   "hilos_max": 10,
+   "cpu_pct_medio": 7.4,
+   "pg_conexiones_max": 9,
+   "muestras_con_esperas_por_bloqueo": "1/122"
+  },
+  {
+   "usuarios": 100,
+   "login": {
+    "n": 100,
+    "p50_ms": 1037.8,
+    "p95_ms": 2066.7,
+    "p99_ms": 2244.9,
+    "max_ms": 2259.6,
+    "codigos": {
+     "429": 73,
+     "EXC:ConnectionResetError": 27
+    },
+    "segundos_rafaga": 2.28
+   },
+   "panel": {
+    "n": 0,
+    "p50_ms": null,
+    "p95_ms": null,
+    "p99_ms": null,
+    "max_ms": null,
+    "codigos": {},
+    "rps": 0.0
+   },
+   "errores": {},
+   "respuestas_402_por_plan": 0,
+   "rss_mb_max": 256.9,
+   "rss_mb_min": 256.8,
+   "hilos_max": 6,
+   "cpu_pct_medio": 6.4,
+   "pg_conexiones_max": 3,
+   "muestras_con_esperas_por_bloqueo": "0/9"
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0
+}

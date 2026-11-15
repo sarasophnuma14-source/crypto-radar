@@ -1,0 +1,9 @@
+Escaneo REAL de solo lectura ejecutado el 2026-11-15 desde el entorno de auditoría (datos públicos de mercado; sin claves de exchange; sin órdenes).
+Comando: python -c 'from radar import scanner; scanner.run_scan()' con CRYPTO_RADAR_HOME temporal
+segundos 165.0 error None
+veredicto OPORTUNIDADES ACTIVAS
+activos 74 ranking 3 fuentes {'coingecko_global': 'OK', 'fear_greed': 'OK', 'coingecko_markets': 'OK (150)', 'binance_spot': 'OK (518 pares)', 'binance_funding': 'N/D', 'klines': 'Binance (74 activos)', 'order_books': 'Binance (25 libros)'}
+regimen NEUTRAL generado 2026-11-15T14:42:40.518662+00:00
+1 NIGHT 73.3 ACCUMULATION ESPERAR RUPTURA
+2 KITE 66.1 ACCUMULATION ESPERAR RUPTURA
+3 JST 69.5 ACCUMULATION COMPRAR EN ZONA

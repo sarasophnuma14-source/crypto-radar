@@ -72,6 +72,9 @@ def handle(msg):
     if cmd == "/start":
         if not arg:
             return "Hola. Para recibir alertas, abre Crypto Radar → Alertas → «Vincular Telegram» y envía aquí «/start CÓDIGO».\n\n" + HELP
+        # límite por chat: el código tiene 32 bits y vale 15 min; sin límite un chat podría probar códigos sin parar
+        if auth.rate_limited(f"tgstart:{chat}", 10, 3600):
+            return "Demasiados intentos de vinculación desde este chat. Espera una hora y genera un código nuevo."
         row = db.one("SELECT * FROM telegram_links WHERE code = ?", (arg.upper()[:12],))
         if not row or row["expires_at"] < time.time() or not active(auth.get_user(row["user_id"])):
             return "Código no válido o vencido. Genera uno nuevo en el panel."

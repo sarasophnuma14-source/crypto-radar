@@ -45,6 +45,8 @@ Nadie puede convertirse en administrador desde la web.
 | `CRYPTO_RADAR_ADMIN_TAKEOVER` | No | Solo si el servidor no arranca porque una cuenta normal ya tiene el nombre del administrador: `1` pone esa cuenta en cuarentena y crea el administrador nuevo. Quítala después. Ver `docs/SEGURIDAD.md` |
 | `CRYPTO_RADAR_ADMIN_TOTP` | No | `required` (por defecto): el administrador debe activar la verificación en dos pasos (TOTP) antes de usar cualquier acción de administración. `optional` solo para pruebas locales |
 | `CRYPTO_RADAR_PAYMENTS` | No | `off` (por defecto): pagos desactivados aunque haya claves. `sandbox`: solo APIs y claves de prueba. `live`: cobros reales; solo lo activa a mano el responsable del negocio |
+| `CRYPTO_RADAR_BACKUP_KEY` | Para copias firmadas | Clave de 32+ caracteres para firmar (HMAC-SHA256) las copias de seguridad. Se define en la máquina que hace las copias, **no** en Render. Con ella, `verify`/`restore` rechazan copias sin firma o alteradas |
+| `CRYPTO_RADAR_WORKERS` | No | Hilos fijos del servidor web (por defecto 16). Cada hilo usa como máximo una conexión a PostgreSQL |
 | `CRYPTO_RADAR_ALLOW_SQLITE` | No | Solo pruebas: permite el modo cuentas en Render sin `DATABASE_URL` (por defecto se niega a arrancar) |
 | `CRYPTO_RADAR_PASSWORD` | Sí sin cuentas fuera de localhost | Contraseña única del panel en el modo antiguo |
 | `CRYPTO_RADAR_HOST` | No | `0.0.0.0` en servidores |

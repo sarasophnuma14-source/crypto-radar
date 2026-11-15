@@ -1,0 +1,87 @@
+{
+ "pasos": [
+  {
+   "paso": "Python 3.12",
+   "ok": true,
+   "detalle": "3.12.3"
+  },
+  {
+   "paso": "Dependencias fijadas con versión exacta",
+   "ok": true,
+   "detalle": "psycopg[binary]==3.3.9, numpy==2.5.3, pandas==3.0.5"
+  },
+  {
+   "paso": "Todos los módulos de radar se importan",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "Migración main 2.0.0 → actual",
+   "ok": true,
+   "detalle": "12 → 22 columnas en users (+approved_at, approved_by, consent_at, consent_version, contact, request_note, status, totp_enabled, totp_last_step, totp_secret); usuario viejo@example.com conservado"
+  },
+  {
+   "paso": "Migración PR #3 → actual",
+   "ok": true,
+   "detalle": "17 → 22 columnas en users (+consent_at, consent_version, totp_enabled, totp_last_step, totp_secret); usuario viejo.usuario conservado"
+  },
+  {
+   "paso": "Health check /healthz",
+   "ok": true,
+   "detalle": "{\"ok\": true, \"scanning\": false, \"progress\": \"\", \"last_scan\": null, \"last_error\": null, \"sources\": null}"
+  },
+  {
+   "paso": "Sesión persistente en PostgreSQL",
+   "ok": true,
+   "detalle": "40/40"
+  },
+  {
+   "paso": "Tras cortar las conexiones (como Neon al suspender) las peticiones se recuperan",
+   "ok": true,
+   "detalle": "17 conexiones cortadas; 0/40 peticiones fallaron antes de reconectar"
+  },
+  {
+   "paso": "Con la base caída /healthz deja de responder 200 (Render lo detecta)",
+   "ok": true,
+   "detalle": "healthz [500, 500, 500], /api/me 500"
+  },
+  {
+   "paso": "Al volver la base, el servidor se recupera sin reiniciar",
+   "ok": true,
+   "detalle": "0/40 fallidas hasta reconectar"
+  },
+  {
+   "paso": "Los registros no muestran secretos",
+   "ok": true,
+   "detalle": "117 líneas; trazas de error: 4"
+  }
+ ],
+ "corte_conexiones": {
+  "conexiones_cortadas": 17,
+  "peticiones": 40,
+  "fallidas": 0,
+  "codigos": {
+   "200": 40
+  }
+ },
+ "base_caida": {
+  "healthz": [
+   500,
+   500,
+   500
+  ],
+  "api_me": 500
+ },
+ "recuperacion_base": {
+  "200": 40
+ },
+ "log_servidor_primeras_lineas": [
+  "Modo cuentas activo · base de datos postgresql · esquema verificado",
+  "Administrador: jefe.entorno · creado",
+  "Crypto Radar 2.1.0 en http://localhost:59891  (16 hilos; Ctrl+C para detener)",
+  "Traceback (most recent call last):",
+  "  File \"/home/user/crypto-radar/radar/server.py\", line 224, in _dispatch"
+ ],
+ "log_trazas": 4,
+ "resultado": "TODO OK"
+}

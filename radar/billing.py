@@ -176,11 +176,38 @@ def wompi_webhook(event, fetch=None):
     return 200, "plan activado"
 
 
+def _js_json(o):
+    """JSON con claves ordenadas tal como lo produce JSON.stringify (lo que firma NOWPayments): texto UTF-8 sin
+    escapar, enteros sin «.0» y exponentes sin ceros (1e-7, no 1e-07)."""
+    if isinstance(o, dict):
+        return "{" + ",".join(json.dumps(str(k), ensure_ascii=False) + ":" + _js_json(o[k]) for k in sorted(o)) + "}"
+    if isinstance(o, list):
+        return "[" + ",".join(_js_json(x) for x in o) + "]"
+    if o is None or isinstance(o, bool):
+        return json.dumps(o)
+    if isinstance(o, float):
+        if o != o or o in (float("inf"), float("-inf")):
+            return "null"
+        if o.is_integer() and abs(o) < 1e21:
+            return str(int(o))
+        r = repr(o)
+        if "e" in r:
+            m, e = r.split("e")
+            r = f"{m}e{e[0]}{e[1:].lstrip('0') or '0'}"
+        return r
+    if isinstance(o, int):
+        return str(o)
+    return json.dumps(o, ensure_ascii=False)
+
+
 def nowpayments_signature_ok(body_obj, header_sig, secret):
     try:
-        msg = json.dumps(body_obj, sort_keys=True, separators=(",", ":"))
-        mac = hmac.new(secret.encode(), msg.encode(), hashlib.sha512).hexdigest()
-        return hmac.compare_digest(mac, (header_sig or "").lower())
+        given = (header_sig or "").strip().lower()
+        if not given or not secret:
+            return False
+        forms = {_js_json(body_obj), json.dumps(body_obj, sort_keys=True, separators=(",", ":"))}
+        return any(hmac.compare_digest(hmac.new(secret.encode(), m.encode("utf-8"), hashlib.sha512).hexdigest(), given)
+                   for m in forms)
     except Exception:
         return False
 
