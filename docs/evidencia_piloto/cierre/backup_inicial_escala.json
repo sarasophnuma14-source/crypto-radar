@@ -1,0 +1,109 @@
+{
+ "tamano": {
+  "usuarios": 1000,
+  "actividad_extra": 200000
+ },
+ "pasos": [
+  {
+   "paso": "Base de origen poblada con la app",
+   "ok": true,
+   "detalle": "{\"users\": 1001, \"sessions\": 30, \"positions\": 666, \"activity\": 202700, \"kv\": 10}"
+  },
+  {
+   "paso": "Copia sin CRYPTO_RADAR_BACKUP_KEY → se niega",
+   "ok": true,
+   "detalle": "ERROR: Falta CRYPTO_RADAR_BACKUP_KEY (32+ caracteres): las copias se firman siempre con HMAC"
+  },
+  {
+   "paso": "`backup create` con clave: copia firmada e idéntica al origen",
+   "ok": true,
+   "detalle": "26.75 MB"
+  },
+  {
+   "paso": "La copia no contiene el secreto TOTP en claro",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "La copia guarda los códigos de alta usados (solo su hash)",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "`backup verify`: hashes + HMAC + restauración de prueba",
+   "ok": true,
+   "detalle": "Copia íntegra y restaurable (postgresql, 2026-11-15T17:50:57Z): users 1001, activity 202700, positions 666, payments 0, telegram_links 0, kv 10, admin_enroll_tokens 1"
+  },
+  {
+   "paso": "`verify` con otra clave → rechazada",
+   "ok": true,
+   "detalle": "ERROR: Firma HMAC inválida: la copia fue alterada o se firmó con otra clave"
+  },
+  {
+   "paso": "`restore` sobre la base de DATABASE_URL → se niega",
+   "ok": true,
+   "detalle": "ERROR: El destino es la base configurada en DATABASE_URL. Restaura en una base nueva."
+  },
+  {
+   "paso": "`restore` en una base PostgreSQL vacía",
+   "ok": true,
+   "detalle": "Restaurada en postgresql://radar@127.0.0.1:55432/cr_bk0_dst_ac6803: users 1001, activity 202700, positions 666, payments 0, telegram_links 0, kv 10, admin_enrol"
+  },
+  {
+   "paso": "Segunda restauración sobre la base ya restaurada (no vacía) → se niega",
+   "ok": true,
+   "detalle": "ERROR: El destino no está vacío (users: 1001, activity: 202700, positions: 666, kv: 10, admin_enroll_tokens: 1). Restaur"
+  },
+  {
+   "paso": "`compare` copia ↔ base restaurada: idénticas",
+   "ok": true,
+   "detalle": "Idéntica a la base actual"
+  },
+  {
+   "paso": "El servidor arranca sobre la restaurada y el administrador entra con contraseña + TOTP",
+   "ok": true,
+   "detalle": "HTTP 200; Administrador: jefe.copia · verificado"
+  },
+  {
+   "paso": "`preflight --db` sobre la restaurada: esquema, TOTP del administrador y secretos cifrados",
+   "ok": true,
+   "detalle": "[OK  ] Esquema: todas las columnas requeridas existen | [OK  ] TOTP del administrador en la base: activo | [OK  ] Secretos TOTP en la base: 1 en total, 0 sin cifrar, 0 ilegibles con las claves definidas"
+  },
+  {
+   "paso": "Con otra CRYPTO_RADAR_TOTP_KEY el TOTP no se puede leer (503): la clave se guarda aparte",
+   "ok": true,
+   "detalle": "HTTP 503"
+  },
+  {
+   "paso": "`restore` a través de un proxy con 10 ms por sentido",
+   "ok": true,
+   "detalle": "Restaurada en postgresql://radar@127.0.0.1:42251/cr_bk0_far_ac6803: users 1001, activity 202700, positions 666, payments"
+  },
+  {
+   "paso": "Lo escrito después de la copia no está en la restaurada (RPO = tiempo desde la última copia)",
+   "ok": true,
+   "detalle": ""
+  }
+ ],
+ "tiempos_s": {
+  "poblar": 75.8,
+  "copia": 3.5,
+  "verificar": 3.31,
+  "restaurar": 5.05,
+  "comparar": 1.79,
+  "arranque_y_login": 0.28,
+  "preflight": 0.24,
+  "restaurar_con_10ms_por_sentido": 19.56
+ },
+ "origen": {
+  "users": 1001,
+  "sessions": 30,
+  "positions": 666,
+  "activity": 202700,
+  "kv": 10
+ },
+ "origen_mb": 50.2,
+ "copia_mb": 26.75,
+ "rto_medido_s": 7.12,
+ "resumen": "16 de 16 pasos OK"
+}

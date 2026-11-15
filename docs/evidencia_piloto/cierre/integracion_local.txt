@@ -1,0 +1,51 @@
+# Integración local del apilado (2026-11-15). Script: tests/piloto/integracion_local.sh. Sin push, sin fusionar PR.
+# PostgreSQL 16.15 temporal; Python 3.12.3 y 3.13
+base|9176b36
+0_main|3.12|test_suite|rc=0|Ran 158 tests in 8.668s OK 
+0_main|3.12|test_edge|rc=0|Ran 29 tests in 0.782s OK 
+0_main|3.12|test_paper|rc=0|Ran 39 tests in 3.430s OK 
+0_main|3.13|test_suite|rc=0|Ran 158 tests in 8.286s OK 
+0_main|3.13|test_edge|rc=0|Ran 29 tests in 0.720s OK 
+0_main|3.13|test_paper|rc=0|Ran 39 tests in 3.110s OK 
+merge|PR3|2d72a2b|ok|conflictos=0| 21 files changed, 1696 insertions(+), 301 deletions(-)
+arbol|PR3|idéntico a la rama
+1_PR3|3.12|test_suite|rc=0|Ran 192 tests in 18.637s OK 
+1_PR3|3.12|test_edge|rc=0|Ran 29 tests in 0.666s OK 
+1_PR3|3.12|test_paper|rc=0|Ran 39 tests in 3.306s OK 
+1_PR3|3.13|test_suite|rc=0|Ran 192 tests in 15.490s OK 
+1_PR3|3.13|test_edge|rc=0|Ran 29 tests in 0.678s OK 
+1_PR3|3.13|test_paper|rc=0|Ran 39 tests in 3.001s OK 
+merge|PR4|8476715|ok|conflictos=0| 29 files changed, 2136 insertions(+), 81 deletions(-)
+arbol|PR4|idéntico a la rama
+2_PR4|3.12|test_suite|rc=0|Ran 231 tests in 26.827s OK 
+2_PR4|3.12|test_edge|rc=0|Ran 29 tests in 0.686s OK 
+2_PR4|3.12|test_paper|rc=0|Ran 39 tests in 3.139s OK 
+2_PR4|3.13|test_suite|rc=0|Ran 231 tests in 22.364s OK 
+2_PR4|3.13|test_edge|rc=0|Ran 29 tests in 0.660s OK 
+2_PR4|3.13|test_paper|rc=0|Ran 39 tests in 3.099s OK 
+merge|PR5|fedb3a1|ok|conflictos=0| 30 files changed, 2777 insertions(+), 10 deletions(-)
+arbol|PR5|idéntico a la rama
+3_PR5|3.12|test_suite|rc=0|Ran 258 tests in 33.212s OK 
+3_PR5|3.12|test_edge|rc=0|Ran 29 tests in 0.656s OK 
+3_PR5|3.12|test_paper|rc=0|Ran 39 tests in 3.268s OK 
+3_PR5|3.13|test_suite|rc=0|Ran 258 tests in 27.285s OK 
+3_PR5|3.13|test_edge|rc=0|Ran 29 tests in 0.658s OK 
+3_PR5|3.13|test_paper|rc=0|Ran 39 tests in 3.093s OK 
+merge|PR6|f79b24c|ok|conflictos=0| 27 files changed, 6315 insertions(+), 14 deletions(-)
+arbol|PR6|idéntico a la rama
+4_PR6|3.12|test_suite|rc=0|Ran 275 tests in 50.699s OK 
+4_PR6|3.12|test_edge|rc=0|Ran 29 tests in 0.748s OK 
+4_PR6|3.12|test_paper|rc=0|Ran 39 tests in 3.201s OK 
+4_PR6|3.13|test_suite|rc=0|Ran 275 tests in 41.528s OK 
+4_PR6|3.13|test_edge|rc=0|Ran 29 tests in 0.713s OK 
+4_PR6|3.13|test_paper|rc=0|Ran 39 tests in 3.024s OK 
+merge|CIERRE|c86c802|ok|conflictos=0| 16 files changed, 1409 insertions(+), 52 deletions(-)
+arbol|CIERRE|idéntico a la rama
+5_CIERRE|3.12|test_suite|rc=0|Ran 291 tests in 56.315s OK 
+5_CIERRE|3.12|test_edge|rc=0|Ran 29 tests in 0.701s OK 
+5_CIERRE|3.12|test_paper|rc=0|Ran 39 tests in 3.162s OK 
+5_CIERRE|3.13|test_suite|rc=0|Ran 291 tests in 45.370s OK 
+5_CIERRE|3.13|test_edge|rc=0|Ran 29 tests in 0.644s OK 
+5_CIERRE|3.13|test_paper|rc=0|Ran 39 tests in 3.066s OK 
+protegido|sin cambios
+squash|PR4 tras squash de PR3|CONFLICTOS en 14 archivos: CHANGELOG.md docs/INSTALACION_Y_DESPLIEGUE.md docs/SEGURIDAD.md radar/auth.py radar/db.py radar/server.py radar/webapi.py render.yaml 

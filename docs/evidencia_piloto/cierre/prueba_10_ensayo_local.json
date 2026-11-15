@@ -1,0 +1,70 @@
+{
+ "base": "http://127.0.0.1:48383",
+ "usuarios": 10,
+ "minutos": 0.5,
+ "inicio": "2026-11-15T17:39:24Z",
+ "healthz_antes": {
+  "codigo": 200,
+  "ms": 14.6,
+  "cuerpo": {
+   "ok": true,
+   "scanning": false,
+   "progress": "",
+   "last_scan": "2026-11-15T17:39:22.491098+00:00",
+   "last_error": null,
+   "sources": {
+    "coingecko_global": "OK",
+    "fear_greed": "OK",
+    "coingecko_markets": "OK (40)",
+    "binance_spot": "OK (40 pares)",
+    "binance_funding": "OK",
+    "klines": "Binance (40 activos)",
+    "order_books": "N/D"
+   }
+  }
+ },
+ "login": {
+  "ok": 10,
+  "de": 10,
+  "p95_ms": 202.5,
+  "max_ms": 209.9,
+  "codigos": [
+   "200"
+  ]
+ },
+ "panel": {
+  "n": 209,
+  "codigos": {
+   "200": 209
+  },
+  "p50_ms": 5.5,
+  "p95_ms": 10.0,
+  "p99_ms": 17.5,
+  "max_ms": 32.4,
+  "mas_de_2s": 0
+ },
+ "detenida_por_errores": false,
+ "healthz_despues": {
+  "codigo": 200,
+  "ms": 4.5,
+  "cuerpo": {
+   "ok": true,
+   "scanning": false,
+   "progress": "",
+   "last_scan": "2026-11-15T17:39:22.491098+00:00",
+   "last_error": null,
+   "sources": {
+    "coingecko_global": "OK",
+    "fear_greed": "OK",
+    "coingecko_markets": "OK (40)",
+    "binance_spot": "OK (40 pares)",
+    "binance_funding": "OK",
+    "klines": "Binance (40 activos)",
+    "order_books": "N/D"
+   }
+  }
+ },
+ "criterio": "p95 del panel < 1 s, ningún 5xx, ninguna petición > 2 s y todos los usuarios entran",
+ "resultado": "APROBADA",
+ "nota": "ENSAYO LOCAL (SQLite, sin red). No sustituye a la prueba real en Render + Neon."
+}

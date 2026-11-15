@@ -1,0 +1,41 @@
+{
+ "pasos": [
+  {
+   "paso": "La versión 2.0.0 (9176b36) crea su esquema y escribe datos",
+   "ok": true,
+   "detalle": "{\"kv\": 3, \"sessions\": 7, \"payments\": 13, \"telegram_links\": 3, \"users\": 12, \"activity\": 6, \"positions\": 5}"
+  },
+  {
+   "paso": "La versión nueva migra, verifica el esquema y crea el administrador",
+   "ok": true,
+   "detalle": "0.32 s; {\"cifrados\": 0, \"recifrados\": 0, \"ilegibles\": 0}"
+  },
+  {
+   "paso": "Los datos antiguos siguen intactos",
+   "ok": true,
+   "detalle": "{\"email\": \"usuario.antiguo\", \"status\": \"active\", \"totp_enabled\": 0}"
+  },
+  {
+   "paso": "Esquema nuevo completo",
+   "ok": true,
+   "detalle": "{\"admin_enroll_tokens\": 6, \"kv\": 3, \"sessions\": 7, \"payments\": 13, \"telegram_links\": 3, \"rate_limits\": 3, \"users\": 22, \"positions\": 5, \"activity\": 6}"
+  },
+  {
+   "paso": "Segundo arranque: migración idempotente",
+   "ok": true,
+   "detalle": "verificado"
+  },
+  {
+   "paso": "`preflight --db` tras migrar: esquema OK; TOTP del administrador pendiente (aviso esperado)",
+   "ok": true,
+   "detalle": "[OK  ] Esquema: todas las columnas requeridas existen | [AVISO] TOTP del administrador en la base: pendiente: actívalo en Cuenta con un código de alta (docs/BOOTSTRAP_ADMIN.md) | [OK  ] Secretos TOTP en la base: ninguno todavía"
+  }
+ ],
+ "version_antigua": {
+  "ref": "origin/main",
+  "version": "2.0.0",
+  "commit": "9176b36"
+ },
+ "migracion_s": 0.32,
+ "resumen": "6 de 6 pasos OK"
+}

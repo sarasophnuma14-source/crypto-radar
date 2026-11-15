@@ -1,0 +1,12 @@
+[FALLO] Modo cuentas: CRYPTO_RADAR_ACCOUNTS no es 1
+[FALLO] Base de datos: DATABASE_URL no es PostgreSQL (el disco de Render se borra en cada despliegue)
+[FALLO] Administrador: faltan CRYPTO_RADAR_ADMIN_USER o CRYPTO_RADAR_ADMIN_PASSWORD
+[OK  ] TOTP del administrador: obligatorio
+[FALLO] Clave de cifrado TOTP: falta CRYPTO_RADAR_TOTP_KEY: el servidor no arranca en Render sin ella
+[OK  ] Pagos: desactivados (off)
+[FALLO] Texto legal privacidad.html: 6 marcas pendientes (COMPLETAR / borrador sin revisión legal)
+[OK  ] Texto legal aviso-de-riesgo.html: completo
+[OK  ] render.yaml: todas las variables secretas son sync: false
+
+5 fallos, 0 avisos. NO listo para producción.
+rc=1
