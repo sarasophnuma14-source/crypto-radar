@@ -17,6 +17,7 @@ import sys
 import tempfile
 import threading
 import time
+import secrets
 import unittest
 from unittest import mock
 import urllib.error
@@ -30,6 +31,9 @@ os.environ.pop("DATABASE_URL", None)
 os.environ["CRYPTO_RADAR_ADMIN_USER"] = "admin"
 os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave larga del jefe 2026"
 os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "optional"   # el 2FA obligatorio se prueba aparte (T21)
+os.environ["CRYPTO_RADAR_TOTP_KEY"] = "clave de cifrado TOTP solo para pruebas 0001"     # cifrado de secretos (T29)
+os.environ["CRYPTO_RADAR_BACKUP_KEY"] = "clave de firma de copias solo para pruebas 02"  # HMAC obligatorio (T23)
+os.environ.pop("CRYPTO_RADAR_TOTP_KEY_OLD", None); os.environ.pop("CRYPTO_RADAR_ADMIN_ENROLL_TOKEN", None)
 os.environ.pop("CRYPTO_RADAR_PAYMENTS", None)
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests"))
@@ -1886,12 +1890,13 @@ class T21_TOTPyConsentimiento(T13_SaaS):
     def tearDown(self):
         os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = self._totp_env or "optional"
 
-    def enroll(self, op, csrf, pw="clave muy segura 123"):
+    def enroll(self, op, csrf, pw="clave muy segura 123", token=None):
         from radar import totp
-        st, r, _ = self.call(op, "/api/auth/totp/setup", {"password": pw}, {"X-CSRF-Token": csrf})
+        st, r, _ = self.call(op, "/api/auth/totp/setup", {"password": pw, "enroll_token": token}, {"X-CSRF-Token": csrf})
         self.assertEqual(st, 200, r)
         self.assertTrue(r["uri"].startswith("otpauth://totp/") and "secret=" + r["secret"] in r["uri"])
-        st, r2, _ = self.call(op, "/api/auth/totp/enable", {"code": totp.code(r["secret"])}, {"X-CSRF-Token": csrf})
+        st, r2, _ = self.call(op, "/api/auth/totp/enable", {"code": totp.code(r["secret"]), "enroll_token": token},
+                              {"X-CSRF-Token": csrf})
         self.assertEqual(st, 200, r2)
         return r["secret"]
 
@@ -1953,7 +1958,7 @@ class T21_TOTPyConsentimiento(T13_SaaS):
         uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
         with self.assertRaises(auth.AuthError):
             billing.admin_grant(auth.get_user(uid), name, "pro", 30, "prueba")
-        secret = self.enroll(op, csrf)
+        secret = self.enroll(op, csrf, token=auth.new_enroll_token()[0])     # el administrador necesita código de alta
         op2 = self.client()
         st, r, _ = self.call(op2, "/api/auth/login",
                              {"username": name, "password": "clave muy segura 123", "code": totp.code(secret, time.time() + 30)})
@@ -2195,7 +2200,8 @@ class T23_Backup(unittest.TestCase):
 # ================================================================== 24. Revisión previa a producción (preflight)
 class T24_Preflight(unittest.TestCase):
     GOOD = {"CRYPTO_RADAR_ACCOUNTS": "1", "DATABASE_URL": "postgresql://u:SuperSecretaDB99@ep-x-pooler.neon.tech/db?sslmode=require",
-            "CRYPTO_RADAR_ADMIN_USER": "jefe", "CRYPTO_RADAR_ADMIN_PASSWORD": "ClaveAdminUltraSecreta 2026"}
+            "CRYPTO_RADAR_ADMIN_USER": "jefe", "CRYPTO_RADAR_ADMIN_PASSWORD": "ClaveAdminUltraSecreta 2026",
+            "CRYPTO_RADAR_TOTP_KEY": "clave de cifrado TOTP de preflight 123456"}
 
     def run_pf(self, env):
         base = {k: v for k, v in os.environ.items() if not k.startswith(("CRYPTO_RADAR_", "WOMPI_", "NOWPAYMENTS_"))
@@ -2326,14 +2332,14 @@ class T25_Adversarial(T13_SaaS):
         st, _, _ = self.call(op2, "/api/auth/totp/setup", {"password": self.PW}, {"X-CSRF-Token": r2["csrf"]})
         self.assertEqual(st, 409)
 
-    def test_admin_first_enrolment_is_trust_on_first_use(self):
-        """Riesgo documentado (R-02): quien tenga la contraseña de un admin SIN TOTP todavía puede inscribir el suyo."""
+    def test_admin_first_enrolment_needs_one_time_token(self):
+        """R-02 cerrado: quien tenga la contraseña de un admin SIN TOTP ya no puede inscribir el suyo (antes: 200)."""
         op, h, name, _ = self.user()
         db.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (name,))
         os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "required"
         try:
-            st, _, _ = self.call(op, "/api/auth/totp/setup", {"password": self.PW}, h)
-            self.assertEqual(st, 200)
+            st, r, _ = self.call(op, "/api/auth/totp/setup", {"password": self.PW}, h)
+            self.assertEqual(st, 403, r); self.assertTrue(r.get("enroll_token_required"))
         finally:
             os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "optional"
 
@@ -2444,7 +2450,7 @@ class T25_Adversarial(T13_SaaS):
         env = dict(os.environ, DATABASE_URL="")
         r = subprocess.run([sys.executable, str(ROOT / "tests" / "piloto" / "ataque_backup.py")], capture_output=True,
                            text=True, timeout=60, env=dict(env, CRYPTO_RADAR_BACKUP_KEY=""))
-        self.assertIn("NO DETECTADO", r.stdout)                         # sin clave: limitación documentada (F-01)
+        self.assertIn("SIN CLAVE", r.stdout); self.assertNotIn("NO DETECTADO", r.stdout)   # R-09: sin clave no hay copia
         r = subprocess.run([sys.executable, str(ROOT / "tests" / "piloto" / "ataque_backup.py")], capture_output=True,
                            text=True, timeout=60, env=dict(env, CRYPTO_RADAR_BACKUP_KEY="k" * 40))
         self.assertIn("DETECTADO", r.stdout); self.assertNotIn("NO DETECTADO", r.stdout)
@@ -2867,6 +2873,240 @@ class T28_RateLimitingCombinado(T13_SaaS):
 for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
     if _n not in T28_RateLimitingCombinado.__dict__:
         setattr(T28_RateLimitingCombinado, _n, None)    # no repetir las pruebas heredadas de T13
+
+class T29_CierreRiesgos(T13_SaaS):
+    """R-02 (alta del administrador con código de un solo uso), R-08 (TOTP cifrado) y R-09 (copias siempre firmadas).
+    docs/BOOTSTRAP_ADMIN.md y docs/PROTECCION_SECRETOS.md."""
+    PW = "clave muy segura 123"
+
+    def setUp(self):
+        auth.reset_rate_limits()
+
+    def mk_admin(self):
+        auth.reset_rate_limits()
+        (st, r, _), name = self.request()
+        self.assertEqual(st, 200, r)
+        uid = self.approve(name)
+        db.execute("UPDATE users SET is_admin = 1 WHERE id = ?", (uid,))
+        return uid, name
+
+    def setup_enable(self, uid, token):
+        from radar import totp
+        sec = auth.totp_setup(uid, self.PW, enroll_token=token)["secret"]
+        auth.totp_enable(uid, totp.code(sec), enroll_token=token)
+        return sec
+
+    def code_err(self, fn, *a, **k):
+        try:
+            fn(*a, **k); return 200
+        except auth.AuthError as e:
+            return e.code
+
+    # --- R-02: código de alta de un solo uso
+    def test_admin_setup_requires_valid_token(self):
+        uid, _ = self.mk_admin()
+        self.assertEqual(self.code_err(auth.totp_setup, uid, self.PW), 403)
+        self.assertEqual(self.code_err(auth.totp_setup, uid, self.PW, enroll_token="inventado-" + "x" * 30), 403)
+        tok, _ = auth.new_enroll_token()
+        self.setup_enable(uid, tok)
+        self.assertTrue(auth.get_user(uid)["totp_enabled"])
+        self.assertFalse(db.one("SELECT token_hash FROM admin_enroll_tokens WHERE token_hash = ?", (tok,)))  # solo el hash
+
+    def test_token_cannot_be_replayed(self):
+        uid1, _ = self.mk_admin(); uid2, _ = self.mk_admin()
+        tok, _ = auth.new_enroll_token()
+        self.setup_enable(uid1, tok)
+        self.assertEqual(self.code_err(auth.totp_setup, uid2, self.PW, enroll_token=tok), 403)
+
+    def test_expired_token_rejected(self):
+        uid, _ = self.mk_admin()
+        tok, _ = auth.new_enroll_token(minutes=0.001)
+        time.sleep(0.2)
+        self.assertEqual(self.code_err(auth.totp_setup, uid, self.PW, enroll_token=tok), 403)
+
+    def test_concurrent_use_of_same_token_only_one_wins(self):
+        from radar import totp
+        admins = [self.mk_admin()[0] for _ in range(6)]
+        tok, _ = auth.new_enroll_token()
+        secs = {u: auth.totp_setup(u, self.PW, enroll_token=tok)["secret"] for u in admins}   # aún sin consumir
+        res, barrier = [], threading.Barrier(len(admins))
+        def go(u):
+            barrier.wait()
+            res.append(self.code_err(auth.totp_enable, u, totp.code(secs[u]), enroll_token=tok))
+        ts = [threading.Thread(target=go, args=(u,)) for u in admins]
+        [t.start() for t in ts]; [t.join() for t in ts]
+        self.assertEqual(res.count(200), 1, res)
+        self.assertEqual(sum(1 for u in admins if auth.get_user(u)["totp_enabled"]), 1)
+
+    def test_attacker_with_password_cannot_hijack_pending_enrolment(self):
+        from radar import totp
+        uid, _ = self.mk_admin()
+        tok, _ = auth.new_enroll_token()
+        sec = auth.totp_setup(uid, self.PW, enroll_token=tok)["secret"]           # el administrador legítimo empieza
+        self.assertEqual(self.code_err(auth.totp_setup, uid, self.PW), 403)      # el atacante (sin código) no puede
+        auth.totp_enable(uid, totp.code(sec), enroll_token=tok)                  # el legítimo termina con su secreto
+        self.assertEqual(auth.totp_secret_of(auth.get_user(uid) | {"totp_secret": db.one(
+            "SELECT totp_secret FROM users WHERE id = ?", (uid,))["totp_secret"]}), sec)
+
+    def test_env_token_single_use_survives_restart(self):
+        uid, _ = self.mk_admin()
+        t = "codigo-de-alta-del-entorno-" + secrets.token_hex(8)
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_ADMIN_ENROLL_TOKEN": t}):
+            self.assertIn("registrado", auth.register_env_enroll_token())
+            self.assertEqual(auth.register_env_enroll_token(), "vigente")            # reinicio: no se duplica
+            self.setup_enable(uid, t)
+            self.assertIn("usado", auth.register_env_enroll_token())                # reinicio tras usarlo: no revive
+            uid2, _ = self.mk_admin()
+            self.assertEqual(self.code_err(auth.totp_setup, uid2, self.PW, enroll_token=t), 403)
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_ADMIN_ENROLL_TOKEN": "corto"}):
+            with self.assertRaises(auth.AdminBootstrapError):
+                auth.register_env_enroll_token()
+
+    def test_wrong_tokens_rate_limited_but_admin_not_locked(self):
+        uid, name = self.mk_admin()
+        codes = [self.code_err(auth.totp_setup, uid, self.PW, enroll_token=f"malo-{i}") for i in range(11)]
+        self.assertEqual(codes[:10], [403] * 10); self.assertEqual(codes[10], 429)
+        self.assertEqual(self.try_login(name), 200)                              # la cuenta no queda bloqueada
+        auth.reset_rate_limits()
+        tok, _ = auth.new_enroll_token()
+        self.setup_enable(uid, tok)                                             # con un código bueno, se activa
+
+    def try_login(self, name, code=None):
+        try:
+            auth.login(name, self.PW, ip="198.51.100.77", code=code); return 200
+        except auth.AuthError as e:
+            return e.code
+
+    def test_recovery_after_lost_phone_with_env_reset(self):
+        from radar import totp
+        keep = {k: os.environ.get(k) for k in ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD", "CRYPTO_RADAR_ADMIN_RESET")}
+        name = f"jefe{random.randint(0, 10**9)}"
+        try:
+            os.environ.update({"CRYPTO_RADAR_ADMIN_USER": name, "CRYPTO_RADAR_ADMIN_PASSWORD": "clave inicial del jefe 7"})
+            auth.ensure_admin()
+            uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+            tok, _ = auth.new_enroll_token()
+            sec = auth.totp_setup(uid, "clave inicial del jefe 7", enroll_token=tok)["secret"]
+            auth.totp_enable(uid, totp.code(sec), enroll_token=tok)
+            # pierde el teléfono: sin código no entra, pero no queda bloqueado para siempre
+            os.environ.update({"CRYPTO_RADAR_ADMIN_PASSWORD": "clave nueva del jefe 8", "CRYPTO_RADAR_ADMIN_RESET": "1"})
+            self.assertEqual(auth.ensure_admin()["result"], "restablecido")
+            self.assertFalse(auth.get_user(uid)["totp_enabled"])
+            self.assertEqual(self.code_err(auth.totp_setup, uid, "clave nueva del jefe 8"), 403)   # sigue pidiendo código
+            tok2, _ = auth.new_enroll_token()
+            sec2 = auth.totp_setup(uid, "clave nueva del jefe 8", enroll_token=tok2)["secret"]
+            auth.totp_enable(uid, totp.code(sec2), enroll_token=tok2)
+            auth.login(name, "clave nueva del jefe 8", ip="198.51.100.78", code=totp.code(sec2, time.time() + 30))
+        finally:
+            for k, v in keep.items():
+                if v is None: os.environ.pop(k, None)
+                else: os.environ[k] = v
+
+    def test_regular_users_enrol_without_token(self):
+        (st, r, _), name = self.request()
+        uid = self.approve(name)
+        from radar import totp
+        sec = auth.totp_setup(uid, self.PW)["secret"]
+        auth.totp_enable(uid, totp.code(sec))
+        self.assertTrue(auth.get_user(uid)["totp_enabled"])
+
+    # --- R-08: secretos TOTP cifrados
+    def test_secret_stored_encrypted_and_login_works(self):
+        from radar import totp, secretbox
+        uid, name = self.mk_admin()
+        tok, _ = auth.new_enroll_token()
+        sec = self.setup_enable(uid, tok)
+        raw = db.one("SELECT totp_secret FROM users WHERE id = ?", (uid,))["totp_secret"]
+        self.assertTrue(secretbox.is_encrypted(raw)); self.assertNotIn(sec, raw)
+        self.assertEqual(self.try_login(name, totp.code(sec, time.time() + 30)), 200)
+
+    def test_ciphertext_bound_to_its_user(self):
+        from radar import totp, secretbox
+        uid1, _ = self.mk_admin(); uid2, name2 = self.mk_admin()
+        tok, _ = auth.new_enroll_token(); sec1 = self.setup_enable(uid1, tok)
+        tok2, _ = auth.new_enroll_token(); self.setup_enable(uid2, tok2)
+        raw1 = db.one("SELECT totp_secret FROM users WHERE id = ?", (uid1,))["totp_secret"]
+        db.execute("UPDATE users SET totp_secret = ? WHERE id = ?", (raw1, uid2))     # copiar la fila de otro
+        self.assertEqual(self.try_login(name2, totp.code(sec1, time.time() + 30)), 503)
+        with self.assertRaises(secretbox.SecretError):
+            secretbox.decrypt(raw1[:-4] + ("AAAA" if not raw1.endswith("AAAA") else "BBBB"), uid1)   # alterado
+
+    def test_rotation_and_wrong_key(self):
+        from radar import totp, secretbox
+        uid, name = self.mk_admin()
+        tok, _ = auth.new_enroll_token(); sec = self.setup_enable(uid, tok)
+        old = os.environ["CRYPTO_RADAR_TOTP_KEY"]; new = "clave nueva de rotacion TOTP para pruebas 99"
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_TOTP_KEY": new}):
+            os.environ.pop("CRYPTO_RADAR_TOTP_KEY_OLD", None)
+            self.assertGreaterEqual(auth.totp_secrets_status()["ilegibles"], 1)          # clave equivocada
+            self.assertEqual(self.try_login(name, totp.code(sec, time.time() + 30)), 503)  # 503, no cuenta como fallo
+            self.assertEqual(db.one("SELECT failed_logins FROM users WHERE id = ?", (uid,))["failed_logins"], 0)
+            os.environ["CRYPTO_RADAR_TOTP_KEY_OLD"] = old
+            self.assertGreaterEqual(auth.encrypt_totp_secrets()["recifrados"], 1)
+            os.environ.pop("CRYPTO_RADAR_TOTP_KEY_OLD")
+            raw = db.one("SELECT totp_secret FROM users WHERE id = ?", (uid,))["totp_secret"]
+            self.assertEqual(raw.split(":")[1], secretbox.key_id(new.encode()))
+            self.assertEqual(self.try_login(name, totp.code(sec, time.time() + 30)), 200)
+        db.execute("UPDATE users SET totp_secret = NULL, totp_enabled = 0 WHERE id = ?", (uid,))  # no dejar filas ilegibles
+
+    def test_plaintext_secrets_migrated(self):
+        from radar import totp, secretbox
+        uid, name = self.mk_admin()
+        sec = totp.new_secret()
+        db.execute("UPDATE users SET totp_secret = ?, totp_enabled = 1 WHERE id = ?", (sec, uid))   # fila antigua en claro
+        self.assertGreaterEqual(auth.encrypt_totp_secrets()["cifrados"], 1)
+        self.assertTrue(secretbox.is_encrypted(db.one("SELECT totp_secret FROM users WHERE id = ?", (uid,))["totp_secret"]))
+        self.assertEqual(self.try_login(name, totp.code(sec, time.time() + 30)), 200)
+
+    def test_no_plaintext_without_key_in_production(self):
+        uid, _ = self.mk_admin()
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_TOTP_KEY": "", "RENDER": "true"}):
+            self.assertEqual(self.code_err(auth.totp_setup, uid, self.PW, enroll_token=auth.new_enroll_token()[0]), 503)
+        self.assertIsNone(db.one("SELECT totp_secret FROM users WHERE id = ?", (uid,))["totp_secret"])
+
+    def test_short_or_reused_keys_rejected_by_preflight(self):
+        from radar import preflight
+        base = {"CRYPTO_RADAR_ACCOUNTS": "1", "DATABASE_URL": "postgresql://u:p@ep-x.neon.tech/db?sslmode=require",
+                "CRYPTO_RADAR_ADMIN_USER": "jefe", "CRYPTO_RADAR_ADMIN_PASSWORD": "ClaveAdminUltraSecreta 2026"}
+        def res(extra):
+            with mock.patch.dict(os.environ, dict(base, **extra), clear=True):
+                return {n: lv for lv, n, _ in preflight.check_env()}
+        self.assertEqual(res({})["Clave de cifrado TOTP"], "fail")
+        self.assertEqual(res({"CRYPTO_RADAR_TOTP_KEY": "corta"})["Clave de cifrado TOTP"], "fail")
+        k = "k" * 40
+        self.assertEqual(res({"CRYPTO_RADAR_TOTP_KEY": k, "CRYPTO_RADAR_BACKUP_KEY": k})["Claves independientes"], "fail")
+        self.assertEqual(res({"CRYPTO_RADAR_TOTP_KEY": k})["Conexión Neon"], "ok")             # endpoint directo
+
+    # --- R-09: copias siempre firmadas, sin secretos TOTP en claro
+    def test_backup_requires_key_and_has_no_plaintext_totp(self):
+        from radar import backup, totp
+        import sqlite3
+        uid, _ = self.mk_admin()
+        tok, _ = auth.new_enroll_token(); sec = self.setup_enable(uid, tok)
+        tmp = Path(tempfile.mkdtemp(prefix="cr-cierre-"))
+        src = str(tmp / "o.db")
+        c = sqlite3.connect(src); backup._ensure_schema(c, False)
+        raw = db.one("SELECT totp_secret FROM users WHERE id = ?", (uid,))["totp_secret"]
+        c.execute("INSERT INTO users(id, email, pw_hash, created_at, totp_secret, totp_enabled) VALUES (?, 'a', 'x', 1, ?, 1)", (uid, raw))
+        c.commit(); c.close()
+        d = backup.create(src, tmp)
+        self.assertNotIn(sec, (d / "users.jsonl").read_text())
+        self.assertTrue(backup.verify(d)["signed"])
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_BACKUP_KEY": ""}):
+            with self.assertRaises(backup.BackupError):
+                backup.create(src, tmp)
+            with self.assertRaises(backup.BackupError):
+                backup.verify(d)
+            with self.assertRaises(backup.BackupError):
+                backup.restore(d, str(tmp / "r.db"))
+            r = subprocess.run([sys.executable, str(ROOT / "main.py"), "backup", "verify", str(d)], capture_output=True,
+                               text=True, timeout=60, env=dict(os.environ, CRYPTO_RADAR_BACKUP_KEY="", DATABASE_URL=""))
+            self.assertNotEqual(r.returncode, 0); self.assertNotIn("verificada", r.stdout)
+
+
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T29_CierreRiesgos.__dict__:
+        setattr(T29_CierreRiesgos, _n, None)
 
 if __name__ == "__main__":
     unittest.main(verbosity=2 if "-v" in sys.argv else 1, argv=[sys.argv[0]] + [a for a in sys.argv[1:] if a != "-v"])

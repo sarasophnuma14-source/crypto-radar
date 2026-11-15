@@ -47,6 +47,11 @@ SCHEMA = [
     """CREATE TABLE IF NOT EXISTS rate_limits (
         k TEXT PRIMARY KEY, n INTEGER NOT NULL, expires_at DOUBLE PRECISION NOT NULL)""",
     "CREATE INDEX IF NOT EXISTS rate_limits_exp ON rate_limits(expires_at)",
+    # códigos de un solo uso para el primer alta del segundo factor del administrador (docs/BOOTSTRAP_ADMIN.md);
+    # solo se guarda el hash del código
+    """CREATE TABLE IF NOT EXISTS admin_enroll_tokens (
+        token_hash TEXT PRIMARY KEY, source TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL,
+        expires_at DOUBLE PRECISION NOT NULL, used_at DOUBLE PRECISION, used_by TEXT)""",
 ]
 
 
@@ -77,6 +82,7 @@ REQUIRED = {
     "telegram_links": {"code", "user_id", "expires_at"},
     "kv": {"name", "value", "updated_at"},
     "rate_limits": {"k", "n", "expires_at"},
+    "admin_enroll_tokens": {"token_hash", "source", "created_at", "expires_at", "used_at", "used_by"},
 }
 
 

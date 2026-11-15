@@ -1,0 +1,90 @@
+{
+ "pasos": [
+  {
+   "paso": "En Render sin CRYPTO_RADAR_TOTP_KEY el servidor no arranca",
+   "ok": true,
+   "detalle": "No arranco: falta CRYPTO_RADAR_TOTP_KEY (32+ caracteres). Los secretos TOTP no se guardan sin cifrar en producción (docs/PROTECCION_SECRETOS.md)."
+  },
+  {
+   "paso": "Arranca con clave TOTP y código de alta del entorno",
+   "ok": true,
+   "detalle": "Código de alta del administrador (CRYPTO_RADAR_ADMIN_ENROLL_TOKEN): registrado (vale 24 h, un solo uso)"
+  },
+  {
+   "paso": "El atacante entra con la contraseña (admin aún sin TOTP)",
+   "ok": true,
+   "detalle": "HTTP 200; el panel pide código de alta"
+  },
+  {
+   "paso": "Atacante: alta de TOTP sin código → rechazada",
+   "ok": true,
+   "detalle": "HTTP 403: Código de alta de administrador no válido, caducado o ya usado. Genera"
+  },
+  {
+   "paso": "Atacante: alta con un código inventado → rechazada",
+   "ok": true,
+   "detalle": "HTTP 403"
+  },
+  {
+   "paso": "Atacante: sin TOTP no puede administrar",
+   "ok": true,
+   "detalle": "HTTP 403"
+  },
+  {
+   "paso": "Administrador legítimo: alta con el código → activada",
+   "ok": true,
+   "detalle": "HTTP 200 / 200"
+  },
+  {
+   "paso": "El secreto TOTP está cifrado en PostgreSQL",
+   "ok": true,
+   "detalle": "enc1:9d022b5d:…"
+  },
+  {
+   "paso": "La sesión del atacante muere al activar el TOTP",
+   "ok": true,
+   "detalle": "HTTP 401"
+  },
+  {
+   "paso": "Sin código TOTP ya no se entra",
+   "ok": true,
+   "detalle": "HTTP 401"
+  },
+  {
+   "paso": "Con contraseña + TOTP: entra y administra",
+   "ok": true,
+   "detalle": "HTTP 200 / 200"
+  },
+  {
+   "paso": "Reinicio (con restablecimiento) y el mismo código en el entorno: figura como usado",
+   "ok": true,
+   "detalle": "Código de alta del administrador (CRYPTO_RADAR_ADMIN_ENROLL_TOKEN): usado (bórralo del entorno)"
+  },
+  {
+   "paso": "Repetición del código ya usado → rechazada",
+   "ok": true,
+   "detalle": "HTTP 403"
+  },
+  {
+   "paso": "`main.py admin enroll-token` genera un código nuevo (10 min)",
+   "ok": true,
+   "detalle": "código de 32 caracteres (no se guarda en la evidencia)"
+  },
+  {
+   "paso": "Recuperación tras perder el teléfono: alta nueva con el código nuevo",
+   "ok": true,
+   "detalle": "HTTP 200 / 200"
+  },
+  {
+   "paso": "Con otra clave: el arranque avisa y el inicio de sesión da 503 (no cuenta como fallo)",
+   "ok": true,
+   "detalle": "HTTP 503"
+  },
+  {
+   "paso": "Rotación: con la clave antigua en _OLD se recifra; después basta la nueva",
+   "ok": true,
+   "detalle": "Secretos TOTP: 0 cifrados ahora, 1 con la clave nueva · HTTP 200"
+  }
+ ],
+ "resumen": "17 de 17 pasos OK"
+}

@@ -24,7 +24,7 @@ import re
 import secrets
 import time
 import uuid
-from . import db, totp
+from . import db, totp, secretbox
 
 SESSION_DAYS = 14
 LOCK_AFTER, LOCK_S = 5, 15 * 60
@@ -56,6 +56,10 @@ class AuthError(Exception):
         super().__init__(msg)
         self.code = code
         self.extra = extra
+
+
+ENROLL_TTL_S = 30 * 60          # validez de un código de alta generado con `main.py admin enroll-token`
+ENROLL_ENV_TTL_S = 24 * 3600    # validez de CRYPTO_RADAR_ADMIN_ENROLL_TOKEN desde el primer arranque que lo ve
 
 
 def admin_totp_required():
@@ -389,7 +393,7 @@ def _fail(u, ip, what="login_failed"):
 
 def _accept_totp(u, code_given):
     """True si el código vale; guarda el paso de forma atómica para que no se pueda reutilizar."""
-    s = totp.match(u["totp_secret"] or "", code_given, u.get("totp_last_step"))
+    s = totp.match(totp_secret_of(u), code_given, u.get("totp_last_step"))
     if s is None:
         return False
     cur = db.execute("UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)",
@@ -529,6 +533,7 @@ def public(u):
             "telegram_linked": bool(u.get("telegram_chat_id")), "features": PLANS[u["effective_plan"]],
             "totp_enabled": bool(u.get("totp_enabled")),
             "totp_setup_required": bool(u["is_admin"]) and admin_totp_required() and not u.get("totp_enabled"),
+            "enroll_token_required": bool(u["is_admin"]) and not u.get("totp_enabled"),
             "settings": u.get("settings") or {}}
 
 
@@ -561,32 +566,186 @@ def save_user_settings(uid, new):
     return s
 
 
+# ---------------------------------------------------------------- secretos TOTP cifrados (docs/PROTECCION_SECRETOS.md)
+def totp_key_required():
+    """En Render el cifrado es obligatorio; en local se puede exigir con CRYPTO_RADAR_TOTP_KEY_REQUIRED=1."""
+    return bool(os.environ.get("RENDER")) or os.environ.get("CRYPTO_RADAR_TOTP_KEY_REQUIRED") == "1"
+
+
+def _seal_secret(uid, secret):
+    if secretbox.current_key():
+        return secretbox.encrypt(secret, uid)
+    if totp_key_required():
+        raise AuthError("Falta CRYPTO_RADAR_TOTP_KEY: no se guardan secretos TOTP sin cifrar", 503)
+    return secret
+
+
+def totp_secret_of(u):
+    """Semilla TOTP en claro, solo en memoria y solo para comprobar un código."""
+    v = (u or {}).get("totp_secret") or ""
+    if not secretbox.is_encrypted(v):
+        return v
+    try:
+        return secretbox.decrypt(v, u["id"])
+    except secretbox.SecretError as e:
+        print(f"ERROR: no se puede descifrar el secreto TOTP de un usuario: {e}", flush=True)
+        raise AuthError("No se pudo comprobar el segundo factor (clave de cifrado del servidor). Avisa al administrador", 503)
+
+
+def totp_secrets_status():
+    """Cuántos secretos hay cifrados con la clave actual, con otra clave conocida, en claro y sin clave posible."""
+    cur = secretbox.current_key()
+    cur_id = secretbox.key_id(cur) if cur else None
+    known = secretbox.keys()
+    out = {"actual": 0, "clave_antigua": 0, "en_claro": 0, "ilegibles": 0}
+    for r in db.all_("SELECT id, totp_secret FROM users WHERE totp_secret IS NOT NULL AND totp_secret <> ''", ()):
+        v = r["totp_secret"]
+        if not secretbox.is_encrypted(v):
+            out["en_claro"] += 1; continue
+        kid = v.split(":", 2)[1]
+        if kid not in known:
+            out["ilegibles"] += 1; continue
+        try:
+            secretbox.decrypt(v, r["id"])
+        except secretbox.SecretError:
+            out["ilegibles"] += 1; continue
+        out["actual" if kid == cur_id else "clave_antigua"] += 1
+    return out
+
+
+def encrypt_totp_secrets():
+    """Cifra con la clave actual los secretos en claro y los cifrados con CRYPTO_RADAR_TOTP_KEY_OLD (rotación).
+
+    Cada fila se actualiza solo si no cambió entretanto. No toca los que no puede leer. Devuelve el recuento.
+    """
+    cur = secretbox.current_key()
+    if not cur:
+        raise secretbox.SecretError("Falta CRYPTO_RADAR_TOTP_KEY")
+    cur_id = secretbox.key_id(cur)
+    done = {"cifrados": 0, "recifrados": 0, "ilegibles": 0}
+    for r in db.all_("SELECT id, totp_secret FROM users WHERE totp_secret IS NOT NULL AND totp_secret <> ''", ()):
+        v = r["totp_secret"]
+        if secretbox.is_encrypted(v):
+            if v.split(":", 2)[1] == cur_id:
+                continue
+            try:
+                plain = secretbox.decrypt(v, r["id"])
+            except secretbox.SecretError:
+                done["ilegibles"] += 1; continue
+            kind = "recifrados"
+        else:
+            plain, kind = v, "cifrados"
+        cur_upd = db.execute("UPDATE users SET totp_secret = ? WHERE id = ? AND totp_secret = ?",
+                             (secretbox.encrypt(plain, r["id"]), r["id"], v))
+        if cur_upd.rowcount == 1:
+            done[kind] += 1
+    if done["cifrados"] or done["recifrados"]:
+        log(None, "totp_secrets_encrypted", done)
+    return done
+
+
+# ---------------------------------------------------------------- alta del segundo factor del administrador (R-02)
+def _tok_hash(token):
+    return hashlib.sha256(("crypto-radar/enroll|" + (token or "").strip()).encode()).hexdigest()
+
+
+def new_enroll_token(minutes=None):
+    """Código de un solo uso para que el administrador active su TOTP. Se muestra una vez; se guarda su hash."""
+    token = secrets.token_urlsafe(24)
+    ttl = float(minutes) * 60 if minutes else ENROLL_TTL_S
+    db.execute("INSERT INTO admin_enroll_tokens(token_hash, source, created_at, expires_at) VALUES (?, 'cli', ?, ?)",
+               (_tok_hash(token), time.time(), time.time() + ttl))
+    log(None, "admin_enroll_token_created", {"source": "cli", "minutes": round(ttl / 60)})
+    return token, ttl
+
+
+def register_env_enroll_token():
+    """Registra CRYPTO_RADAR_ADMIN_ENROLL_TOKEN (32+ caracteres) la primera vez que se ve. Si ya se usó, no vuelve a
+    valer aunque siga definido: la repetición queda bloqueada por su hash. Devuelve el estado para el registro."""
+    t = (os.environ.get("CRYPTO_RADAR_ADMIN_ENROLL_TOKEN") or "").strip()
+    if not t:
+        return None
+    if len(t) < 32:
+        raise AdminBootstrapError("CRYPTO_RADAR_ADMIN_ENROLL_TOKEN debe tener al menos 32 caracteres aleatorios")
+    h = _tok_hash(t)
+    row = db.one("SELECT used_at, expires_at FROM admin_enroll_tokens WHERE token_hash = ?", (h,))
+    if row:
+        if row["used_at"]:
+            return "usado (bórralo del entorno)"
+        return "vigente" if row["expires_at"] > time.time() else "caducado (bórralo del entorno)"
+    try:
+        db.execute("INSERT INTO admin_enroll_tokens(token_hash, source, created_at, expires_at) VALUES (?, 'entorno', ?, ?)",
+                   (h, time.time(), time.time() + ENROLL_ENV_TTL_S))
+    except Exception:
+        pass                       # otra instancia lo registró a la vez
+    log(None, "admin_enroll_token_registered", {"source": "entorno", "hours": ENROLL_ENV_TTL_S // 3600})
+    return "registrado (vale 24 h, un solo uso)"
+
+
+def _enroll_token_valid(token):
+    if not token:
+        return False
+    row = db.one("SELECT used_at, expires_at FROM admin_enroll_tokens WHERE token_hash = ?", (_tok_hash(token),))
+    return bool(row) and not row["used_at"] and row["expires_at"] > time.time()
+
+
+def _check_enroll_token(u, token, ip):
+    if rate_limited(f"enroll:{u['id']}", 10, 900):
+        raise AuthError("Demasiados códigos de alta incorrectos; espera 15 minutos", 429)
+    if not _enroll_token_valid(token):
+        log(u["id"], "admin_enroll_token_rejected", None, ip)
+        raise AuthError("Código de alta de administrador no válido, caducado o ya usado. Genera uno con "
+                        "«python main.py admin enroll-token» o con CRYPTO_RADAR_ADMIN_ENROLL_TOKEN", 403,
+                        enroll_token_required=True)
+
+
 # ---------------------------------------------------------------- verificación en dos pasos (TOTP)
-def totp_setup(user_id, password, ip=None):
-    """Genera un secreto nuevo (aún sin activar). Exige la contraseña actual."""
+def totp_setup(user_id, password, ip=None, enroll_token=None):
+    """Genera un secreto nuevo (aún sin activar). Exige la contraseña actual.
+
+    Para un administrador exige además un código de alta de un solo uso (docs/BOOTSTRAP_ADMIN.md): conocer su
+    contraseña ya no basta para inscribir un segundo factor propio.
+    """
     u = db.one("SELECT * FROM users WHERE id = ?", (user_id,))
     if not u or not verify_password(password or "", u["pw_hash"]):
         raise AuthError("La contraseña actual no es correcta", 401)
     if u.get("totp_enabled"):
         raise AuthError("La verificación en dos pasos ya está activa", 409)
+    if u["is_admin"]:
+        _check_enroll_token(u, enroll_token, ip)
     secret = totp.new_secret()
-    db.execute("UPDATE users SET totp_secret = ?, totp_last_step = NULL WHERE id = ?", (secret, user_id))
+    db.execute("UPDATE users SET totp_secret = ?, totp_last_step = NULL WHERE id = ?", (_seal_secret(user_id, secret), user_id))
     log(user_id, "totp_setup_started", None, ip)
     return {"secret": secret, "uri": totp.uri(secret, u["email"])}
 
 
-def totp_enable(user_id, code_given, ip=None):
-    """Activa TOTP si el código coincide con el secreto pendiente. Cierra todas las sesiones (hay que volver a entrar)."""
+def totp_enable(user_id, code_given, ip=None, enroll_token=None):
+    """Activa TOTP si el código coincide con el secreto pendiente. Cierra todas las sesiones (hay que volver a entrar).
+
+    Administrador: el código de alta se consume aquí, de forma atómica. Si dos peticiones lo usan a la vez, solo una
+    activa el segundo factor; un código ya usado no vale otra vez.
+    """
     u = db.one("SELECT * FROM users WHERE id = ?", (user_id,))
     if not u or not u.get("totp_secret"):
         raise AuthError("Primero genera la clave de verificación", 400)
     if u.get("totp_enabled"):
         raise AuthError("La verificación en dos pasos ya está activa", 409)
+    if u["is_admin"]:
+        _check_enroll_token(u, enroll_token, ip)
     if not _accept_totp(u, code_given):
         raise AuthError("Código incorrecto: revisa la hora del teléfono y vuelve a intentarlo", 400)
-    db.execute("UPDATE users SET totp_enabled = 1 WHERE id = ?", (user_id,))
+    if u["is_admin"]:
+        cur = db.execute("UPDATE admin_enroll_tokens SET used_at = ?, used_by = ? WHERE token_hash = ? AND used_at IS NULL "
+                         "AND expires_at > ?", (time.time(), user_id, _tok_hash(enroll_token), time.time()))
+        if cur.rowcount != 1:
+            log(user_id, "admin_enroll_token_race_lost", None, ip)
+            raise AuthError("Ese código de alta acaba de usarse en otra petición", 409, enroll_token_required=True)
+    cur = db.execute("UPDATE users SET totp_enabled = 1 WHERE id = ? AND totp_enabled = 0 AND totp_secret = ?",
+                     (user_id, u["totp_secret"]))
+    if cur.rowcount != 1:
+        raise AuthError("La clave de verificación cambió mientras se activaba; vuelve a empezar", 409)
     logout_all(user_id)
-    log(user_id, "totp_enabled", None, ip)
+    log(user_id, "totp_enabled", {"enroll_token": bool(u["is_admin"])}, ip)
 
 
 def totp_disable(user_id, password, code_given, ip=None):

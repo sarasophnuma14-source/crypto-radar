@@ -38,9 +38,11 @@ def check_env():
         add("ok" if ssl in ("require", "verify-ca", "verify-full") else "fail", "TLS con la base",
             f"sslmode={ssl or '(sin definir)'}")
         if host.endswith(".neon.tech"):
-            add("ok" if "-pooler." in host else "warn", "Conexión Neon",
-                "usa el endpoint con pooler" if "-pooler." in host else
-                "endpoint directo; con varias instancias conviene el endpoint -pooler")
+            # una instancia con 16 hilos usa ~20 conexiones: caben en la conexión directa. El pooler (PgBouncer en modo
+            # transacción) y las sentencias preparadas de psycopg no se probaron (docs/AUDITORIA_ESTRES_INTEGRAL.md §4)
+            add("warn" if "-pooler." in host else "ok", "Conexión Neon",
+                "endpoint -pooler: sin probar con esta app; usa el endpoint directo o pruébalo antes en una rama de Neon"
+                if "-pooler." in host else "endpoint directo (recomendado: ~20 conexiones por instancia)")
     if _e("CRYPTO_RADAR_ALLOW_SQLITE"):
         add("fail", "SQLite forzado", "CRYPTO_RADAR_ALLOW_SQLITE está definido; quítalo en producción")
 
@@ -57,6 +59,23 @@ def check_env():
     totp_mode = (_e("CRYPTO_RADAR_ADMIN_TOTP") or "required").lower()
     add("ok" if totp_mode != "optional" else "fail", "TOTP del administrador",
         "obligatorio" if totp_mode != "optional" else "CRYPTO_RADAR_ADMIN_TOTP=optional desactiva el segundo factor")
+
+    # secretos (docs/PROTECCION_SECRETOS.md)
+    tk, bk = _e("CRYPTO_RADAR_TOTP_KEY"), _e("CRYPTO_RADAR_BACKUP_KEY")
+    if not tk:
+        add("fail", "Clave de cifrado TOTP", "falta CRYPTO_RADAR_TOTP_KEY: el servidor no arranca en Render sin ella")
+    elif len(tk) < 32:
+        add("fail", "Clave de cifrado TOTP", "CRYPTO_RADAR_TOTP_KEY tiene menos de 32 caracteres")
+    else:
+        add("ok", "Clave de cifrado TOTP", "definida (no se muestra)")
+    if tk and bk and tk == bk:
+        add("fail", "Claves independientes", "CRYPTO_RADAR_TOTP_KEY y CRYPTO_RADAR_BACKUP_KEY son la misma clave")
+    if _e("CRYPTO_RADAR_TOTP_KEY_OLD"):
+        add("warn", "Rotación de clave TOTP", "CRYPTO_RADAR_TOTP_KEY_OLD definida: quítala cuando «secrets status» dé 0 con la clave antigua")
+    if _e("CRYPTO_RADAR_ADMIN_ENROLL_TOKEN"):
+        add("warn", "Código de alta del administrador", "CRYPTO_RADAR_ADMIN_ENROLL_TOKEN sigue definido: bórralo tras activar el TOTP")
+    if _e("MALLOC_ARENA_MAX") != "2" and _e("RENDER"):
+        add("warn", "Memoria", "MALLOC_ARENA_MAX no es 2 (pico de 419 MB en vez de 339 MB en la prueba de estrés)")
 
     mode = (_e("CRYPTO_RADAR_PAYMENTS") or "off").lower()
     if mode not in ("off", "sandbox", "live"):
@@ -131,9 +150,33 @@ def check_db():
                 out.append(("fail", "Administrador en la base", "existe pero no es administrador activo"))
             else:
                 out.append(("ok" if r[1] else "warn", "TOTP del administrador en la base",
-                            "activo" if r[1] else "pendiente: actívalo en Cuenta antes de abrir al público"))
+                            "activo" if r[1] else "pendiente: actívalo en Cuenta con un código de alta (docs/BOOTSTRAP_ADMIN.md)"))
+            out += _check_db_secrets(c)
     finally:
         c.close()
+    return out
+
+
+def _check_db_secrets(c):
+    """Secretos TOTP en la base: ninguno en claro y todos legibles con las claves definidas (sin mostrar ninguno)."""
+    from . import secretbox
+    import time as _t
+    rows = c.execute("SELECT id, totp_secret FROM users WHERE totp_secret IS NOT NULL AND totp_secret <> ''").fetchall()
+    plain = bad = 0
+    for uid, v in rows:
+        v = v.decode() if isinstance(v, bytes) else v
+        uid = uid.decode() if isinstance(uid, bytes) else uid
+        if not secretbox.is_encrypted(v):
+            plain += 1; continue
+        try:
+            secretbox.decrypt(v, uid)
+        except secretbox.SecretError:
+            bad += 1
+    out = [("fail" if plain or bad else "ok", "Secretos TOTP en la base",
+            f"{len(rows)} en total, {plain} sin cifrar, {bad} ilegibles con las claves definidas" if rows else "ninguno todavía")]
+    n = c.execute("SELECT count(*) FROM admin_enroll_tokens WHERE used_at IS NULL AND expires_at > " + str(_t.time())).fetchone()[0]
+    if n:
+        out.append(("warn", "Códigos de alta del administrador", f"{n} sin usar y vigentes (caducan solos)"))
     return out
 
 

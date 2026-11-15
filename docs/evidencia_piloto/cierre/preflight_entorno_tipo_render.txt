@@ -1,0 +1,13 @@
+[OK  ] Modo cuentas: CRYPTO_RADAR_ACCOUNTS=1
+[OK  ] TLS con la base: sslmode=require
+[OK  ] Conexión Neon: endpoint directo (recomendado: ~20 conexiones por instancia)
+[OK  ] Administrador: usuario y contraseña definidos (no se muestran)
+[OK  ] TOTP del administrador: obligatorio
+[OK  ] Clave de cifrado TOTP: definida (no se muestra)
+[OK  ] Pagos: desactivados (off)
+[FALLO] Texto legal privacidad.html: 6 marcas pendientes (COMPLETAR / borrador sin revisión legal)
+[OK  ] Texto legal aviso-de-riesgo.html: completo
+[OK  ] render.yaml: todas las variables secretas son sync: false
+
+1 fallos, 0 avisos. NO listo para producción.
+rc=1
