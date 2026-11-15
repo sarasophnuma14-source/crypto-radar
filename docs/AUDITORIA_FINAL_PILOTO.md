@@ -184,7 +184,7 @@ Ver `docs/PRUEBAS_RENDIMIENTO.md`.
 - **Configuración:** `render.yaml` (`MALLOC_ARENA_MAX`).
 - **Pruebas:**
   - `tests/test_suite.py` (`T25`–`T27` y el arnés de `T19`)
-  - `tests/piloto/` (8 scripts nuevos)
+  - `tests/piloto/` (7 scripts nuevos)
 - **Documentación:**
   - `docs/AUDITORIA_FINAL_PILOTO.md`, `docs/PRUEBAS_RENDIMIENTO.md`, `docs/RECUPERACION_DESASTRES.md`, `docs/MATRIZ_RIESGOS_PENDIENTES.md` y `docs/evidencia_piloto/`
   - actualizados: `docs/SEGURIDAD.md`, `docs/INSTALACION_Y_DESPLIEGUE.md`, `CHANGELOG.md`
