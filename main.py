@@ -5,6 +5,9 @@
   python3 main.py backtest SOL     -> backtest de las reglas sobre SOL
   python3 main.py cartera          -> backtest de cartera con órdenes exactas (2023 → hoy)
   python3 main.py paper init|step|report|replay [nombre]  -> paper trading de D_volmom_L28 (sin dinero real)
+  python3 main.py backup create|verify|compare|restore    -> copias de seguridad verificables de la base
+  python3 main.py preflight        -> revisa la configuración de producción (no cambia nada)
+  python3 main.py payments-selftest -> prueba de extremo a extremo de pagos en sandbox simulado (sin red, sin cobros)
 Solo análisis. No es asesoría financiera."""
 import json
 import sys
@@ -68,6 +71,15 @@ def main():
             print(report.markdown(rep)); print("\nArchivos:", d)
         else:
             print(__doc__)
+    elif cmd == "backup":
+        from radar import backup
+        sys.exit(backup.cli(sys.argv[2:]))
+    elif cmd == "preflight":
+        from radar import preflight
+        sys.exit(preflight.cli())
+    elif cmd == "payments-selftest":
+        from radar import payments_selftest
+        sys.exit(payments_selftest.cli())
     elif cmd == "backtest":
         print(json.dumps({k: v for k, v in backtest.run(sys.argv[2]).items() if k not in ("list", "equity")}, indent=1, ensure_ascii=False))
     else:

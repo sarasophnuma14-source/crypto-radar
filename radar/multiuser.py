@@ -84,7 +84,7 @@ def after_scan(report, feats, regime_name):
         _save(r["user_id"], p)
         if d["decision"] != "MANTENER" and d["decision"] != prev:
             u = auth.get_user(r["user_id"])
-            if u and u.get("telegram_chat_id") and auth.features(u)["exits"] and u["settings"].get("alerts_telegram") is not False:
+            if telegram_bot.active(u) and u.get("telegram_chat_id") and auth.features(u)["exits"] and u["settings"].get("alerts_telegram") is not False:
                 a = {"price": price, "exit": d, "quality": None}
                 telegram_bot.send(u["telegram_chat_id"], f"🚪 {p['symbol']} · Decisión de salida\n" + notify.exit_text(p, a)
                                   + "\n\n" + notify.DISCLAIMER)

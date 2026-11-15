@@ -34,6 +34,10 @@ services:
         sync: false            # usuario del administrador (se crea al arrancar; aprueba las solicitudes de acceso)
       - key: CRYPTO_RADAR_ADMIN_PASSWORD
         sync: false            # contraseña del administrador, mínimo 12 caracteres
+      - key: CRYPTO_RADAR_ADMIN_TOTP
+        value: required        # el administrador debe activar TOTP antes de usar el panel de administración
+      - key: CRYPTO_RADAR_PAYMENTS
+        value: "off"           # off | sandbox | live. "live" solo lo cambia a mano el responsable del negocio
       - key: WOMPI_PUBLIC_KEY
         sync: false
       - key: WOMPI_INTEGRITY_SECRET

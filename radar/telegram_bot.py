@@ -49,9 +49,15 @@ def new_link_code(user_id):
     return code
 
 
+def active(u):
+    """Cuenta aprobada, no desactivada. Una cuenta pendiente, rechazada o desactivada no recibe nada por Telegram."""
+    return bool(u) and not u.get("disabled") and (u.get("status") or "active") == "active"
+
+
 def _user_by_chat(chat_id):
     r = db.one("SELECT id FROM users WHERE telegram_chat_id = ?", (str(chat_id),))
-    return auth.get_user(r["id"]) if r else None
+    u = auth.get_user(r["id"]) if r else None
+    return u if active(u) else None
 
 
 def handle(msg):
@@ -67,7 +73,7 @@ def handle(msg):
         if not arg:
             return "Hola. Para recibir alertas, abre Crypto Radar → Alertas → «Vincular Telegram» y envía aquí «/start CÓDIGO».\n\n" + HELP
         row = db.one("SELECT * FROM telegram_links WHERE code = ?", (arg.upper()[:12],))
-        if not row or row["expires_at"] < time.time():
+        if not row or row["expires_at"] < time.time() or not active(auth.get_user(row["user_id"])):
             return "Código no válido o vencido. Genera uno nuevo en el panel."
         db.execute("UPDATE users SET telegram_chat_id = NULL WHERE telegram_chat_id = ?", (chat,))
         db.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (chat, row["user_id"]))
@@ -80,6 +86,8 @@ def handle(msg):
     rep = storage.read("latest.json", {}) or {}
     if cmd == "/ayuda" or cmd == "/help":
         return HELP
+    if not u:   # el acceso es solo con aprobación: sin cuenta activa vinculada no se entrega ningún dato
+        return "Este chat no está vinculado a una cuenta activa. Genera un código en el panel y envía «/start CÓDIGO»."
     if cmd == "/estado":
         if not rep:
             return "Aún no hay un escaneo completo."
@@ -89,7 +97,7 @@ def handle(msg):
     if cmd == "/top":
         if not rep:
             return "Aún no hay un escaneo completo."
-        lim = auth.features(u)["ranking_limit"] if u else 3
+        lim = auth.features(u)["ranking_limit"]
         rows = rep.get("ranking", [])[:min(5, lim)]
         if not rows:
             return "Ninguna oportunidad cumple las reglas del régimen actual."
@@ -132,7 +140,7 @@ def fanout(kind, text):
     n = 0
     for r in db.all_("SELECT id FROM users WHERE telegram_chat_id IS NOT NULL AND disabled = 0", ()):
         u = auth.get_user(r["id"])
-        if not u or not auth.features(u)["telegram"] or u["settings"].get("alerts_telegram") is False:
+        if not active(u) or not auth.features(u)["telegram"] or u["settings"].get("alerts_telegram") is False:
             continue
         if send(u["telegram_chat_id"], text):
             n += 1

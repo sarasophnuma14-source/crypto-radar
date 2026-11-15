@@ -57,12 +57,18 @@ MIGRATIONS = [
     ("users", "request_note", "TEXT"),
     ("users", "approved_at", "DOUBLE PRECISION"),
     ("users", "approved_by", "TEXT"),
+    ("users", "totp_secret", "TEXT"),                          # verificación en dos pasos (RFC 6238)
+    ("users", "totp_enabled", "INTEGER NOT NULL DEFAULT 0"),
+    ("users", "totp_last_step", "BIGINT"),                     # último paso aceptado: un código no vale dos veces
+    ("users", "consent_at", "DOUBLE PRECISION"),               # aceptación de la política de datos y del aviso de riesgo
+    ("users", "consent_version", "TEXT"),
 ]
 
 # Esquema mínimo que el servidor necesita para arrancar. Si falta algo, no arranca.
 REQUIRED = {
     "users": {"id", "email", "pw_hash", "created_at", "plan", "plan_until", "is_admin", "telegram_chat_id", "settings",
-              "disabled", "failed_logins", "locked_until", "status", "contact", "request_note", "approved_at", "approved_by"},
+              "disabled", "failed_logins", "locked_until", "status", "contact", "request_note", "approved_at", "approved_by",
+              "totp_secret", "totp_enabled", "totp_last_step", "consent_at", "consent_version"},
     "sessions": {"token_hash", "user_id", "csrf", "created_at", "expires_at", "ip", "ua"},
     "activity": {"id", "user_id", "at", "action", "detail", "ip"},
     "positions": {"id", "user_id", "status", "data", "updated_at"},
@@ -122,7 +128,7 @@ def migrate():
     for table, col, typ in MIGRATIONS:
         if col in columns(table):
             continue
-        t = typ if IS_PG else typ.replace("DOUBLE PRECISION", "REAL")
+        t = typ if IS_PG else typ.replace("DOUBLE PRECISION", "REAL").replace("BIGINT", "INTEGER")
         try:
             c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {t}")
         except Exception as e:

@@ -97,7 +97,7 @@ Un plan de pago vencido (`plan_until` en el pasado) vuelve a Libre de inmediato.
   - mover los contadores a Redis (por ejemplo, Upstash gratis) con ventana deslizante (`INCR` + `EXPIRE`, o `ZSET`
     por marca de tiempo);
   - añadir un límite global de inicios de sesión fallidos por minuto para frenar el *password spraying*.
-- **Para el administrador:** activar un segundo factor (TOTP) antes de cobrar a clientes reales.
+- **Para el administrador:** ~~activar un segundo factor (TOTP)~~ hecho: ver la sección 6.
 
 ## 5. Otras medidas
 
@@ -108,3 +108,40 @@ Un plan de pago vencido (`plan_until` en el pasado) vuelve a Libre de inmediato.
 - Cambiar o restablecer la contraseña, rechazar, desactivar o eliminar cierra todas las sesiones de esa cuenta.
 - CSRF por sesión en cada POST autenticado. Mismo origen y JSON obligatorios. Cuerpo máximo de 64 KB.
 - CSP estricta sin scripts en línea ni CDN, HSTS, COOP, `Permissions-Policy`, `nosniff` y `frame-ancestors 'none'`.
+
+## 6. Verificación en dos pasos (TOTP)
+
+- RFC 6238 (HMAC-SHA1, 30 s, 6 dígitos), compatible con Google Authenticator, Authy y 1Password. Implementación en
+  `radar/totp.py` con la librería estándar; se prueba con los vectores oficiales del RFC.
+- Se acepta el paso actual y uno a cada lado (±30 s). **Un código ya usado no vale otra vez**: se guarda el último paso
+  aceptado con una actualización atómica (`totp_last_step`), así que dos peticiones simultáneas con el mismo código no
+  pueden entrar las dos.
+- Cada código incorrecto cuenta como fallo de inicio de sesión: 5 fallos bloquean la cuenta 15 minutos.
+- **Administradores:** con `CRYPTO_RADAR_ADMIN_TOTP=required` (valor por defecto) un administrador sin TOTP solo puede
+  entrar para activarlo. Todas las acciones de administración (`/api/admin/*`, escaneo manual, ajustes del sistema,
+  concesión de planes, paper trading) responden 403 hasta que lo active. Un administrador no puede desactivarlo.
+- Activar TOTP cierra todas las sesiones de esa cuenta: hay que volver a entrar con el siguiente código.
+- Recuperación: `CRYPTO_RADAR_ADMIN_RESET=1` restablece la contraseña del entorno **y** borra el TOTP del administrador
+  (hay que volver a activarlo). Restablecer la contraseña de un usuario desde el panel también borra su TOTP.
+- El secreto TOTP se guarda en la base en claro (es necesario para calcular el código). Quien tenga la base o una copia
+  de seguridad puede generar códigos: por eso las copias deben guardarse cifradas.
+
+## 7. Pagos: modo off / sandbox / live
+
+| `CRYPTO_RADAR_PAYMENTS` | Qué pasa |
+| --- | --- |
+| sin definir u `off` | Pagos desactivados aunque haya claves: checkout 503, webhooks 503 |
+| `sandbox` | APIs de prueba (`sandbox.wompi.co`, `api-sandbox.nowpayments.io`). Una llave `pub_prod_` desactiva Wompi |
+| `live` | APIs de producción y solo llaves `pub_prod_`. **No se activa en esta fase**; `preflight` lo marca como fallo |
+
+Ya no existe la variable `WOMPI_API`: la URL del proveedor sale del modo y no se puede redirigir desde el entorno.
+`python main.py payments-selftest` recorre el flujo completo por HTTP con un simulador local del proveedor (firma
+válida, firma falsa, monto alterado, rechazo, repetición, modo off) y falla si alguna llamada sale hacia producción.
+
+## 8. Copias de seguridad
+
+`python main.py backup create|verify|compare|restore`, en `radar/backup.py`. Ver `docs/PRODUCCION_RENDER_NEON.md`.
+La copia contiene datos personales, hashes de contraseñas y secretos TOTP: archivos con permisos 600, carpeta 700, y
+debe guardarse cifrada y fuera del repositorio (`backups/` está en `.gitignore`). La restauración solo escribe en una
+base vacía y nunca borra datos.
+

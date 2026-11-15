@@ -536,8 +536,9 @@ async function loadSettings(){
     } catch (e) {}
     const us = ME.settings || {}, f = $("#userSet");
     f.capital_usd.value = us.capital_usd ?? ""; f.risk_per_trade_pct.value = us.risk_per_trade_pct ?? ""; f.watchlist.value = (us.watchlist || []).join(", "); f.alerts_telegram.checked = us.alerts_telegram !== false;
+    renderMfa();
     if (ME.is_admin) loadAdmin();
-    if (!ME.is_admin) return;
+    if (!ME.is_admin || ME.totp_setup_required) return;
   }
   let s; try { s = await api("/api/settings"); } catch (e) { return; }
   const f = $("#setForm");
@@ -558,8 +559,36 @@ document.addEventListener("click", async e => {
 });
 const ST_LABEL = {pending: "Pendiente", active: "Activo", rejected: "Rechazado"};
 const PLAN_OPTS = `<option value="free">Libre</option><option value="pro">Pro</option><option value="elite">Élite</option>`;
+/* Verificación en dos pasos (TOTP) */
+function renderMfa(){
+  const box = $("#mfaBox"); if (!box || !ME) return;
+  if (ME.totp_enabled) { box.innerHTML = `<h3 class="h3">Verificación en dos pasos</h3><p class="note">Activa. Al entrar se te pide el código de 6 dígitos de tu app de autenticación.</p>`; return; }
+  box.innerHTML = `<h3 class="h3">Verificación en dos pasos</h3>
+    <p class="note">${ME.totp_setup_required ? "<b>Obligatoria para administradores.</b> Hasta activarla no puedes aprobar usuarios ni cambiar ajustes del sistema. " : ""}Usa Google Authenticator, Authy, 1Password o similar.</p>
+    <form id="mfaStart" class="fgrid" autocomplete="off"><label>Contraseña actual<input name="password" type="password" autocomplete="current-password" required></label>
+      <div class="row"><button class="btn a" type="submit">Generar clave</button></div></form>
+    <div id="mfaStep2" class="hidden"></div><p class="msg" id="mfaMsg"></p>`;
+  $("#mfaStart").onsubmit = async e => {
+    e.preventDefault();
+    const r = await post("/api/auth/totp/setup", {password: e.target.password.value});
+    if (r.error) { $("#mfaMsg").textContent = r.error; return; }
+    const s2 = $("#mfaStep2"); s2.classList.remove("hidden"); e.target.classList.add("hidden");
+    s2.innerHTML = `<p class="note">1. En tu app elige «Introducir clave manualmente» y escribe esta clave (tipo: basada en tiempo):</p>
+      <p><code class="secret">${esc(r.secret.replace(/(.{4})/g, "$1 ").trim())}</code></p>
+      <p class="note">O abre este enlace desde el teléfono: <a href="${esc(r.uri)}">añadir a la app</a></p>
+      <form id="mfaConfirm" class="fgrid" autocomplete="off"><label>2. Código de 6 dígitos que muestra la app<input name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" required></label>
+      <div class="row"><button class="btn a" type="submit">Activar</button></div></form>`;
+    $("#mfaConfirm").onsubmit = async ev => {
+      ev.preventDefault();
+      const x = await post("/api/auth/totp/enable", {code: ev.target.code.value.replace(/\s/g, "")});
+      $("#mfaMsg").textContent = x.error || x.msg || "";
+      if (x.ok) setTimeout(() => location.replace("/entrar"), 1800);
+    };
+  };
+}
 async function loadAdmin(){
   $("#adminBox").classList.remove("hidden");
+  if (ME && ME.totp_setup_required) { $("#adminUsers").innerHTML = `<p class="note">Activa la verificación en dos pasos (arriba, en Cuenta) para gestionar usuarios y solicitudes.</p>`; return; }
   let u; try { u = await api("/api/admin/users"); } catch (e) { return; }
   if (!Array.isArray(u)) { $("#adminUsers").innerHTML = `<p class="note">${esc(u?.error || "No disponible")}</p>`; return; }
   const pend = u.filter(x => x.status === "pending");

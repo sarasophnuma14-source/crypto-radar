@@ -11,7 +11,7 @@ import json
 import re
 from urllib.parse import urlparse, parse_qs
 from . import auth, billing, db, storage, multiuser, telegram_bot, memes, scanner
-from .server import COOKIE, PUBLIC_GET, PUBLIC_POST, _f, backtest_results, next_scan_time, now, __version__
+from .server import COOKIE, LEGAL_PAGES, PUBLIC_GET, PUBLIC_POST, _f, backtest_results, next_scan_time, now, __version__
 
 SYMBOL_RE = re.compile(r"^[A-Z0-9]{1,15}$")
 
@@ -41,6 +41,7 @@ def _filter_report(rep, feats):
 #   pro        · /api/positions, /api/memes, /api/memes/radar
 #   elite      · /api/backtest/results
 #   admin      · /api/admin/users, /api/paper/report (experimental, nunca se muestra como recomendación)
+#                Toda acción de administración exige además TOTP activo (auth.admin_ok), salvo CRYPTO_RADAR_ADMIN_TOTP=optional
 UPGRADE_PRO = "Disponible en el plan Pro"
 UPGRADE_ELITE = "El backtest está disponible en el plan Élite"
 
@@ -84,6 +85,8 @@ def handle(h, method):
             return h._static("landing.html")                 # web de ventas (pública)
         if p == "/entrar":
             return h._redirect("/app") if user else h._static("entrar.html")
+        if p in LEGAL_PAGES:
+            return h._static(LEGAL_PAGES[p])
         if p == "/app":
             return h._static("index.html") if user else h._redirect("/entrar")
         if p == "/healthz":
@@ -120,7 +123,7 @@ def handle(h, method):
                 return h._send(402, {"error": UPGRADE_ELITE})
             return h._send(200, backtest_results())
         if p == "/api/paper/report":
-            if not user["is_admin"]:
+            if not auth.admin_ok(user):
                 return h._send(403, {"error": "solo administradores"})
             from .server import paper_report
             return h._send(200, paper_report(q.get("name")))
@@ -150,11 +153,11 @@ def handle(h, method):
                            "FROM payments WHERE user_id = ? ORDER BY created_at DESC LIMIT 50", (user["id"],))
             return h._send(200, rows)
         if p == "/api/admin/users":
-            if not user["is_admin"]:
+            if not auth.admin_ok(user):
                 return h._send(403, {"error": "solo administradores"})
             return h._send(200, auth.admin_list())
         if p == "/api/settings":
-            if not user["is_admin"]:
+            if not auth.admin_ok(user):
                 return h._send(200, auth.public(user)["settings"])
         if p in ("/api/candles", "/api/history", "/api/settings", "/api/memes/radar"):
             if p == "/api/memes/radar" and not feats["memes"]:
@@ -180,10 +183,12 @@ def handle(h, method):
             return h._send(code, {"result": msg})
         if p in ("/api/auth/request", "/api/auth/register"):
             # no hay registro abierto: la cuenta queda pendiente hasta que el administrador la apruebe
-            auth.request_access(b.get("username") or b.get("email"), b.get("password"), b.get("contact"), b.get("note"), ip)
+            auth.request_access(b.get("username") or b.get("email"), b.get("password"), b.get("contact"), b.get("note"), ip,
+                                b.get("consent"))
             return h._send(200, {"ok": True, "msg": "Solicitud enviada. Podrás entrar cuando el administrador la apruebe."})
         if p == "/api/auth/login":
-            tok, csrf, usr = auth.login(b.get("username") or b.get("email"), b.get("password"), ip, h.headers.get("User-Agent"))
+            tok, csrf, usr = auth.login(b.get("username") or b.get("email"), b.get("password"), ip, h.headers.get("User-Agent"),
+                                        b.get("code"))
             if token:
                 auth.logout(token)            # rotación: la sesión anterior deja de valer
             return h._send_cookie(200, {"user": auth.public(usr), "csrf": csrf}, tok, auth.SESSION_DAYS * 86400)
@@ -201,6 +206,14 @@ def handle(h, method):
         if p == "/api/auth/password":
             auth.change_password(user["id"], b.get("old"), b.get("new"), ip)
             return h._send_cookie(200, {"ok": True, "msg": "Contraseña cambiada; vuelve a iniciar sesión"}, "", 0)
+        if p == "/api/auth/totp/setup":
+            return h._send(200, auth.totp_setup(user["id"], b.get("password"), ip))
+        if p == "/api/auth/totp/enable":
+            auth.totp_enable(user["id"], b.get("code"), ip)
+            return h._send_cookie(200, {"ok": True, "msg": "Verificación en dos pasos activada. Vuelve a entrar con el siguiente código que muestre la app (el actual ya se usó)"}, "", 0)
+        if p == "/api/auth/totp/disable":
+            auth.totp_disable(user["id"], b.get("password"), b.get("code"), ip)
+            return h._send(200, {"ok": True})
         if p == "/api/me/settings":
             return h._send(200, {"settings": auth.save_user_settings(user["id"], b)})
         if p == "/api/telegram/link":
@@ -248,10 +261,10 @@ def handle(h, method):
             billing.admin_grant(user, b.get("email"), b.get("plan"), b.get("days", 0), b.get("reason", ""))
             return h._send(200, {"ok": True})
         if p in ("/api/scan", "/api/settings", "/api/telegram/test", "/api/memes/check"):
-            if not user["is_admin"]:
+            if not auth.admin_ok(user):
                 return h._send(403, {"error": "solo administradores"})
             auth.log(user["id"], "admin_" + p.rsplit("/", 1)[-1], None, ip)
             return h._post_single(skip_auth=True, body=b)
         return h._send(404, {"error": "ruta desconocida"})
     except auth.AuthError as e:
-        return h._send(e.code, {"error": str(e)})
+        return h._send(e.code, {"error": str(e), **getattr(e, "extra", {})})
