@@ -387,6 +387,9 @@ def serve(port=None, host=None, schedule=True):
         from . import db, telegram_bot
         db.init()
         print(f"Modo cuentas activo · base de datos {db.backend()}", flush=True)
+        if os.environ.get("RENDER") and not db.IS_PG:
+            print("AVISO: modo cuentas en Render sin DATABASE_URL: el disco es efímero y las cuentas y pagos se "
+                  "perderían en cada reinicio. Configura una base PostgreSQL (p. ej. Neon) en DATABASE_URL.", flush=True)
         if schedule:
             telegram_bot.start()
     if schedule:

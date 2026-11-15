@@ -35,7 +35,9 @@ def check(k, interval_ms=DAY_MS, now_ms=None, min_bars=120):
         issues.append(f"{jumps} saltos diarios de más de 80% (posible error o evento extremo)"); score -= min(20, jumps * 10)
     now_ms = now_ms or int(time.time() * 1000)
     age_bars = (now_ms - (t[-1] + interval_ms)) / interval_ms
-    if age_bars > 2:
+    stale = age_bars > 2
+    if stale:
         issues.append(f"Datos desactualizados: última vela cerrada hace {age_bars:.0f} periodos"); score -= 40
     score = max(0.0, score)
-    return {"score": round(score), "issues": issues, "bars": n, "ok": score >= MIN_QUALITY}
+    # datos viejos nunca se analizan como si fueran actuales (moneda deslistada o fuente caída)
+    return {"score": round(score), "issues": issues, "bars": n, "ok": score >= MIN_QUALITY and not stale}

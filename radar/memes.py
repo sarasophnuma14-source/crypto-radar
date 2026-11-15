@@ -27,6 +27,8 @@ MEMES = ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK", "WIF", "BOME", "MEME", "1000SA
 RULE = {"vol_mult": 5.0, "lookback": 20, "max_day_gain": 0.30, "take_profit": 0.60, "stop_loss": 0.15,
         "max_days": 5, "size_pct": 10.0, "max_open": 8, "min_avg_volume_usd": 2_000_000}
 
+# Cifras históricas de referencia interna, NO validadas: el periodo "a ciegas" se miró antes del ajuste final
+# (AUDIT_REPORT A11). No se muestran en el panel ni deben usarse para vender.
 BACKTEST = {"periodo": "2025-01-01 → 2026-11-13 (prueba a ciegas)", "acierto_pct": 44.9, "retorno_pct": 31.3,
             "max_dd_pct": -12.3, "profit_factor": 1.89, "operaciones": 49}
 

@@ -49,7 +49,9 @@ SCHEMA = [
 def _connect():
     if IS_PG:
         import psycopg   # pip install "psycopg[binary]"
-        return psycopg.connect(URL, autocommit=True)
+        c = psycopg.connect(URL, autocommit=True)
+        c.execute("SET client_encoding TO 'UTF8'")   # bases SQL_ASCII devolverían bytes en vez de texto
+        return c
     c = sqlite3.connect(str(DATA_DIR / "app.db"), timeout=30, check_same_thread=False)
     c.execute("PRAGMA journal_mode=WAL")
     c.execute("PRAGMA foreign_keys=ON")

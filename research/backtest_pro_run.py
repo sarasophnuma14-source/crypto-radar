@@ -1,4 +1,4 @@
-"""Corre el backtest profesional completo sobre el panel histórico de Binance y escribe BACKTEST_REPORT.md.
+"""Corre el backtest profesional completo sobre el panel histórico de Binance y escribe data/research/backtest_pro_results.json (resumen en BACKTEST_REPORT.md).
 
   1. Base con parámetros por defecto: periodo completo, dentro de muestra (IS) y fuera de muestra (OOS).
   2. Calibración SOLO en IS (rejilla pequeña) y evaluación del elegido en OOS.
