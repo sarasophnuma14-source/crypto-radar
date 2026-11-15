@@ -286,3 +286,7 @@ Los demás riesgos de la matriz no cambian. Siguen bloqueando el piloto R-01, R-
 - Telegram real: el simulador responde en 30 ms. No se probó contra la API real ni sus límites.
 - La memoria del proceso hijo junto al servidor en el prototipo: se sumó, no se midió a la vez.
 - Escaneo real con 100 usuarios: solo se hizo con 50, por el tiempo y los límites de las API públicas.
+- Orden de las corridas: `simultaneo_caliente.json` se ejecutó con el código del PR #5, antes de los cambios. Las
+  corridas siguientes ya tenían el nuevo límite de inicio de sesión, y desde `caos_postgres_reintento.json`
+  también el reintento al conectar. Ninguno de los dos cambios toca el escaneo ni el panel, así que las cifras de
+  latencia son comparables. La comparación antes/después de cada cambio está en sus propias evidencias.
