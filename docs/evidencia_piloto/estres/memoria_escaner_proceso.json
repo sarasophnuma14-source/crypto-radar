@@ -1,0 +1,24 @@
+{
+ "python": "3.12.3",
+ "malloc_arena_max": null,
+ "casos": [
+  {
+   "datos": "sinteticos",
+   "activos": 40,
+   "s": 24.8,
+   "error": null,
+   "rss_mb_tras_importar": 36.3,
+   "pico_mb": 62.6,
+   "rss_mb_al_terminar": 61.1
+  },
+  {
+   "datos": "sinteticos",
+   "activos": 40,
+   "s": 4.0,
+   "error": null,
+   "rss_mb_tras_importar": 36.3,
+   "pico_mb": 62.9,
+   "rss_mb_al_terminar": 61.6
+  }
+ ]
+}

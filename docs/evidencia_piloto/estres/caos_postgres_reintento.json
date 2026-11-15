@@ -1,0 +1,274 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 120.0,
+  "pausa_s": 1.0,
+  "escaneo_en_s": 5.0,
+  "repetir_escaneo": true,
+  "telegram_por_s": 2.0,
+  "difusion_cada_s": 30.0,
+  "caos": "cortar@30,reiniciar@70",
+  "datos": "sinteticos",
+  "escaneo_frio": false,
+  "malloc_arena_max": "2",
+  "escaner": "hilo (actual)",
+  "activos_en_informe": 40,
+  "escaneo_inicial_s": 25.15,
+  "escaneo_en_reposo_s": 3.9,
+  "preparacion_s": 31.9,
+  "rss_mb_reposo": 98.9,
+  "limites_render_emulados": null,
+  "rss_mb_final": 174.3,
+  "vmhwm_mb": 339.1
+ },
+ "niveles": [
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 491.8,
+    "p95_ms": 753.9,
+    "p99_ms": 757.9,
+    "max_ms": 759.4,
+    "codigos": {
+     "200": 50
+    },
+    "segundos_rafaga": 0.79
+   },
+   "panel_total": {
+    "n": 5938,
+    "p50_ms": 8.1,
+    "p95_ms": 59.5,
+    "p99_ms": 212.3,
+    "max_ms": 354.2,
+    "codigos": {
+     "200": 5644,
+     "402": 294
+    },
+    "rps": 49.5
+   },
+   "panel_durante_escaneo": {
+    "n": 1609,
+    "p50_ms": 9.2,
+    "p95_ms": 191.3,
+    "p99_ms": 265.2,
+    "max_ms": 354.2,
+    "codigos": {
+     "200": 1535,
+     "402": 74
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 4329,
+    "p50_ms": 7.6,
+    "p95_ms": 30.1,
+    "p99_ms": 72.8,
+    "max_ms": 295.0,
+    "codigos": {
+     "200": 4109,
+     "402": 220
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 4.11,
+     "error": null,
+     "inicio_s": 5.0
+    },
+    {
+     "s": 4.13,
+     "error": null,
+     "inicio_s": 19.2
+    },
+    {
+     "s": 4.3,
+     "error": null,
+     "inicio_s": 33.5
+    },
+    {
+     "s": 4.09,
+     "error": null,
+     "inicio_s": 48.3
+    },
+    {
+     "s": 4.26,
+     "error": null,
+     "inicio_s": 62.4
+    },
+    {
+     "s": 4.01,
+     "error": null,
+     "inicio_s": 76.7
+    },
+    {
+     "s": 3.93,
+     "error": null,
+     "inicio_s": 90.9
+    },
+    {
+     "s": 4.02,
+     "error": null,
+     "inicio_s": 105.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 3.5
+    },
+    {
+     "t": 19.2,
+     "codigo": 200,
+     "ms": 5.3
+    },
+    {
+     "t": 33.5,
+     "codigo": 200,
+     "ms": 5.9
+    },
+    {
+     "t": 48.3,
+     "codigo": 200,
+     "ms": 5.8
+    },
+    {
+     "t": 62.4,
+     "codigo": 200,
+     "ms": 4.1
+    },
+    {
+     "t": 76.7,
+     "codigo": 200,
+     "ms": 5.3
+    },
+    {
+     "t": 90.9,
+     "codigo": 200,
+     "ms": 4.7
+    },
+    {
+     "t": 105.0,
+     "codigo": 200,
+     "ms": 7.7
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 5393,
+     "p50": 0.1,
+     "p99": 17.7,
+     "max": 73.96
+    },
+    "fuera_de_escaneo": {
+     "n": 16684,
+     "p50": 0.1,
+     "p99": 5.6,
+     "max": 24.1
+    }
+   },
+   "telegram": {
+    "comandos": 247,
+    "respuesta_durante_escaneo": {
+     "n": 61,
+     "p50_ms": 37.9,
+     "p95_ms": 167.7,
+     "p99_ms": 193.3,
+     "max_ms": 196.3,
+     "codigos": {
+      "200": 61
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 186,
+     "p50_ms": 35.3,
+     "p95_ms": 56.8,
+     "p99_ms": 69.7,
+     "max_ms": 318.7,
+     "codigos": {
+      "200": 186
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794759829.128,
+      "s": 2.74,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794759861.865,
+      "s": 2.7,
+      "enviados": 33,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794759894.583,
+      "s": 2.8,
+      "enviados": 33,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 99
+   },
+   "rss_mb_max": 339.5,
+   "rss_mb_max_durante_escaneo": 174.3,
+   "rss_mb_final": 174.3,
+   "vmhwm_mb_proceso": 339.1,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 28.8,
+   "cpu_pct_medio_durante_escaneo": 37.7,
+   "cpu_pct_medio_fuera_de_escaneo": 25.4,
+   "hilos_max": 26,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 59,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/474",
+   "pg_muestras_sin_respuesta_del_monitor": 1,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 19,
+     "t": 30.0
+    },
+    {
+     "accion": "reinicio de PostgreSQL",
+     "s": 0.22,
+     "rc": 0,
+     "salida": "waiting for server to shut down.... done\nserver stopped\nwaiting for server to start.... done\nserver started\n",
+     "t": 70.2
+    }
+   ],
+   "cgroup_memoria": null,
+   "peticiones_http": 5988,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    },
+    {
+     "accion": "reinicio de PostgreSQL",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0,
+ "trazas_en_registro_del_servidor": 0,
+ "registro_servidor_ultimas_lineas": [
+  "Modo cuentas activo · base de datos postgresql · esquema verificado",
+  "Administrador: jefe.estres · verificado",
+  "Crypto Radar 2.1.0 en http://localhost:52711  (16 hilos; Ctrl+C para detener)"
+ ]
+}

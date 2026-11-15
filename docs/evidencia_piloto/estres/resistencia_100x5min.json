@@ -1,0 +1,293 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 300.0,
+  "pausa_s": 1.0,
+  "escaneo_en_s": 5.0,
+  "repetir_escaneo": true,
+  "telegram_por_s": 2.0,
+  "difusion_cada_s": 30.0,
+  "caos": "",
+  "datos": "sinteticos",
+  "escaneo_frio": true,
+  "malloc_arena_max": "2",
+  "escaner": "hilo (actual)",
+  "activos_en_informe": 40,
+  "escaneo_inicial_s": 25.09,
+  "escaneo_en_reposo_s": 4.05,
+  "preparacion_s": 34.6,
+  "rss_mb_reposo": 98.1,
+  "rss_mb_final": 178.9,
+  "vmhwm_mb": 338.4
+ },
+ "niveles": [
+  {
+   "usuarios": 100,
+   "login": {
+    "n": 100,
+    "p50_ms": 861.5,
+    "p95_ms": 1431.5,
+    "p99_ms": 1449.9,
+    "max_ms": 1465.5,
+    "codigos": {
+     "200": 100
+    },
+    "segundos_rafaga": 1.56
+   },
+   "panel_total": {
+    "n": 29373,
+    "p50_ms": 9.9,
+    "p95_ms": 56.6,
+    "p99_ms": 378.7,
+    "max_ms": 624.6,
+    "codigos": {
+     "200": 27890,
+     "402": 1483
+    },
+    "rps": 97.9
+   },
+   "panel_durante_escaneo": {
+    "n": 3823,
+    "p50_ms": 14.6,
+    "p95_ms": 412.8,
+    "p99_ms": 506.9,
+    "max_ms": 624.6,
+    "codigos": {
+     "200": 3623,
+     "402": 200
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 25550,
+    "p50_ms": 9.6,
+    "p95_ms": 35.7,
+    "p99_ms": 65.8,
+    "max_ms": 463.9,
+    "codigos": {
+     "200": 24267,
+     "402": 1283
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 4.57,
+     "error": null,
+     "inicio_s": 5.0
+    },
+    {
+     "s": 4.5,
+     "error": null,
+     "inicio_s": 40.1
+    },
+    {
+     "s": 4.62,
+     "error": null,
+     "inicio_s": 75.0
+    },
+    {
+     "s": 4.73,
+     "error": null,
+     "inicio_s": 110.0
+    },
+    {
+     "s": 4.6,
+     "error": null,
+     "inicio_s": 145.0
+    },
+    {
+     "s": 4.68,
+     "error": null,
+     "inicio_s": 179.9
+    },
+    {
+     "s": 4.62,
+     "error": null,
+     "inicio_s": 214.9
+    },
+    {
+     "s": 4.86,
+     "error": null,
+     "inicio_s": 249.7
+    },
+    {
+     "s": 4.55,
+     "error": null,
+     "inicio_s": 284.7
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 22.6
+    },
+    {
+     "t": 40.1,
+     "codigo": 200,
+     "ms": 22.8
+    },
+    {
+     "t": 75.0,
+     "codigo": 200,
+     "ms": 16.5
+    },
+    {
+     "t": 110.0,
+     "codigo": 200,
+     "ms": 26.3
+    },
+    {
+     "t": 145.0,
+     "codigo": 200,
+     "ms": 25.0
+    },
+    {
+     "t": 179.9,
+     "codigo": 200,
+     "ms": 14.5
+    },
+    {
+     "t": 214.9,
+     "codigo": 200,
+     "ms": 29.9
+    },
+    {
+     "t": 249.6,
+     "codigo": 200,
+     "ms": 20.0
+    },
+    {
+     "t": 284.7,
+     "codigo": 200,
+     "ms": 11.6
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 5881,
+     "p50": 0.2,
+     "p99": 26.2,
+     "max": 88.45
+    },
+    "fuera_de_escaneo": {
+     "n": 47680,
+     "p50": 0.1,
+     "p99": 7.9,
+     "max": 50.79
+    }
+   },
+   "telegram": {
+    "comandos": 649,
+    "respuesta_durante_escaneo": {
+     "n": 76,
+     "p50_ms": 46.5,
+     "p95_ms": 226.1,
+     "p99_ms": 329.7,
+     "max_ms": 396.0,
+     "codigos": {
+      "200": 76
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 573,
+     "p50_ms": 36.9,
+     "p95_ms": 64.9,
+     "p99_ms": 103.2,
+     "max_ms": 173.4,
+     "codigos": {
+      "200": 573
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794758181.669,
+      "s": 5.53,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758217.202,
+      "s": 5.54,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758252.744,
+      "s": 5.59,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758288.338,
+      "s": 5.52,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758323.858,
+      "s": 5.55,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758359.408,
+      "s": 5.42,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758394.827,
+      "s": 5.6,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758430.428,
+      "s": 5.52,
+      "enviados": 66,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758465.952,
+      "s": 5.36,
+      "enviados": 66,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 594
+   },
+   "rss_mb_max": 338.7,
+   "rss_mb_max_durante_escaneo": 179.0,
+   "rss_mb_final": 178.9,
+   "vmhwm_mb_proceso": 338.4,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 49.3,
+   "cpu_pct_medio_durante_escaneo": 63.0,
+   "cpu_pct_medio_fuera_de_escaneo": 47.2,
+   "hilos_max": 23,
+   "pg_conexiones_max": 20,
+   "pg_conexiones_final": 19,
+   "pg_conexiones_abiertas_en_el_tramo": 24,
+   "pg_estado_conexiones_al_final": {
+    "idle": 19
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/1252",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [],
+   "peticiones_http": 29473
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0,
+ "trazas_en_registro_del_servidor": 0,
+ "registro_servidor_ultimas_lineas": [
+  "Modo cuentas activo · base de datos postgresql · esquema verificado",
+  "Administrador: jefe.estres · verificado",
+  "Crypto Radar 2.1.0 en http://localhost:43151  (16 hilos; Ctrl+C para detener)"
+ ]
+}

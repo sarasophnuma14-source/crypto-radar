@@ -91,10 +91,24 @@ def _is_duplicate_column(e):
     return isinstance(e, sqlite3.OperationalError) and "duplicate column name" in str(e).lower()
 
 
+CONNECT_RETRY_S = (0.25, 0.5, 1.0, 2.0)      # esperas entre intentos de conexión (≈3,75 s en total)
+
+
 def _connect():
     if IS_PG:
         import psycopg   # pip install "psycopg[binary]"
-        c = psycopg.connect(URL, autocommit=True)
+        kw = {} if "connect_timeout" in URL else {"connect_timeout": 10}
+        # Reintento corto al CONECTAR (nunca se repite una sentencia aquí): tras un reinicio de PostgreSQL o de la
+        # computación de Neon, la base responde unos instantes «the database system is starting up». Sin reintento,
+        # cada petición que llegaba en ese momento devolvía 500 (15 en la prueba de estrés, docs/AUDITORIA_ESTRES_INTEGRAL.md).
+        for wait in CONNECT_RETRY_S + (None,):
+            try:
+                c = psycopg.connect(URL, autocommit=True, **kw)
+                break
+            except psycopg.OperationalError:
+                if wait is None:
+                    raise
+                time.sleep(wait)
         c.execute("SET client_encoding TO 'UTF8'")   # bases SQL_ASCII devolverían bytes en vez de texto
         return c
     c = sqlite3.connect(str(DATA_DIR / "app.db"), timeout=30, check_same_thread=False)

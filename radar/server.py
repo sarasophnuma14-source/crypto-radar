@@ -3,6 +3,7 @@ from __future__ import annotations
 import datetime as dt
 import base64
 import hmac
+import ipaddress
 import json
 import mimetypes
 mimetypes.add_type("application/manifest+json", ".webmanifest")
@@ -146,9 +147,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def _client_ip(self):
-        # El primer valor de X-Forwarded-For lo escribe el cliente (falsificable); el último lo añade el proxy de Render.
-        fwd = self.headers.get("X-Forwarded-For", "")
-        return (fwd.split(",")[-1].strip() if fwd else self.client_address[0]) or "?"
+        return client_ip(self.client_address[0], self.headers.get("X-Forwarded-For", ""))
 
     def _same_origin(self):
         """Defensa CSRF: las peticiones que cambian datos deben venir de esta misma web y en JSON."""
@@ -439,6 +438,61 @@ def paper_scheduler():
 ADMIN_ENV = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD")
 
 
+def trusted_proxies():
+    """Redes de los proxies cuyo X-Forwarded-For se acepta (docs/RATE_LIMITING.md).
+
+    CRYPTO_RADAR_TRUSTED_PROXIES: lista de redes separadas por comas (p. ej. «10.0.0.0/8,127.0.0.1»), o «*» para
+    aceptar cualquier origen inmediato (solo si el servicio no es accesible sin pasar por el proxy).
+    Sin la variable: en Render («*», porque el contenedor solo recibe tráfico a través de su proxy); fuera de Render,
+    ninguno: X-Forwarded-For se ignora y cuenta la dirección real de la conexión.
+    """
+    raw = os.environ.get("CRYPTO_RADAR_TRUSTED_PROXIES")
+    if raw is None:
+        raw = "*" if os.environ.get("RENDER") else ""
+    raw = raw.strip()
+    if raw == "*":
+        return "*"
+    nets = []
+    for part in raw.split(","):
+        if part.strip():
+            try:
+                nets.append(ipaddress.ip_network(part.strip(), strict=False))
+            except ValueError:
+                print(f"AVISO: CRYPTO_RADAR_TRUSTED_PROXIES contiene un valor no válido: {part.strip()!r}", flush=True)
+    return nets
+
+
+def _ip(v):
+    try:
+        return ipaddress.ip_address(v.strip())
+    except ValueError:
+        return None
+
+
+def client_ip(peer, fwd, trusted=None):
+    """IP del cliente. X-Forwarded-For solo vale si la conexión llega de un proxy autorizado.
+
+    - Origen no autorizado: la dirección de la conexión (el encabezado lo puede escribir cualquiera).
+    - «*»: el último valor (el que añade el proxy; los anteriores los escribe el cliente).
+    - Lista de redes: se recorre la cadena de derecha a izquierda saltando proxies autorizados; la primera dirección
+      que no es un proxy autorizado es el cliente.
+    """
+    trusted = trusted_proxies() if trusted is None else trusted
+    p = _ip(peer or "")
+    if not fwd or not trusted or p is None or (trusted != "*" and not any(p in n for n in trusted)):
+        return peer or "?"
+    chain = [x.strip() for x in fwd.split(",") if x.strip()]
+    if trusted == "*":
+        return str(_ip(chain[-1])) if chain and _ip(chain[-1]) else peer
+    for v in reversed(chain):
+        a = _ip(v)
+        if a is None:
+            return peer               # cadena manipulada: no se confía en nada a la izquierda
+        if not any(a in n for n in trusted):
+            return str(a)
+    return str(_ip(chain[0])) if chain else peer
+
+
 class PooledHTTPServer(ThreadingHTTPServer):
     """Servidor con un número FIJO de hilos de trabajo (CRYPTO_RADAR_WORKERS, por defecto 16).
 
@@ -454,6 +508,12 @@ class PooledHTTPServer(ThreadingHTTPServer):
         super().__init__(addr, handler)
         n = int(workers or os.environ.get("CRYPTO_RADAR_WORKERS") or 16)
         self.workers = max(2, min(n, 128))
+        from .auth import LOGIN_IP_FAILS
+        if self.workers > LOGIN_IP_FAILS:
+            # cada inicio de sesión cuenta como fallido mientras se comprueba (docs/RATE_LIMITING.md): con más hilos
+            # que LOGIN_IP_FAILS, una ráfaga legítima desde una misma IP podría recibir 429
+            print(f"AVISO: {self.workers} hilos > {LOGIN_IP_FAILS} fallidos por IP; usuarios tras una misma IP "
+                  "podrían recibir 429 en ráfagas de inicio de sesión", flush=True)
         self._jobs = queue.Queue()
         self.thread_prefix = f"http-{id(self):x}-"
         for i in range(self.workers):
