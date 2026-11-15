@@ -19,24 +19,54 @@ from .data import _context
 
 PRICES_USD = {("pro", "month"): 19, ("pro", "year"): 190, ("elite", "month"): 39, ("elite", "year"): 390}
 DAYS = {"month": 30, "year": 365}
-WOMPI_API = os.environ.get("WOMPI_API", "https://production.wompi.co/v1")
-NOWP_API = "https://api.nowpayments.io/v1"
+# Modo de pagos (CRYPTO_RADAR_PAYMENTS):
+#   off      (por defecto) pagos desactivados aunque existan claves. Nadie puede pagar ni activar planes por webhook.
+#   sandbox  solo entornos de prueba: API sandbox de Wompi y NOWPayments, y solo claves de prueba (pub_test_/prv_test_).
+#            Una clave de producción (pub_prod_/prv_prod_) desactiva el proveedor.
+#   live     cobros reales. Debe activarlo a mano el responsable del negocio; nada en el código lo activa.
+MODES = ("off", "sandbox", "live")
+API = {"wompi": {"sandbox": "https://sandbox.wompi.co/v1", "live": "https://production.wompi.co/v1"},
+       "nowpayments": {"sandbox": "https://api-sandbox.nowpayments.io/v1", "live": "https://api.nowpayments.io/v1"}}
 
 
 def _env(k):
     return (os.environ.get(k) or "").strip()
 
 
+def payments_mode():
+    m = _env("CRYPTO_RADAR_PAYMENTS").lower() or "off"
+    return m if m in MODES else "off"
+
+
+def wompi_api():
+    return API["wompi"]["live" if payments_mode() == "live" else "sandbox"]
+
+
+def nowp_api():
+    return API["nowpayments"]["live" if payments_mode() == "live" else "sandbox"]
+
+
+def _wompi_keys_ok():
+    if not all(_env(k) for k in ("WOMPI_PUBLIC_KEY", "WOMPI_INTEGRITY_SECRET", "WOMPI_EVENTS_SECRET", "COP_PER_USD")):
+        return False
+    pub = _env("WOMPI_PUBLIC_KEY")
+    if payments_mode() == "sandbox":
+        return pub.startswith("pub_test_")
+    return pub.startswith("pub_prod_")
+
+
 def wompi_enabled():
-    return all(_env(k) for k in ("WOMPI_PUBLIC_KEY", "WOMPI_INTEGRITY_SECRET", "WOMPI_EVENTS_SECRET", "COP_PER_USD"))
+    return payments_mode() != "off" and _wompi_keys_ok()
 
 
 def nowpayments_enabled():
+    if payments_mode() == "off":
+        return False
     return all(_env(k) for k in ("NOWPAYMENTS_API_KEY", "NOWPAYMENTS_IPN_SECRET"))
 
 
 def status():
-    return {"wompi": wompi_enabled(), "crypto": nowpayments_enabled(),
+    return {"mode": payments_mode(), "wompi": wompi_enabled(), "crypto": nowpayments_enabled(),
             "prices_usd": {f"{p}_{per}": v for (p, per), v in PRICES_USD.items()}}
 
 
@@ -78,7 +108,7 @@ def checkout(user, plan, period, provider, base_url):
                            "order_description": f"Crypto Radar {plan} ({period})",
                            "ipn_callback_url": base_url + "/api/billing/nowpayments/ipn",
                            "success_url": base_url + "/?pago=" + ref, "cancel_url": base_url + "/"}).encode()
-        r = _get_json(NOWP_API + "/invoice", {"x-api-key": _env("NOWPAYMENTS_API_KEY"),
+        r = _get_json(nowp_api() + "/invoice", {"x-api-key": _env("NOWPAYMENTS_API_KEY"),
                                                "Content-Type": "application/json"}, body, "POST")
         auth.log(user["id"], "checkout", {"provider": "crypto", "plan": plan, "period": period, "ref": ref})
         return {"url": r["invoice_url"], "reference": ref}
@@ -132,7 +162,7 @@ def wompi_webhook(event, fetch=None):
                    (str(tx.get("status"))[:20], time.time(), pay["reference"]))
         return 200, "registrado sin activar"
     # verificación independiente con la API de Wompi
-    fetch = fetch or (lambda tid: _get_json(f"{WOMPI_API}/transactions/{urllib.parse.quote(str(tid))}"))
+    fetch = fetch or (lambda tid: _get_json(f"{wompi_api()}/transactions/{urllib.parse.quote(str(tid))}"))
     try:
         real = fetch(tx.get("id")).get("data") or {}
     except Exception as e:
@@ -167,7 +197,7 @@ def nowpayments_ipn(body_obj, header_sig, fetch=None):
         db.execute("UPDATE payments SET status = ?, updated_at = ? WHERE reference = ? AND verified = 0",
                    (str(body_obj.get("payment_status"))[:20], time.time(), pay["reference"]))
         return 200, "registrado sin activar"
-    fetch = fetch or (lambda pid: _get_json(f"{NOWP_API}/payment/{urllib.parse.quote(str(pid))}",
+    fetch = fetch or (lambda pid: _get_json(f"{nowp_api()}/payment/{urllib.parse.quote(str(pid))}",
                                             {"x-api-key": _env("NOWPAYMENTS_API_KEY")}))
     try:
         real = fetch(body_obj.get("payment_id"))
@@ -184,8 +214,8 @@ def nowpayments_ipn(body_obj, header_sig, fetch=None):
 
 def admin_grant(admin, email, plan, days, reason):
     """Concesión manual (cortesía, soporte): solo administradores y siempre queda en el registro de actividad."""
-    if not admin.get("is_admin"):
-        raise auth.AuthError("Solo administradores", 403)
+    if not auth.admin_ok(admin):
+        raise auth.AuthError("Solo administradores con verificación en dos pasos", 403)
     try:
         days = int(days)
     except (TypeError, ValueError):

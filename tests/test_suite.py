@@ -28,6 +28,8 @@ os.environ["CRYPTO_RADAR_HOME"] = HOME
 os.environ.pop("DATABASE_URL", None)
 os.environ["CRYPTO_RADAR_ADMIN_USER"] = "admin"
 os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave larga del jefe 2026"
+os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "optional"   # el 2FA obligatorio se prueba aparte (T21)
+os.environ.pop("CRYPTO_RADAR_PAYMENTS", None)
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests"))
 import shutil
@@ -829,7 +831,7 @@ class T13_SaaS(unittest.TestCase):
 
     def request(self, username=None, pw="clave muy segura 123", op=None, note=None):
         username = username or f"u{random.randint(0, 10**9)}"
-        body = {"username": username, "password": pw}
+        body = {"username": username, "password": pw, "consent": "2026-11-15"}
         if note: body["note"] = note
         return self.call(op or self.client(), "/api/auth/request", body), username
 
@@ -855,20 +857,20 @@ class T13_SaaS(unittest.TestCase):
 
     def test_weak_password_rejected(self):
         auth.reset_rate_limits()
-        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "weakuser", "password": "123"})
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": "weakuser", "password": "123"})
         self.assertEqual(st, 400)
-        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "weakuser", "password": "weakuser12345"})
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": "weakuser", "password": "weakuser12345"})
         self.assertEqual(st, 400)                                   # contiene el usuario
 
     def test_invalid_username_rejected(self):
         for bad in ("No Válido!", "ab", "x" * 40, "<script>", "a b"):
             auth.reset_rate_limits()
-            st, _, _ = self.call(self.client(), "/api/auth/request", {"username": bad, "password": "clave muy segura 123"})
+            st, _, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": bad, "password": "clave muy segura 123"})
             self.assertEqual(st, 400, bad)
 
     def test_duplicate_email(self):
         op, csrf, email = self.signup()
-        st, _, _ = self.call(self.client(), "/api/auth/request", {"username": email, "password": "clave muy segura 123"})
+        st, _, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": email, "password": "clave muy segura 123"})
         self.assertEqual(st, 409)
 
     def test_session_cookie_flags(self):
@@ -1036,7 +1038,7 @@ class T13_SaaS(unittest.TestCase):
         try:
             auth.MAX_PENDING = db.one("SELECT COUNT(*) AS n FROM users WHERE status = 'pending'", ())["n"]
             auth.reset_rate_limits()
-            st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "uno.mas", "password": "clave muy segura 123"})
+            st, r, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": "uno.mas", "password": "clave muy segura 123"})
             self.assertEqual(st, 503)
         finally:
             auth.MAX_PENDING = old
@@ -1077,7 +1079,7 @@ class T13_SaaS(unittest.TestCase):
 
 # ================================================================== 14. Pagos verificados
 class T14_Pagos(unittest.TestCase):
-    ENV = {"WOMPI_PUBLIC_KEY": "pub_test", "WOMPI_INTEGRITY_SECRET": "integ", "WOMPI_EVENTS_SECRET": "evsecret", "COP_PER_USD": "4000",
+    ENV = {"CRYPTO_RADAR_PAYMENTS": "sandbox", "WOMPI_PUBLIC_KEY": "pub_test_x", "WOMPI_INTEGRITY_SECRET": "integ", "WOMPI_EVENTS_SECRET": "evsecret", "COP_PER_USD": "4000",
            "NOWPAYMENTS_API_KEY": "k", "NOWPAYMENTS_IPN_SECRET": "ipn"}
 
     def setUp(self):
@@ -1235,7 +1237,7 @@ class T18_SeguridadFinal(T13_SaaS):
     # ---------- 1. Bootstrap del administrador
     def test_admin_bootstrap_never_promotes_squatter(self):
         name = f"jefe{random.randint(0, 10**9)}"
-        uid = auth.request_access(name, "clave del intruso 99", ip="10.1.1.1")         # alguien reserva el nombre
+        uid = auth.request_access(name, "clave del intruso 99", consent=auth.POLICY_VERSION, ip="10.1.1.1")         # alguien reserva el nombre
         auth.admin_set_status(self.admin, uid, "approve")
         tok, _, _ = auth.login(name, "clave del intruso 99")
         os.environ["CRYPTO_RADAR_ADMIN_USER"] = name
@@ -1297,7 +1299,7 @@ class T18_SeguridadFinal(T13_SaaS):
     def test_admin_name_and_reserved_names_cannot_be_requested(self):
         for name in ("admin", "administrador", "root", "soporte", os.environ["CRYPTO_RADAR_ADMIN_USER"]):
             auth.reset_rate_limits()
-            st, r, _ = self.call(self.client(), "/api/auth/request", {"username": name, "password": "clave muy segura 123"})
+            st, r, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": name, "password": "clave muy segura 123"})
             self.assertEqual(st, 409, name)
         with self.assertRaises(auth.AuthError):
             auth.admin_create(self.admin, "root", "clave muy segura 123")
@@ -1466,7 +1468,7 @@ print("BLOCKED" if auth.rate_limited({key!r}, 2, 3600) else "FREE")
     # ---------- 5. Flujo completo
     def test_full_account_lifecycle(self):
         name = f"ciclo{random.randint(0, 10**9)}"
-        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": name, "password": "mi clave inicial 1", "contact": "@ciclo"})
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": name, "password": "mi clave inicial 1", "contact": "@ciclo"})
         self.assertEqual(st, 200); self.assertNotIn("Set-Cookie", _ or {})
         self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": name, "password": "mi clave inicial 1"})[0], 403)
         aop, acsrf = self.admin_client()
@@ -1511,7 +1513,7 @@ server.ThreadingHTTPServer = FakeHTTPServer
 
 if cfg.get("squatter"):                     # alguien reservó el nombre antes de configurar el administrador
     adm = os.environ.pop("CRYPTO_RADAR_ADMIN_USER", None)
-    uid = auth.request_access(cfg["squatter"], "clave del intruso 99", ip="10.7.7.7")
+    uid = auth.request_access(cfg["squatter"], "clave del intruso 99", consent=auth.POLICY_VERSION, ip="10.7.7.7")
     auth.admin_set_status({"id": "x", "is_admin": 1, "email": "prueba"}, uid, "approve")
     if adm: os.environ["CRYPTO_RADAR_ADMIN_USER"] = adm
     print("SQUATTER", uid, flush=True)
@@ -1685,7 +1687,7 @@ class T20_AuditoriaProduccion(T13_SaaS):
             r = telegram_bot.handle({"chat": {"id": 99001}, "text": cmd})
             self.assertNotIn("AAA", r); self.assertIn("no está vinculado", r)
         name = f"tg{random.randint(0, 10**9)}"
-        uid = auth.request_access(name, "clave muy segura 123", ip="10.3.3.3")
+        uid = auth.request_access(name, "clave muy segura 123", consent=auth.POLICY_VERSION, ip="10.3.3.3")
         auth.admin_set_status(self.admin, uid, "approve", "pro", 30)
         multiuser.add_position(uid, {"symbol": "SOL", "entry": 100.0})
         code = telegram_bot.new_link_code(uid)
@@ -1704,7 +1706,7 @@ class T20_AuditoriaProduccion(T13_SaaS):
     # A-04: dos entregas simultáneas del mismo webhook duplicaban el plan
     def test_a04_concurrent_webhook_grants_plan_once(self):
         name = f"pago{random.randint(0, 10**9)}"
-        uid = auth.request_access(name, "clave muy segura 123", ip="10.4.4.4"); auth.admin_set_status(self.admin, uid, "approve")
+        uid = auth.request_access(name, "clave muy segura 123", consent=auth.POLICY_VERSION, ip="10.4.4.4"); auth.admin_set_status(self.admin, uid, "approve")
         ref = billing._new_payment(uid, "wompi", "pro", "month", 100, "COP")
         pay = db.one("SELECT * FROM payments WHERE reference = ?", (ref,))
         self.assertTrue(billing._grant(dict(pay), {}))
@@ -1770,7 +1772,7 @@ class T20_AuditoriaProduccion(T13_SaaS):
 
     def test_privilege_fields_in_requests_are_ignored(self):
         name = f"listo{random.randint(0, 10**9)}"
-        st, _, _ = self.call(self.client(), "/api/auth/request", {"username": name, "password": "clave muy segura 123",
+        st, _, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": name, "password": "clave muy segura 123",
                                                                   "is_admin": 1, "status": "active", "plan": "elite",
                                                                   "plan_until": 9e12})
         self.assertEqual(st, 200)
@@ -1814,7 +1816,7 @@ db._ready = False; db.init(); db._ready = False; db.init()
 assert db.REQUIRED["users"] <= db.columns("users")
 assert db.one("SELECT status FROM users WHERE id = 'old1'", ())["status"] == "active"
 # apropiación del nombre del administrador: nunca se promueve
-squat = auth.request_access("pgadmin", "clave del intruso 99", ip="10.0.0.9")
+squat = auth.request_access("pgadmin", "clave del intruso 99", consent=auth.POLICY_VERSION, ip="10.0.0.9")
 os.environ["CRYPTO_RADAR_ADMIN_USER"] = "pgadmin"; os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave larga del jefe 2026"
 try:
     auth.ensure_admin(); raise SystemExit("debió negarse")
@@ -1864,6 +1866,393 @@ print("PG_OK", db.backend())
         env = dict(os.environ, DATABASE_URL=os.environ["TEST_DATABASE_URL"])
         r = subprocess.run([sys.executable, "-c", code, str(ROOT)], capture_output=True, text=True, env=env, timeout=120)
         self.assertIn("PG_OK postgresql", r.stdout, r.stderr[-2000:])
+
+
+# ================================================================== 21. Preparación para producción: TOTP, consentimiento, textos legales
+class T21_TOTPyConsentimiento(T13_SaaS):
+    SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"      # "12345678901234567890" en base32 (RFC 6238, apéndice B)
+
+    def setUp(self):
+        auth.reset_rate_limits()
+        self._totp_env = os.environ.get("CRYPTO_RADAR_ADMIN_TOTP")
+
+    def tearDown(self):
+        os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = self._totp_env or "optional"
+
+    def enroll(self, op, csrf, pw="clave muy segura 123"):
+        from radar import totp
+        st, r, _ = self.call(op, "/api/auth/totp/setup", {"password": pw}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        self.assertTrue(r["uri"].startswith("otpauth://totp/") and "secret=" + r["secret"] in r["uri"])
+        st, r2, _ = self.call(op, "/api/auth/totp/enable", {"code": totp.code(r["secret"])}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r2)
+        return r["secret"]
+
+    def test_rfc6238_vectors(self):
+        from radar import totp
+        self.assertEqual(totp.code(self.SECRET, at=59), "287082")              # RFC: 94287082 (8 dígitos)
+        self.assertEqual(totp.code(self.SECRET, at=1111111109), "081804")      # RFC: 07081804
+        self.assertEqual(totp.code(self.SECRET, at=1234567890), "005924")      # RFC: 89005924
+        self.assertEqual(len(totp.new_secret()), 32)
+
+    def test_window_and_replay(self):
+        from radar import totp
+        t = 1_800_000_015
+        s = totp.step(t)
+        self.assertEqual(totp.match(self.SECRET, totp.code(self.SECRET, t - 30), at=t), s - 1)
+        self.assertEqual(totp.match(self.SECRET, totp.code(self.SECRET, t + 30), at=t), s + 1)
+        self.assertIsNone(totp.match(self.SECRET, totp.code(self.SECRET, t + 60), at=t))
+        self.assertIsNone(totp.match(self.SECRET, totp.code(self.SECRET, t), last_step=s, at=t))   # ya usado
+        for bad in ("", "12345", "abcdef", None, "1234567"):
+            self.assertIsNone(totp.match(self.SECRET, bad, at=t))
+
+    def test_login_requires_valid_unused_code(self):
+        from radar import totp
+        op, csrf, name = self.signup()
+        secret = self.enroll(op, csrf)
+        st, r, _ = self.call(op, "/api/me")
+        self.assertEqual(st, 401)                                     # activar cierra todas las sesiones
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": name, "password": "clave muy segura 123"})
+        self.assertEqual((st, r.get("totp_required")), (401, True))
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": name, "password": "clave muy segura 123", "code": "000000"})
+        self.assertEqual((st, r.get("totp_required")), (401, True))
+        nxt = totp.code(secret, time.time() + 30)                     # el código actual ya se usó al activar
+        op2 = self.client()
+        st, r, _ = self.call(op2, "/api/auth/login", {"username": name, "password": "clave muy segura 123", "code": nxt})
+        self.assertEqual(st, 200, r)
+        self.assertTrue(r["user"]["totp_enabled"])
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": name, "password": "clave muy segura 123", "code": nxt})
+        self.assertEqual(st, 401)                                     # repetición del mismo código
+
+    def test_wrong_codes_lock_account(self):
+        from radar import totp
+        op, csrf, name = self.signup()
+        secret = self.enroll(op, csrf)
+        for _ in range(5):
+            self.call(self.client(), "/api/auth/login", {"username": name, "password": "clave muy segura 123", "code": "999999"})
+        st, _, _ = self.call(self.client(), "/api/auth/login",
+                             {"username": name, "password": "clave muy segura 123", "code": totp.code(secret, time.time() + 30)})
+        self.assertEqual(st, 429)
+
+    def test_admin_actions_require_totp_when_required(self):
+        from radar import totp
+        op, csrf, name = self.signup()
+        db.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (name,))     # administrador de prueba
+        os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "required"
+        st, me, _ = self.call(op, "/api/me")
+        self.assertTrue(me["user"]["totp_setup_required"])
+        st, _, _ = self.call(op, "/api/admin/users")
+        self.assertEqual(st, 403)
+        uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        with self.assertRaises(auth.AuthError):
+            billing.admin_grant(auth.get_user(uid), name, "pro", 30, "prueba")
+        secret = self.enroll(op, csrf)
+        op2 = self.client()
+        st, r, _ = self.call(op2, "/api/auth/login",
+                             {"username": name, "password": "clave muy segura 123", "code": totp.code(secret, time.time() + 30)})
+        self.assertEqual(st, 200, r)
+        st, _, _ = self.call(op2, "/api/admin/users")
+        self.assertEqual(st, 200)
+        st, r, _ = self.call(op2, "/api/auth/totp/disable", {"password": "clave muy segura 123", "code": "123456"},
+                             {"X-CSRF-Token": r["csrf"]})
+        self.assertEqual(st, 403)                                      # un administrador no puede quitarse el 2FA
+
+    def test_user_can_disable_with_password_and_code(self):
+        from radar import totp
+        op, csrf, name = self.signup()
+        secret = self.enroll(op, csrf)
+        op2 = self.client()
+        st, r, _ = self.call(op2, "/api/auth/login",
+                             {"username": name, "password": "clave muy segura 123", "code": totp.code(secret, time.time() + 30)})
+        h = {"X-CSRF-Token": r["csrf"]}
+        st, _, _ = self.call(op2, "/api/auth/totp/disable", {"password": "otra", "code": totp.code(secret, time.time() - 30)}, h)
+        self.assertEqual(st, 401)
+        st, _, _ = self.call(op2, "/api/auth/totp/disable", {"password": "clave muy segura 123", "code": totp.code(secret, time.time() - 30)}, h)
+        self.assertEqual(st, 401)                                      # paso anterior al ya usado: no vale
+        self.assertTrue(db.one("SELECT totp_enabled FROM users WHERE email = ?", (name,))["totp_enabled"])
+
+    def test_env_reset_clears_admin_totp(self):
+        keep = {k: os.environ.get(k) for k in ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD", "CRYPTO_RADAR_ADMIN_RESET")}
+        name = f"jefe{random.randint(0, 10**9)}"
+        try:
+            os.environ["CRYPTO_RADAR_ADMIN_USER"] = name; os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "primera clave larga 1"
+            self.assertEqual(auth.ensure_admin()["result"], "creado")
+            db.execute("UPDATE users SET totp_enabled = 1, totp_secret = 'X' WHERE email = ?", (name,))
+            os.environ["CRYPTO_RADAR_ADMIN_RESET"] = "1"
+            self.assertEqual(auth.ensure_admin()["result"], "restablecido")
+            row = db.one("SELECT totp_enabled, totp_secret FROM users WHERE email = ?", (name,))
+            self.assertEqual((row["totp_enabled"], row["totp_secret"]), (0, None))
+        finally:
+            for k, v in keep.items():
+                if v is None: os.environ.pop(k, None)
+                else: os.environ[k] = v
+
+    def test_totp_secret_never_in_public_payload(self):
+        op, csrf, name = self.signup()
+        self.enroll(op, csrf)
+        uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        pub = json.dumps(auth.public(auth.get_user(uid)))
+        self.assertNotIn("totp_secret", pub); self.assertNotIn("totp_last_step", pub)
+
+    def test_consent_required_and_recorded(self):
+        for body in ({}, {"consent": "2020-01-01"}, {"consent": True}):
+            name = f"sinok{random.randint(0, 10**9)}"
+            st, _, _ = self.call(self.client(), "/api/auth/request", dict(body, username=name, password="clave muy segura 123"))
+            self.assertEqual(st, 400, body)
+            self.assertIsNone(db.one("SELECT id FROM users WHERE email = ?", (name,)))
+            auth.reset_rate_limits()
+        (st, r, _), name = self.request()
+        self.assertEqual(st, 200, r)
+        row = db.one("SELECT consent_version, consent_at FROM users WHERE email = ?", (name,))
+        self.assertEqual(row["consent_version"], auth.POLICY_VERSION); self.assertGreater(row["consent_at"], 0)
+
+    def test_legal_pages_public_and_linked(self):
+        for path, text in (("/privacidad", "Ley 1581"), ("/aviso-de-riesgo", "riesgo")):
+            r = urllib.request.urlopen(self.base + path)
+            body = r.read().decode()
+            self.assertEqual(r.status, 200); self.assertIn(text, body)
+            self.assertNotIn("<script", body.lower())
+            self.assertIn("default-src", r.headers.get("Content-Security-Policy", ""))
+        for page in ("landing.html", "entrar.html"):
+            html = (ROOT / "web" / page).read_text(encoding="utf-8")
+            self.assertIn('href="/privacidad"', html); self.assertIn('href="/aviso-de-riesgo"', html)
+        self.assertIn('value="%s"' % auth.POLICY_VERSION, (ROOT / "web" / "entrar.html").read_text(encoding="utf-8"))
+
+
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T21_TOTPyConsentimiento.__dict__:
+        setattr(T21_TOTPyConsentimiento, _n, None)
+
+
+# ================================================================== 22. Modo de pagos (off / sandbox / live)
+class T22_ModoPagos(unittest.TestCase):
+    KEYS = {"WOMPI_PUBLIC_KEY": "pub_test_abc", "WOMPI_INTEGRITY_SECRET": "i", "WOMPI_EVENTS_SECRET": "e",
+            "COP_PER_USD": "4000", "NOWPAYMENTS_API_KEY": "k", "NOWPAYMENTS_IPN_SECRET": "s"}
+
+    def setUp(self):
+        self._old = {k: os.environ.get(k) for k in list(self.KEYS) + ["CRYPTO_RADAR_PAYMENTS"]}
+        os.environ.update(self.KEYS)
+
+    def tearDown(self):
+        for k, v in self._old.items():
+            if v is None: os.environ.pop(k, None)
+            else: os.environ[k] = v
+
+    def mode(self, m):
+        if m is None: os.environ.pop("CRYPTO_RADAR_PAYMENTS", None)
+        else: os.environ["CRYPTO_RADAR_PAYMENTS"] = m
+
+    def test_off_by_default_even_with_keys(self):
+        for m in (None, "", "off", "OFF", "produccion", "on"):
+            self.mode(m)
+            self.assertEqual(billing.payments_mode(), "off", m)
+            self.assertFalse(billing.wompi_enabled()); self.assertFalse(billing.nowpayments_enabled())
+            self.assertEqual(billing.wompi_webhook({})[0], 503)
+            self.assertEqual(billing.nowpayments_ipn({}, "")[0], 503)
+        self.assertEqual(billing.status()["mode"], "off")
+
+    def test_sandbox_uses_sandbox_apis_and_test_keys_only(self):
+        self.mode("sandbox")
+        self.assertTrue(billing.wompi_enabled()); self.assertTrue(billing.nowpayments_enabled())
+        self.assertEqual(billing.wompi_api(), "https://sandbox.wompi.co/v1")
+        self.assertEqual(billing.nowp_api(), "https://api-sandbox.nowpayments.io/v1")
+        os.environ["WOMPI_PUBLIC_KEY"] = "pub_prod_abc"
+        self.assertFalse(billing.wompi_enabled())
+
+    def test_live_requires_production_key(self):
+        self.mode("live")
+        self.assertFalse(billing.wompi_enabled())                     # clave de prueba en modo live: desactivado
+        self.assertEqual(billing.wompi_api(), "https://production.wompi.co/v1")
+        self.assertEqual(billing.nowp_api(), "https://api.nowpayments.io/v1")
+
+    def test_no_module_constant_overrides_api(self):
+        src = (ROOT / "radar" / "billing.py").read_text(encoding="utf-8")
+        self.assertNotIn('os.environ.get("WOMPI_API"', src)            # ya no se puede redirigir la API por entorno
+        self.assertEqual(src.count("production.wompi.co"), 1)
+
+    def test_render_yaml_keeps_payments_off(self):
+        y = (ROOT / "render.yaml").read_text(encoding="utf-8")
+        self.assertRegex(y, r'key: CRYPTO_RADAR_PAYMENTS\s*\n\s*value: "off"')
+        self.assertRegex(y, r'key: CRYPTO_RADAR_ADMIN_TOTP\s*\n\s*value: required')
+
+    def test_end_to_end_sandbox_selftest(self):
+        r = subprocess.run([sys.executable, str(ROOT / "main.py"), "payments-selftest"], capture_output=True, text=True,
+                           timeout=180, env=dict(os.environ, DATABASE_URL=""))
+        self.assertEqual(r.returncode, 0, r.stdout[-3000:] + r.stderr[-3000:])
+        self.assertIn("RESULTADO: TODO OK", r.stdout)
+        self.assertNotIn("FALLO", r.stdout)
+        self.assertGreaterEqual(r.stdout.count("[OK]"), 15)
+
+
+# ================================================================== 23. Copias de seguridad y restauración
+class T23_Backup(unittest.TestCase):
+    def setUp(self):
+        from radar import backup
+        self.bk = backup
+        self.tmp = Path(tempfile.mkdtemp(prefix="cr-bk-"))
+        self.src = str(self.tmp / "origen.db")
+        import sqlite3
+        c = sqlite3.connect(self.src)
+        backup._ensure_schema(c, False)
+        now = time.time()
+        c.execute("INSERT INTO users(id, email, pw_hash, created_at, plan, plan_until, is_admin, settings, status, totp_secret, "
+                  "totp_enabled, totp_last_step, consent_at, consent_version) VALUES "
+                  "('u1', 'ana@example.com', 'scrypt$x', ?, 'pro', ?, 0, '{\"a\": \"ñ ✓\"}', 'active', 'SECRETO', 1, 59000000, ?, '2026-11-15')",
+                  (now, now + 86400 * 30, now))
+        c.execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES ('u2', 'bob', 'scrypt$y', 1700000000.0)")
+        c.execute("INSERT INTO payments(id, user_id, provider, reference, plan, period, amount_cents, currency, status, verified, "
+                  "raw, created_at, updated_at) VALUES ('p1', 'u1', 'wompi', 'CR-1', 'pro', 'month', 7600000, 'COP', 'APPROVED', 1, "
+                  "'{}', ?, ?)", (now, now))
+        c.execute("INSERT INTO activity(id, user_id, at, action, detail, ip) VALUES ('a1', 'u1', ?, 'login', NULL, NULL)", (now,))
+        c.execute("INSERT INTO kv(name, value, updated_at) VALUES ('journal', '[1, 2.5, null]', ?)", (now,))
+        c.execute("INSERT INTO sessions(token_hash, user_id, csrf, created_at, expires_at) VALUES ('t', 'u1', 'c', 1, 2)")
+        c.commit(); c.close()
+
+    def counts(self, path):
+        import sqlite3
+        c = sqlite3.connect(path)
+        try:
+            return {t: c.execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0] for t in list(self.bk.TABLES) + ["sessions"]}
+        finally:
+            c.close()
+
+    def test_round_trip_sqlite(self):
+        d = self.bk.create(self.src, self.tmp / "copias")
+        self.assertEqual(oct(os.stat(d / "users.jsonl").st_mode & 0o777), "0o600")
+        self.assertEqual(oct(os.stat(d).st_mode & 0o777), "0o700")
+        self.assertEqual(self.bk.compare(d, self.src), [])
+        r = self.bk.verify(d)
+        self.assertEqual(r["rows"]["users"], 2); self.assertEqual(r["rows"]["payments"], 1)
+        dst = str(self.tmp / "destino.db")
+        self.bk.restore(d, dst)
+        self.assertEqual(self.bk.compare(d, dst), [])                  # contenido idéntico, fila a fila
+        self.assertEqual(self.counts(dst)["sessions"], 0)             # las sesiones no se copian
+        man = json.loads((d / "manifest.json").read_text())
+        self.assertNotIn("sessions", man["tables"])
+
+    def test_restore_never_overwrites(self):
+        d = self.bk.create(self.src, self.tmp / "copias")
+        before = self.counts(self.src)
+        with self.assertRaises(self.bk.BackupError):
+            self.bk.restore(d, self.src)
+        self.assertEqual(self.counts(self.src), before)
+
+    def test_tampering_detected(self):
+        d = self.bk.create(self.src, self.tmp / "copias")
+        p = d / "payments.jsonl"
+        p.write_text(p.read_text().replace("7600000", "1"))
+        with self.assertRaises(self.bk.BackupError):
+            self.bk.verify(d)
+        d2 = self.bk.create(self.src, self.tmp / "copias")
+        m = json.loads((d2 / "manifest.json").read_text()); m["tables"]["users"]["rows"] = 3
+        (d2 / "manifest.json").write_text(json.dumps(m))
+        with self.assertRaises(self.bk.BackupError):
+            self.bk.verify(d2)
+        self.assertNotEqual(d, d2)                                     # dos copias seguidas no se pisan
+
+    def test_compare_detects_changes(self):
+        d = self.bk.create(self.src, self.tmp / "copias")
+        import sqlite3
+        c = sqlite3.connect(self.src); c.execute("UPDATE users SET plan = 'elite' WHERE id = 'u2'"); c.commit(); c.close()
+        self.assertEqual(self.bk.compare(d, self.src), ["users: contenido distinto"])
+
+    def test_cli_refuses_restore_over_database_url(self):
+        d = self.bk.create(self.src, self.tmp / "copias")
+        r = subprocess.run([sys.executable, str(ROOT / "main.py"), "backup", "restore", str(d), "--target", "postgresql://x@h/db"],
+                           capture_output=True, text=True, timeout=60, env=dict(os.environ, DATABASE_URL="postgresql://x@h/db"))
+        self.assertEqual(r.returncode, 2); self.assertIn("DATABASE_URL", r.stdout)
+        self.assertEqual(self.bk.mask("postgresql://u:clave@h:5432/db?sslmode=require"), "postgresql://u:***@h:5432/db?sslmode=require")
+
+    @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
+    def test_round_trip_postgres(self):
+        import psycopg
+        url = os.environ["TEST_DATABASE_URL"]
+        name = f"cr_restore_{random.randint(0, 10**9)}"
+        admin = psycopg.connect(url, autocommit=True)
+        admin.execute(f"CREATE DATABASE {name}")
+        try:
+            target = url.rsplit("/", 1)[0] + "/" + name
+            d = self.bk.create(self.src, self.tmp / "copias")          # SQLite → PostgreSQL
+            self.bk.restore(d, target)
+            self.assertEqual(self.bk.compare(d, target), [])
+            d2 = self.bk.create(target, self.tmp / "copias")           # PostgreSQL → copia → SQLite
+            self.assertEqual(json.loads((d2 / "manifest.json").read_text())["source"], self.bk.mask(target))
+            self.assertEqual(self.bk.verify(d2)["rows"]["users"], 2)
+            with self.assertRaises(self.bk.BackupError):
+                self.bk.restore(d2, target)                            # destino con datos: no se toca
+        finally:
+            admin.execute(f"DROP DATABASE IF EXISTS {name} WITH (FORCE)")   # base temporal creada por esta prueba
+            admin.close()
+
+
+# ================================================================== 24. Revisión previa a producción (preflight)
+class T24_Preflight(unittest.TestCase):
+    GOOD = {"CRYPTO_RADAR_ACCOUNTS": "1", "DATABASE_URL": "postgresql://u:SuperSecretaDB99@ep-x-pooler.neon.tech/db?sslmode=require",
+            "CRYPTO_RADAR_ADMIN_USER": "jefe", "CRYPTO_RADAR_ADMIN_PASSWORD": "ClaveAdminUltraSecreta 2026"}
+
+    def run_pf(self, env):
+        base = {k: v for k, v in os.environ.items() if not k.startswith(("CRYPTO_RADAR_", "WOMPI_", "NOWPAYMENTS_"))
+                and k != "DATABASE_URL"}
+        return subprocess.run([sys.executable, str(ROOT / "main.py"), "preflight"], capture_output=True, text=True,
+                              timeout=60, env=dict(base, **env))
+
+    def results(self, env):
+        from radar import preflight
+        keep = dict(os.environ)
+        try:
+            for k in list(os.environ):
+                if k.startswith(("CRYPTO_RADAR_", "WOMPI_", "NOWPAYMENTS_")) or k == "DATABASE_URL":
+                    os.environ.pop(k)
+            os.environ.update(env)
+            return {name: level for level, name, _ in preflight.check_env()}
+        finally:
+            os.environ.clear(); os.environ.update(keep)
+
+    def test_good_config_only_fails_on_legal_placeholders(self):
+        r = self.results(self.GOOD)
+        fails = sorted(n for n, lv in r.items() if lv == "fail")
+        self.assertEqual(fails, ["Texto legal privacidad.html"])       # pendiente real: datos del responsable y abogado
+        self.assertEqual(r["TLS con la base"], "ok"); self.assertEqual(r["Pagos"], "ok")
+
+    def test_detects_unsafe_settings(self):
+        bad = dict(self.GOOD, DATABASE_URL="postgresql://u:p@h/db", CRYPTO_RADAR_ADMIN_TOTP="optional",
+                   CRYPTO_RADAR_PAYMENTS="live", CRYPTO_RADAR_ADMIN_RESET="1", CRYPTO_RADAR_ALLOW_SQLITE="1")
+        r = self.results(bad)
+        for k in ("TLS con la base", "TOTP del administrador", "Pagos", "Variables de recuperación", "SQLite forzado"):
+            self.assertEqual(r[k], "fail", k)
+        r = self.results(dict(self.GOOD, CRYPTO_RADAR_PAYMENTS="sandbox", WOMPI_PUBLIC_KEY="pub_prod_x"))
+        self.assertEqual(r["Pagos"], "fail")
+        r = self.results({"DATABASE_URL": ""})
+        self.assertEqual((r["Modo cuentas"], r["Base de datos"], r["Administrador"]), ("fail", "fail", "fail"))
+
+    def test_output_never_shows_secrets(self):
+        p = self.run_pf(self.GOOD)
+        self.assertEqual(p.returncode, 1)                              # falla por los textos legales pendientes
+        for secret in ("SuperSecretaDB99", "ClaveAdminUltraSecreta", "ep-x-pooler"):
+            self.assertNotIn(secret, p.stdout + p.stderr)
+        self.assertIn("NO listo para producción", p.stdout)
+
+    def test_db_check_reads_admin_totp_state(self):
+        import sqlite3
+        from radar import backup, preflight
+        path = str(Path(tempfile.mkdtemp(prefix="cr-pf-")) / "pf.db")
+        c = sqlite3.connect(path); backup._ensure_schema(c, False)
+        c.execute("INSERT INTO users(id, email, pw_hash, created_at, is_admin, totp_enabled) VALUES ('a', 'jefe', 'x', 1, 1, 0)")
+        c.commit(); c.close()
+        keep = dict(os.environ)
+        try:
+            os.environ.update({"DATABASE_URL": path, "CRYPTO_RADAR_ADMIN_USER": "jefe"})
+            r = {n: lv for lv, n, _ in preflight.check_db()}
+            self.assertEqual((r["Esquema"], r["TOTP del administrador en la base"]), ("ok", "warn"))
+            c = sqlite3.connect(path); c.execute("UPDATE users SET totp_enabled = 1"); c.commit(); c.close()
+            r = {n: lv for lv, n, _ in preflight.check_db()}
+            self.assertEqual(r["TOTP del administrador en la base"], "ok")
+        finally:
+            os.environ.clear(); os.environ.update(keep)
+
+    def test_render_yaml_has_no_inline_secrets(self):
+        from radar import preflight
+        self.assertEqual(preflight._render_yaml_secrets()[0], "ok")
 
 
 if __name__ == "__main__":

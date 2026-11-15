@@ -20,7 +20,8 @@ from . import storage, scanner, alerts, memes, __version__
 from .config import WEB_DIR, ROOT, ACCOUNTS, load_settings, save_settings
 
 COOKIE = "cr_session"
-PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/api/public/status", "/api/billing/status")
+LEGAL_PAGES = {"/privacidad": "privacidad.html", "/aviso-de-riesgo": "aviso-de-riesgo.html"}
+PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/api/public/status", "/api/billing/status") + tuple(LEGAL_PAGES)
 PUBLIC_POST = ("/api/auth/register", "/api/auth/request", "/api/auth/login", "/api/billing/wompi/webhook", "/api/billing/nowpayments/ipn")
 
 WATCH_EVERY_S = 15 * 60
@@ -279,6 +280,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._static("index.html")
         if p == "/entrar":
             return self._redirect("/app")
+        if p in LEGAL_PAGES:
+            return self._static(LEGAL_PAGES[p])
         if p.startswith("/static/"):
             return self._static(p[len("/static/"):])
         if p == "/api/state":

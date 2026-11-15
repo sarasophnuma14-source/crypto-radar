@@ -24,13 +24,14 @@ import re
 import secrets
 import time
 import uuid
-from . import db
+from . import db, totp
 
 SESSION_DAYS = 14
 LOCK_AFTER, LOCK_S = 5, 15 * 60
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[a-z]{2,24}$", re.I)
 USER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,31}$")
 MAX_PENDING = 300
+POLICY_VERSION = "2026-11-15"     # versión de /privacidad y /aviso-de-riesgo que acepta quien solicita acceso
 RESERVED = {"admin", "administrador", "administrator", "root", "soporte", "support", "sistema", "system",
             "cryptoradar", "crypto-radar", "crypto.radar", "moderador", "staff"}
 COMMON_PW = {"1234567890", "contraseña", "contrasena", "password123", "qwertyuiop", "cryptoradar", "bitcoin123",
@@ -45,9 +46,15 @@ _rate = {}
 
 
 class AuthError(Exception):
-    def __init__(self, msg, code=400):
+    def __init__(self, msg, code=400, **extra):
         super().__init__(msg)
         self.code = code
+        self.extra = extra
+
+
+def admin_totp_required():
+    """Los administradores deben usar TOTP para cualquier acción de administración (salvo que se desactive a propósito)."""
+    return (os.environ.get("CRYPTO_RADAR_ADMIN_TOTP") or "required").strip().lower() != "optional"
 
 
 def hash_password(pw: str) -> str:
@@ -155,10 +162,15 @@ def _create(username, pw, status, plan="free", plan_until=None, is_admin=0, cont
     return uid
 
 
-def request_access(username, pw, contact=None, note=None, ip=None):
-    """Solicitud de cuenta: queda PENDIENTE hasta que un administrador la apruebe."""
+def request_access(username, pw, contact=None, note=None, ip=None, consent=None):
+    """Solicitud de cuenta: queda PENDIENTE hasta que un administrador la apruebe.
+
+    `consent` debe ser POLICY_VERSION: la persona aceptó la política de tratamiento de datos y el aviso de riesgo.
+    """
     if rate_limited(f"req:{ip}", 3, 3600) or rate_limited("req:global", 60, 3600):
         raise AuthError("Demasiadas solicitudes; intenta más tarde", 429)
+    if consent != POLICY_VERSION:
+        raise AuthError("Debes aceptar la política de tratamiento de datos y el aviso de riesgo", 400)
     username, pw = validate_credentials(username, pw)
     contact = re.sub(r"[\x00-\x1f]", "", str(contact or ""))[:120] or None
     note = re.sub(r"[\x00-\x1f]", " ", str(note or ""))[:300] or None
@@ -167,13 +179,14 @@ def request_access(username, pw, contact=None, note=None, ip=None):
     if is_reserved(username) or db.one("SELECT id FROM users WHERE email = ?", (username,)):
         raise AuthError("Ese usuario no está disponible; elige otro", 409)
     uid = _create(username, pw, "pending", contact=contact, note=note)
-    log(uid, "access_requested", {"contact": bool(contact)}, ip)
+    db.execute("UPDATE users SET consent_at = ?, consent_version = ? WHERE id = ?", (time.time(), POLICY_VERSION, uid))
+    log(uid, "access_requested", {"contact": bool(contact), "consent_version": POLICY_VERSION}, ip)
     return uid
 
 
 def register(email, pw, ip=None):
     """Compatibilidad: el registro abierto ya no existe; crea una solicitud PENDIENTE y devuelve ese usuario."""
-    return get_user(request_access(email, pw, ip=ip))
+    return get_user(request_access(email, pw, ip=ip, consent=POLICY_VERSION))
 
 
 def is_reserved(username):
@@ -219,9 +232,10 @@ def ensure_admin():
     if row and row["is_admin"]:
         if os.environ.get("CRYPTO_RADAR_ADMIN_RESET") == "1":
             db.execute("UPDATE users SET pw_hash = ?, failed_logins = 0, locked_until = NULL, status = 'active', "
-                       "disabled = 0 WHERE id = ?", (hash_password(pw), row["id"]))
+                       "disabled = 0, totp_enabled = 0, totp_secret = NULL, totp_last_step = NULL WHERE id = ?",
+                       (hash_password(pw), row["id"]))
             logout_all(row["id"])
-            log(row["id"], "admin_bootstrap_password_reset", {"user": u, "source": "entorno"})
+            log(row["id"], "admin_bootstrap_password_reset", {"user": u, "source": "entorno", "totp_reset": True})
             return {"user": u, "result": "restablecido"}
         log(row["id"], "admin_bootstrap_verified", {"user": u})
         return {"user": u, "result": "verificado"}
@@ -248,8 +262,8 @@ def ensure_admin():
 
 # ---------------------------------------------------------------- administración de cuentas
 def _admin_target(admin, uid):
-    if not admin or not admin.get("is_admin"):
-        raise AuthError("solo administradores", 403)
+    if not admin_ok(admin):
+        raise AuthError("solo administradores con verificación en dos pasos", 403)
     if not isinstance(uid, str) or not re.match(r"^[a-f0-9]{32}$", uid):
         raise AuthError("usuario no válido")
     t = db.one("SELECT id, email, is_admin, status FROM users WHERE id = ?", (uid,))
@@ -290,8 +304,8 @@ def admin_set_status(admin, uid, action, plan="free", days=0, ip=None):
 
 
 def admin_create(admin, username, pw, plan="free", days=0, ip=None):
-    if not admin or not admin.get("is_admin"):
-        raise AuthError("solo administradores", 403)
+    if not admin_ok(admin):
+        raise AuthError("solo administradores con verificación en dos pasos", 403)
     username, pw = validate_credentials(username, pw)
     if is_reserved(username) or db.one("SELECT id FROM users WHERE email = ?", (username,)):
         raise AuthError("Ese usuario ya existe o está reservado", 409)
@@ -312,9 +326,10 @@ def admin_reset_password(admin, uid, pw, ip=None):
         raise AuthError("La contraseña de un administrador solo se cambia desde su propia cuenta o con "
                         "CRYPTO_RADAR_ADMIN_RESET", 403)
     validate_password(t["email"].split("@")[0], pw)
-    db.execute("UPDATE users SET pw_hash = ?, failed_logins = 0, locked_until = NULL WHERE id = ?", (hash_password(pw), uid))
+    db.execute("UPDATE users SET pw_hash = ?, failed_logins = 0, locked_until = NULL, totp_enabled = 0, totp_secret = NULL, "
+               "totp_last_step = NULL WHERE id = ?", (hash_password(pw), uid))
     logout_all(uid)
-    log(admin["id"], "admin_user_reset_password", {"user": t["email"]}, ip)
+    log(admin["id"], "admin_user_reset_password", {"user": t["email"], "totp_reset": True}, ip)
 
 
 def admin_list():
@@ -323,7 +338,24 @@ def admin_list():
                    "ORDER BY CASE status WHEN 'pending' THEN 0 ELSE 1 END, created_at DESC LIMIT 500", ())
 
 
-def login(email, pw, ip=None, ua=None):
+def _fail(u, ip, what="login_failed"):
+    fails = (u["failed_logins"] or 0) + 1
+    db.execute("UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?",
+               (0 if fails >= LOCK_AFTER else fails, time.time() + LOCK_S if fails >= LOCK_AFTER else None, u["id"]))
+    log(u["id"], what, None, ip)
+
+
+def _accept_totp(u, code_given):
+    """True si el código vale; guarda el paso de forma atómica para que no se pueda reutilizar."""
+    s = totp.match(u["totp_secret"] or "", code_given, u.get("totp_last_step"))
+    if s is None:
+        return False
+    cur = db.execute("UPDATE users SET totp_last_step = ? WHERE id = ? AND (totp_last_step IS NULL OR totp_last_step < ?)",
+                     (s, u["id"], s))
+    return cur.rowcount == 1
+
+
+def login(email, pw, ip=None, ua=None, code=None):
     email = norm_login(email)
     if rate_limited(f"login:{ip}", 20, 900):
         raise AuthError("Demasiados intentos desde esta conexión; espera 15 minutos", 429)
@@ -337,10 +369,7 @@ def login(email, pw, ip=None, ua=None):
     if u["locked_until"] and u["locked_until"] > time.time():
         raise AuthError("Cuenta bloqueada temporalmente por intentos fallidos; espera 15 minutos", 429)
     if not verify_password(pw or "", u["pw_hash"]):
-        fails = (u["failed_logins"] or 0) + 1
-        db.execute("UPDATE users SET failed_logins = ?, locked_until = ? WHERE id = ?",
-                   (0 if fails >= LOCK_AFTER else fails, time.time() + LOCK_S if fails >= LOCK_AFTER else None, u["id"]))
-        log(u["id"], "login_failed", None, ip)
+        _fail(u, ip)
         raise AuthError("Usuario o contraseña incorrectos", 401)
     # el estado solo se revela a quien conoce la contraseña
     status = u.get("status") or "active"
@@ -350,6 +379,12 @@ def login(email, pw, ip=None, ua=None):
         raise AuthError("Tu solicitud no fue aprobada", 403)
     if u["disabled"]:
         raise AuthError("Cuenta desactivada por el administrador", 403)
+    if u.get("totp_enabled"):
+        if not code:
+            raise AuthError("Escribe el código de 6 dígitos de tu app de autenticación", 401, totp_required=True)
+        if not _accept_totp(u, code):
+            _fail(u, ip, "login_totp_failed")
+            raise AuthError("Código de verificación incorrecto o ya usado", 401, totp_required=True)
     db.execute("UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?", (u["id"],))
     token, csrf = secrets.token_urlsafe(32), secrets.token_urlsafe(24)
     db.execute("INSERT INTO sessions(token_hash, user_id, csrf, created_at, expires_at, ip, ua) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -394,8 +429,8 @@ def change_password(user_id, old, new, ip=None):
 
 
 def get_user(uid):
-    u = db.one("SELECT id, email, created_at, plan, plan_until, is_admin, telegram_chat_id, settings, disabled, status "
-               "FROM users WHERE id = ?", (uid,))
+    u = db.one("SELECT id, email, created_at, plan, plan_until, is_admin, telegram_chat_id, settings, disabled, status, "
+               "totp_enabled FROM users WHERE id = ?", (uid,))
     if not u:
         return None
     u["effective_plan"] = effective_plan(u)
@@ -425,6 +460,8 @@ def public(u):
     return {"email": u["email"], "username": u["email"], "plan": u["effective_plan"], "plan_label": PLANS[u["effective_plan"]]["label"],
             "plan_until": u.get("plan_until"), "is_admin": bool(u["is_admin"]),
             "telegram_linked": bool(u.get("telegram_chat_id")), "features": PLANS[u["effective_plan"]],
+            "totp_enabled": bool(u.get("totp_enabled")),
+            "totp_setup_required": bool(u["is_admin"]) and admin_totp_required() and not u.get("totp_enabled"),
             "settings": u.get("settings") or {}}
 
 
@@ -455,3 +492,49 @@ def save_user_settings(uid, new):
         s[k] = v
     db.execute("UPDATE users SET settings = ? WHERE id = ?", (json.dumps(s), uid))
     return s
+
+
+# ---------------------------------------------------------------- verificación en dos pasos (TOTP)
+def totp_setup(user_id, password, ip=None):
+    """Genera un secreto nuevo (aún sin activar). Exige la contraseña actual."""
+    u = db.one("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not u or not verify_password(password or "", u["pw_hash"]):
+        raise AuthError("La contraseña actual no es correcta", 401)
+    if u.get("totp_enabled"):
+        raise AuthError("La verificación en dos pasos ya está activa", 409)
+    secret = totp.new_secret()
+    db.execute("UPDATE users SET totp_secret = ?, totp_last_step = NULL WHERE id = ?", (secret, user_id))
+    log(user_id, "totp_setup_started", None, ip)
+    return {"secret": secret, "uri": totp.uri(secret, u["email"])}
+
+
+def totp_enable(user_id, code_given, ip=None):
+    """Activa TOTP si el código coincide con el secreto pendiente. Cierra todas las sesiones (hay que volver a entrar)."""
+    u = db.one("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not u or not u.get("totp_secret"):
+        raise AuthError("Primero genera la clave de verificación", 400)
+    if u.get("totp_enabled"):
+        raise AuthError("La verificación en dos pasos ya está activa", 409)
+    if not _accept_totp(u, code_given):
+        raise AuthError("Código incorrecto: revisa la hora del teléfono y vuelve a intentarlo", 400)
+    db.execute("UPDATE users SET totp_enabled = 1 WHERE id = ?", (user_id,))
+    logout_all(user_id)
+    log(user_id, "totp_enabled", None, ip)
+
+
+def totp_disable(user_id, password, code_given, ip=None):
+    u = db.one("SELECT * FROM users WHERE id = ?", (user_id,))
+    if not u or not u.get("totp_enabled"):
+        raise AuthError("La verificación en dos pasos no está activa", 400)
+    if u["is_admin"] and admin_totp_required():
+        raise AuthError("Los administradores no pueden desactivarla. Para recuperarla usa CRYPTO_RADAR_ADMIN_RESET", 403)
+    if not verify_password(password or "", u["pw_hash"]) or not _accept_totp(u, code_given):
+        _fail(u, ip, "totp_disable_failed")
+        raise AuthError("Contraseña o código incorrectos", 401)
+    db.execute("UPDATE users SET totp_enabled = 0, totp_secret = NULL, totp_last_step = NULL WHERE id = ?", (user_id,))
+    log(user_id, "totp_disabled", None, ip)
+
+
+def admin_ok(user):
+    """Puede ejecutar acciones de administración: es admin y, si se exige, tiene TOTP activo (validado al entrar)."""
+    return bool(user and user.get("is_admin")) and (not admin_totp_required() or bool(user.get("totp_enabled")))

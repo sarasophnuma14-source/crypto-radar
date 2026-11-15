@@ -23,6 +23,19 @@
 - `serve()` exige `CRYPTO_RADAR_ADMIN_USER` y `CRYPTO_RADAR_ADMIN_PASSWORD` en modo cuentas y se detiene si falta
   alguna o si no se confirma el administrador. 11 pruebas nuevas del arranque real en procesos aislados (192 en total).
 
+### Preparación para producción
+- Verificación en dos pasos (TOTP, RFC 6238) para todas las cuentas; **obligatoria para administradores**
+  (`CRYPTO_RADAR_ADMIN_TOTP=required` por defecto): sin ella, toda acción de administración responde 403. Códigos de
+  un solo uso, ventana ±30 s, fallos cuentan para el bloqueo, activar cierra las sesiones, `ADMIN_RESET` la borra.
+- Pagos con modo explícito `CRYPTO_RADAR_PAYMENTS=off|sandbox|live` (por defecto `off`, también en `render.yaml`).
+  Sandbox usa solo las APIs y llaves de prueba. Se elimina `WOMPI_API`. `python main.py payments-selftest`.
+- Copias de seguridad verificables: `python main.py backup create|verify|compare|restore` (hashes SHA-256,
+  restauración solo en bases vacías, prueba real de restauración al verificar).
+- `python main.py preflight [--db]`: revisión de la configuración de Render y Neon sin mostrar secretos.
+- Política de tratamiento de datos (`/privacidad`, borrador Ley 1581 de 2012 con datos por completar) y aviso de
+  riesgo (`/aviso-de-riesgo`). La solicitud de acceso exige aceptarlos y guarda versión y fecha del consentimiento.
+- `docs/PRODUCCION_RENDER_NEON.md` y `docs/PREPARACION_PRODUCCION.md`.
+
 ## 2.0.0 — 2026-11-15 (rama `claude/project-thread-i8udp5`)
 
 Respaldo de la versión anterior: rama `main` (commit 34f6898) y etiqueta local `backup-pre-2.0`.

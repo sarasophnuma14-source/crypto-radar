@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#07141A">
+<title>Política de tratamiento de datos personales · Crypto Radar</title>
+<link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+<style>
+:root{--bg:#07141A;--card:#10252F;--line:rgba(191,211,214,.14);--fg:#E9F1F2;--muted:#9FB3B9;--amber:#F0AE45;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:400 1rem/1.65 "Inter","Helvetica Neue",Arial,system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:40px 16px 80px}
+a{color:var(--amber)}
+h1{font-size:clamp(1.8rem,5vw,2.6rem);line-height:1.1;letter-spacing:-.03em;margin:18px 0 6px}
+h2{font-size:1.15rem;margin:34px 0 8px}
+p,li{color:#D3DFE1}
+.meta{color:var(--muted);font-size:.9rem}
+.box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:18px 0}
+.warn{border-color:rgba(240,174,69,.45)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th,td{text-align:left;vertical-align:top;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+.todo{background:rgba(240,174,69,.18);color:var(--amber);padding:0 4px;border-radius:4px}
+nav{display:flex;gap:16px;flex-wrap:wrap;font-size:.92rem}
+</style>
+</head>
+<body>
+<main>
+<nav><a href="/">← Inicio</a><a href="/entrar">Entrar</a><a href="/privacidad">Privacidad</a><a href="/aviso-de-riesgo">Aviso de riesgo</a></nav>
+<h1>Política de tratamiento de datos personales</h1>
+<p class="meta">Versión 2026-11-15 · Ley 1581 de 2012 y Decreto 1074 de 2015 (Colombia)</p>
+
+<div class="box warn"><b>Borrador pendiente de revisión legal.</b> Antes de abrir el servicio al público, un abogado debe revisar este texto y el responsable debe completar los datos marcados <span class="todo">COMPLETAR</span>.</div>
+
+<h2>1. Responsable del tratamiento</h2>
+<p>Razón social o nombre: <span class="todo">COMPLETAR</span> · NIT o cédula: <span class="todo">COMPLETAR</span> · Domicilio: <span class="todo">COMPLETAR</span> · Correo para ejercer tus derechos: <span class="todo">COMPLETAR</span></p>
+
+<h2>2. Qué datos tratamos y para qué</h2>
+<table>
+<tr><th>Dato</th><th>Finalidad</th></tr>
+<tr><td>Usuario y contraseña (guardada solo como hash scrypt; nadie puede leerla)</td><td>Crear tu cuenta y permitirte entrar</td></tr>
+<tr><td>Contacto y mensaje opcionales de la solicitud</td><td>Que el administrador revise tu solicitud y pueda avisarte</td></tr>
+<tr><td>Dirección IP, navegador, fecha y acciones de seguridad (inicio de sesión, cambios de contraseña, aprobaciones)</td><td>Seguridad de la cuenta, prevención de fraude y límites de intentos</td></tr>
+<tr><td>Ajustes que escribes (capital de referencia, riesgo por operación, lista de seguimiento) y posiciones que registras</td><td>Calcular tamaños de posición y mostrarte tu cartera. Son datos que tú introduces; no conectamos con tus cuentas de exchange</td></tr>
+<tr><td>Identificador de chat de Telegram, si lo vinculas</td><td>Enviarte alertas</td></tr>
+<tr><td>Referencia, plan, monto y estado de tus pagos</td><td>Activar el plan contratado y llevar contabilidad. Los datos de tarjeta los recibe directamente el proveedor de pagos; Crypto Radar no los ve ni los guarda</td></tr>
+</table>
+<p>No tratamos datos sensibles ni datos de menores de edad. El servicio es solo para mayores de 18 años.</p>
+
+<h2>3. Cookies</h2>
+<p>Solo usamos una cookie técnica de sesión (<code>cr_session</code>), necesaria para mantenerte conectado. No usamos cookies de publicidad ni de analítica.</p>
+
+<h2>4. Con quién se comparten (encargados) y transferencias internacionales</h2>
+<p>Para funcionar, el servicio usa proveedores que pueden tratar datos fuera de Colombia:</p>
+<ul>
+<li>Render: alojamiento del servidor.</li>
+<li>Neon: base de datos PostgreSQL.</li>
+<li>Google Fonts: tipografías; recibe la IP de tu navegador.</li>
+<li>Telegram: solo si lo vinculas.</li>
+<li>Wompi y NOWPayments: solo si pagas.</li>
+</ul>
+<p>Al aceptar esta política autorizas esa transferencia para las finalidades descritas. No vendemos ni cedemos tus datos a terceros para publicidad.</p>
+
+<h2>5. Tus derechos</h2>
+<p>Puedes conocer, actualizar, rectificar y pedir la supresión de tus datos. También puedes revocar la autorización, pedir prueba de ella y presentar quejas ante la Superintendencia de Industria y Comercio. Para ejercerlos, escribe al correo del punto 1:</p>
+<ul>
+<li>las consultas se responden en un máximo de 10 días hábiles;</li>
+<li>los reclamos, en un máximo de 15 días hábiles.</li>
+</ul>
+<p>La supresión no procede cuando exista un deber legal o contractual de conservar el dato, por ejemplo los registros contables de pagos.</p>
+
+<h2>6. Conservación y seguridad</h2>
+<p>Conservamos los datos mientras tu cuenta exista y, después, solo lo necesario para cumplir obligaciones legales.</p>
+<p>Medidas de seguridad:</p>
+<ul>
+<li>conexión cifrada (HTTPS con HSTS);</li>
+<li>contraseñas con hash;</li>
+<li>sesiones guardadas como hash;</li>
+<li>verificación en dos pasos para administradores;</li>
+<li>registro de accesos;</li>
+<li>copias de seguridad cifradas en tránsito.</li>
+</ul>
+
+<h2>7. Cambios</h2>
+<p>Si cambiamos esta política, publicaremos la nueva versión con su fecha. Si el cambio afecta las finalidades, te pediremos una nueva autorización.</p>
+</main>
+</body>
+</html>

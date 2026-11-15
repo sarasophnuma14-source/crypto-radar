@@ -296,3 +296,7 @@ td.wrap-cell{white-space:normal;max-width:260px;color:var(--muted)}
 .adm-forms form{margin-top:12px}
 .adm-forms h4{margin:0 0 8px;font-size:.95rem}
 #adminBadge{background:var(--amber);color:#1C1406}
+
+/* verificación en dos pasos */
+.mfa{margin-top:18px;border-top:1px solid var(--line, rgba(191,211,214,.12));padding-top:14px}
+.mfa code.secret{font-size:1.05rem;letter-spacing:.06em;word-break:break-all}

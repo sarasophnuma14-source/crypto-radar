@@ -43,6 +43,8 @@ Nadie puede convertirse en administrador desde la web.
 | `CRYPTO_RADAR_ADMIN_PASSWORD` | Sí con cuentas (sin ella no arranca) | Contraseña del administrador: mínimo 12 caracteres y sin contener el usuario. Solo se usa al crearlo |
 | `CRYPTO_RADAR_ADMIN_RESET` | No | `1` vuelve a poner la contraseña de `CRYPTO_RADAR_ADMIN_PASSWORD` al arrancar (si la olvidaste). Quítala después |
 | `CRYPTO_RADAR_ADMIN_TAKEOVER` | No | Solo si el servidor no arranca porque una cuenta normal ya tiene el nombre del administrador: `1` pone esa cuenta en cuarentena y crea el administrador nuevo. Quítala después. Ver `docs/SEGURIDAD.md` |
+| `CRYPTO_RADAR_ADMIN_TOTP` | No | `required` (por defecto): el administrador debe activar la verificación en dos pasos (TOTP) antes de usar cualquier acción de administración. `optional` solo para pruebas locales |
+| `CRYPTO_RADAR_PAYMENTS` | No | `off` (por defecto): pagos desactivados aunque haya claves. `sandbox`: solo APIs y claves de prueba. `live`: cobros reales; solo lo activa a mano el responsable del negocio |
 | `CRYPTO_RADAR_ALLOW_SQLITE` | No | Solo pruebas: permite el modo cuentas en Render sin `DATABASE_URL` (por defecto se niega a arrancar) |
 | `CRYPTO_RADAR_PASSWORD` | Sí sin cuentas fuera de localhost | Contraseña única del panel en el modo antiguo |
 | `CRYPTO_RADAR_HOST` | No | `0.0.0.0` en servidores |
@@ -53,13 +55,14 @@ Nadie puede convertirse en administrador desde la web.
 | `WOMPI_PUBLIC_KEY` | Para cobrar con Wompi | Llave pública del comercio |
 | `WOMPI_INTEGRITY_SECRET` | Para cobrar con Wompi | Secreto de integridad (firma del checkout) |
 | `WOMPI_EVENTS_SECRET` | Para cobrar con Wompi | Secreto de eventos (firma del webhook) |
-| `WOMPI_API` | No | `https://sandbox.wompi.co/v1` para pruebas; por defecto producción |
 | `COP_PER_USD` | Para cobrar con Wompi | Tasa para cobrar en pesos el precio en dólares (p. ej. 4100). Sin ella Wompi queda desactivado |
 | `NOWPAYMENTS_API_KEY` | Para cobrar en cripto | Clave de API de NOWPayments |
 | `NOWPAYMENTS_IPN_SECRET` | Para cobrar en cripto | Secreto IPN (firma HMAC-SHA512) |
 | `CRYPTO_RADAR_STORAGE` | No | `db` guarda los informes en la base aunque no haya `DATABASE_URL` |
 
-Si faltan las claves de un proveedor, ese método de pago aparece desactivado. **Nunca se concede un plan sin la
+Con `CRYPTO_RADAR_PAYMENTS=off` (o sin definir) los pagos están desactivados aunque existan claves. En `sandbox` la app
+usa `https://sandbox.wompi.co/v1` y `https://api-sandbox.nowpayments.io/v1`, y una llave pública de Wompi que no empiece
+por `pub_test_` desactiva Wompi. Si faltan las claves de un proveedor, ese método de pago aparece desactivado. **Nunca se concede un plan sin la
 confirmación del proveedor**: el webhook se verifica con su firma y además se vuelve a consultar la transacción en la API
 (estado, referencia, monto y moneda).
 
@@ -78,8 +81,10 @@ confirmación del proveedor**: el webhook se verifica con su firma y además se 
 5. Webhooks:
    - Wompi (panel de comercio → Desarrolladores → URL de eventos): `https://TU-APP.onrender.com/api/billing/wompi/webhook`
    - NOWPayments (Store settings → IPN callback): `https://TU-APP.onrender.com/api/billing/nowpayments/ipn`
-6. Haz un pago de prueba en el sandbox de cada proveedor (`WOMPI_API=https://sandbox.wompi.co/v1` y llaves de prueba)
-   y comprueba en Configuración → Pagos que aparece como verificado y que el plan cambió.
+6. Antes de cobrar: `python main.py payments-selftest` (simulador local, sin red) y después, con
+   `CRYPTO_RADAR_PAYMENTS=sandbox` y las llaves de prueba de cada proveedor, un pago de prueba real en su sandbox.
+   Comprueba en Configuración → Pagos que aparece como verificado y que el plan cambió. Ver `docs/PRODUCCION_RENDER_NEON.md`.
+7. Activa la verificación en dos pasos del administrador (Configuración → Cuenta) y ejecuta `python main.py preflight`.
 
 Para volver al modo anterior basta con quitar `CRYPTO_RADAR_ACCOUNTS`.
 
