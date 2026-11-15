@@ -182,6 +182,11 @@ def run(settings=None):
         settings = settings or load_settings()
         _, errors = check_signals(settings)
         update_trades(settings)
+        try:
+            from . import meme_radar
+            meme_radar.scan(settings)
+        except Exception as e:
+            errors.append(f"radar: {e}")
         status["last_check"] = _now().isoformat()
         status["last_error"] = (f"{len(errors)} monedas sin datos: " + "; ".join(errors[:3])) if errors else None
     except Exception as e:
@@ -197,6 +202,7 @@ def state():
     # solo resultados (señal, niveles y desenlace), para que la estrategia no se pueda copiar.
     hidden = {"vol_x", "day_gain_pct"}
     signals = [{k: v for k, v in s.items() if k not in hidden} for s in reversed(st["signals"][-60:])]
-    return {"status": status, "stats": stats(st), "signals": signals,
+    from . import meme_radar
+    return {"status": status, "stats": stats(st), "signals": signals, "radar": meme_radar.state(),
             "open": [t for t in st["trades"] if t["status"] == "OPEN"],
             "closed": list(reversed([t for t in st["trades"] if t["status"] == "CLOSED"]))[:200]}
