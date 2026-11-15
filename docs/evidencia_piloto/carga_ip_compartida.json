@@ -1,0 +1,54 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 10.0,
+  "pausa_s": 1.0,
+  "activos_en_informe": 40,
+  "preparacion_s": 27.4,
+  "rss_mb_reposo": 81.3,
+  "rss_mb_final": 337.3
+ },
+ "niveles": [
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 220.3,
+    "p95_ms": 317.2,
+    "p99_ms": 323.9,
+    "max_ms": 325.6,
+    "codigos": {
+     "200": 20,
+     "429": 30
+    },
+    "segundos_rafaga": 0.33
+   },
+   "panel": {
+    "n": 200,
+    "p50_ms": 9.8,
+    "p95_ms": 57.1,
+    "p99_ms": 76.3,
+    "max_ms": 83.6,
+    "codigos": {
+     "402": 12,
+     "200": 188
+    },
+    "rps": 20.0
+   },
+   "errores": {},
+   "respuestas_402_por_plan": 12,
+   "rss_mb_max": 337.3,
+   "rss_mb_min": 81.3,
+   "hilos_max": 17,
+   "cpu_pct_medio": 17.7,
+   "pg_conexiones_max": 17,
+   "pg_conexiones_abiertas": 15,
+   "peticiones_http": 250,
+   "muestras_con_esperas_por_bloqueo": "0/41"
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0
+}

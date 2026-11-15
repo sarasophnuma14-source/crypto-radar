@@ -172,8 +172,16 @@ def execute(q, params=()):
                 c.commit()
             return cur
         except Exception as e:
-            # conexión caída (Neon cierra las inactivas): reconectar una vez
-            if attempt == 0 and IS_PG and "closed" in str(e).lower():
+            # Conexión caída (Neon la cierra al suspender la base, o el servidor la terminó): reconectar una vez.
+            # psycopg marca la conexión como `broken`; el primer error dice «terminating connection…», no «closed».
+            # En ese caso la sentencia no llegó a ejecutarse, por eso repetirla es seguro.
+            c0 = getattr(_local, "c", None)
+            dead = c0 is not None and (getattr(c0, "broken", False) or getattr(c0, "closed", False))
+            if attempt == 0 and IS_PG and (dead or "closed" in str(e).lower()):
+                try:
+                    c0.close()
+                except Exception:
+                    pass
                 _local.c = None
                 continue
             raise

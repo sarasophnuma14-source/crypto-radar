@@ -8,6 +8,7 @@ import mimetypes
 mimetypes.add_type("application/manifest+json", ".webmanifest")
 mimetypes.add_type("image/svg+xml", ".svg")
 import os
+import queue
 import re
 import threading
 import time
@@ -438,6 +439,48 @@ def paper_scheduler():
 ADMIN_ENV = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD")
 
 
+class PooledHTTPServer(ThreadingHTTPServer):
+    """Servidor con un número FIJO de hilos de trabajo (CRYPTO_RADAR_WORKERS, por defecto 16).
+
+    ThreadingHTTPServer crea un hilo por petición: cada hilo abría su propia conexión a PostgreSQL (una por petición,
+    con TLS en Neon), la memoria crecía con la concurrencia y la cola de escucha de 5 conexiones provocaba conexiones
+    rechazadas en ráfagas (auditoría del piloto, F-04/F-05). Con hilos fijos cada hilo reutiliza su conexión y la cola
+    de escucha es de 128.
+    """
+    request_queue_size = 128
+    daemon_threads = True
+
+    def __init__(self, addr, handler, workers=None):
+        super().__init__(addr, handler)
+        n = int(workers or os.environ.get("CRYPTO_RADAR_WORKERS") or 16)
+        self.workers = max(2, min(n, 128))
+        self._jobs = queue.Queue()
+        self.thread_prefix = f"http-{id(self):x}-"
+        for i in range(self.workers):
+            threading.Thread(target=self._work, name=f"{self.thread_prefix}{i}", daemon=True).start()
+
+    def _work(self):
+        while True:
+            job = self._jobs.get()
+            if job is None:                 # server_close(): el hilo termina
+                return
+            request, client_address = job
+            try:
+                self.finish_request(request, client_address)
+            except Exception:
+                self.handle_error(request, client_address)
+            finally:
+                self.shutdown_request(request)
+
+    def process_request(self, request, client_address):
+        self._jobs.put((request, client_address))
+
+    def server_close(self):
+        super().server_close()
+        for _ in range(self.workers):
+            self._jobs.put(None)
+
+
 def serve(port=None, host=None, schedule=True):
     s = load_settings()
     port = int(port or os.environ.get("PORT") or s["port"])
@@ -475,6 +518,6 @@ def serve(port=None, host=None, schedule=True):
         threading.Thread(target=paper_scheduler, daemon=True).start()
     if os.environ.get("KEEPALIVE") == "1":
         threading.Thread(target=keepalive, daemon=True).start()
-    httpd = ThreadingHTTPServer((host, port), Handler)
-    print(f"Crypto Radar {__version__} en http://localhost:{port}  (Ctrl+C para detener)", flush=True)
+    httpd = PooledHTTPServer((host, port), Handler)
+    print(f"Crypto Radar {__version__} en http://localhost:{port}  ({httpd.workers} hilos; Ctrl+C para detener)", flush=True)
     httpd.serve_forever()

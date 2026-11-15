@@ -34,6 +34,8 @@ services:
         sync: false            # usuario del administrador (se crea al arrancar; aprueba las solicitudes de acceso)
       - key: CRYPTO_RADAR_ADMIN_PASSWORD
         sync: false            # contraseña del administrador, mínimo 12 caracteres
+      - key: MALLOC_ARENA_MAX
+        value: "2"             # devuelve memoria al sistema tras picos de carga (prueba de carga: 345 → 162 MB en reposo)
       - key: CRYPTO_RADAR_ADMIN_TOTP
         value: required        # el administrador debe activar TOTP antes de usar el panel de administración
       - key: CRYPTO_RADAR_PAYMENTS

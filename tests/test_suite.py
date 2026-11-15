@@ -1507,9 +1507,10 @@ cfg = json.loads(sys.argv[2])
 from radar import server, auth, db
 
 class FakeHTTPServer:                       # sustituye solo al socket: todo lo anterior es el serve() real
+    workers = 0
     def __init__(self, *a, **k): pass
     def serve_forever(self): print("SERVING", flush=True)
-server.ThreadingHTTPServer = FakeHTTPServer
+server.ThreadingHTTPServer = server.PooledHTTPServer = FakeHTTPServer
 
 if cfg.get("squatter"):                     # alguien reservó el nombre antes de configurar el administrador
     adm = os.environ.pop("CRYPTO_RADAR_ADMIN_USER", None)
@@ -2253,6 +2254,425 @@ class T24_Preflight(unittest.TestCase):
     def test_render_yaml_has_no_inline_secrets(self):
         from radar import preflight
         self.assertEqual(preflight._render_yaml_secrets()[0], "ok")
+
+
+# ================================================================== 25. Auditoría final del piloto: pruebas adversariales
+class T25_Adversarial(T13_SaaS):
+    PW = "clave muy segura 123"
+
+    def setUp(self):
+        auth.reset_rate_limits()
+
+    def user(self, plan="free", days=0):
+        auth.reset_rate_limits()
+        (st, r, _), name = self.request()
+        self.assertEqual(st, 200, r)
+        self.approve(name, plan, days)
+        op = self.client()
+        st, r, hd = self.call(op, "/api/auth/login", {"username": name, "password": self.PW})
+        self.assertEqual(st, 200, r)
+        return op, {"X-CSRF-Token": r["csrf"]}, name, hd
+
+    # --- sesiones
+    def test_cookie_flags_and_server_side_logout(self):
+        op, h, name, hd = self.user()
+        ck = hd.get("Set-Cookie")
+        for flag in ("HttpOnly", "SameSite=Lax", "Path=/"):
+            self.assertIn(flag, ck)
+        token = re.search(r"cr_session=([^;]+)", ck).group(1)
+        self.assertEqual(self.call(op, "/api/auth/logout", {}, h)[0], 200)
+        raw = urllib.request.build_opener()
+        st, _, _ = self.call(raw, "/api/me", headers={"Cookie": f"cr_session={token}"})
+        self.assertEqual(st, 401)                                        # el token robado ya no vale tras salir
+
+    def test_forged_and_rotated_tokens_rejected(self):
+        raw = urllib.request.build_opener()
+        self.assertEqual(self.call(raw, "/api/me", headers={"Cookie": "cr_session=" + "A" * 43})[0], 401)
+        op, h, name, hd = self.user()
+        old = re.search(r"cr_session=([^;]+)", hd.get("Set-Cookie")).group(1)
+        st, _, _ = self.call(op, "/api/auth/login", {"username": name, "password": self.PW})
+        self.assertEqual(st, 200)
+        self.assertEqual(self.call(raw, "/api/me", headers={"Cookie": f"cr_session={old}"})[0], 401)   # rotación
+
+    # --- TOTP
+    def test_totp_concurrent_replay_only_one_wins(self):
+        from radar import totp
+        op, h, name, _ = self.user()
+        st, r, _ = self.call(op, "/api/auth/totp/setup", {"password": self.PW}, h)
+        secret = r["secret"]
+        self.assertEqual(self.call(op, "/api/auth/totp/enable", {"code": totp.code(secret)}, h)[0], 200)
+        code = totp.code(secret, time.time() + 30)
+        results = []
+        def go():
+            results.append(self.call(self.client(), "/api/auth/login", {"username": name, "password": self.PW, "code": code})[0])
+        ts = [threading.Thread(target=go) for _ in range(8)]
+        [t.start() for t in ts]; [t.join() for t in ts]
+        self.assertEqual(results.count(200), 1, results)               # un código, una sola sesión
+
+    def test_totp_cannot_be_reenrolled_with_session_and_password(self):
+        from radar import totp
+        op, h, name, _ = self.user()
+        st, r, _ = self.call(op, "/api/auth/totp/setup", {"password": self.PW}, h)
+        self.call(op, "/api/auth/totp/enable", {"code": totp.code(r["secret"])}, h)
+        op2 = self.client()
+        st, r2, _ = self.call(op2, "/api/auth/login", {"username": name, "password": self.PW,
+                                                         "code": totp.code(r["secret"], time.time() + 30)})
+        st, _, _ = self.call(op2, "/api/auth/totp/setup", {"password": self.PW}, {"X-CSRF-Token": r2["csrf"]})
+        self.assertEqual(st, 409)
+
+    def test_admin_first_enrolment_is_trust_on_first_use(self):
+        """Riesgo documentado (R-02): quien tenga la contraseña de un admin SIN TOTP todavía puede inscribir el suyo."""
+        op, h, name, _ = self.user()
+        db.execute("UPDATE users SET is_admin = 1 WHERE email = ?", (name,))
+        os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "required"
+        try:
+            st, _, _ = self.call(op, "/api/auth/totp/setup", {"password": self.PW}, h)
+            self.assertEqual(st, 200)
+        finally:
+            os.environ["CRYPTO_RADAR_ADMIN_TOTP"] = "optional"
+
+    def test_env_reset_closes_admin_sessions(self):
+        keep = {k: os.environ.get(k) for k in ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD", "CRYPTO_RADAR_ADMIN_RESET")}
+        name = f"jefe{random.randint(0, 10**9)}"
+        try:
+            os.environ.update({"CRYPTO_RADAR_ADMIN_USER": name, "CRYPTO_RADAR_ADMIN_PASSWORD": "clave inicial del jefe 7"})
+            auth.ensure_admin()
+            op = self.client()
+            self.assertEqual(self.call(op, "/api/auth/login", {"username": name, "password": "clave inicial del jefe 7"})[0], 200)
+            os.environ.update({"CRYPTO_RADAR_ADMIN_PASSWORD": "clave nueva del jefe 8", "CRYPTO_RADAR_ADMIN_RESET": "1"})
+            self.assertEqual(auth.ensure_admin()["result"], "restablecido")
+            self.assertEqual(self.call(op, "/api/me")[0], 401)          # la sesión del atacante muere
+            self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": name, "password": "clave inicial del jefe 7"})[0], 401)
+        finally:
+            for k, v in keep.items():
+                if v is None: os.environ.pop(k, None)
+                else: os.environ[k] = v
+
+    # --- CSRF
+    def test_csrf_variants_rejected(self):
+        op, h, name, _ = self.user()
+        op2, h2, _, _ = self.user()
+        body = {"risk_per_trade_pct": 2}
+        self.assertEqual(self.call(op, "/api/me/settings", body)[0], 403)                        # sin token
+        self.assertEqual(self.call(op, "/api/me/settings", body, h2)[0], 403)                    # token de otra sesión
+        self.assertEqual(self.call(op, "/api/me/settings", body, dict(h, Origin="https://evil.example"))[0], 403)
+        self.assertEqual(self.call(op, "/api/me/settings", None, dict(h, **{"Content-Type": "text/plain"}),
+                                   raw=json.dumps(body).encode())[0], 403)                       # formulario simple
+        self.assertEqual(self.call(op, "/api/me/settings", body, h)[0], 200)
+
+    # --- XSS (lado servidor; el recorrido en el navegador está en tests/piloto/xss_navegador.js)
+    def test_stored_payloads_served_as_json_and_csp_blocks_inline(self):
+        payload = '<img src=x onerror="window.__pwn=1"><script>window.__pwn=2</script>'
+        name = f"xss{random.randint(0, 10**9)}"
+        st, _, _ = self.call(self.client(), "/api/auth/request", {"consent": "2026-11-15", "username": name,
+                             "password": self.PW, "contact": payload, "note": payload})
+        self.assertEqual(st, 200)
+        row = db.one("SELECT contact, request_note FROM users WHERE email = ?", (name,))
+        self.assertIn("<script>", row["request_note"])                 # se guarda tal cual; la defensa es al mostrar
+        r = urllib.request.urlopen(self.base + "/entrar")
+        csp = r.headers["Content-Security-Policy"]
+        self.assertIn("script-src 'self'", csp); self.assertNotIn("unsafe-inline' ;", csp)
+        self.assertNotRegex(csp, r"script-src[^;]*unsafe-inline")
+        js = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        for field in ("x.contact", "x.request_note", "x.email"):
+            self.assertIn(f"esc({field}", js)
+
+    # --- escalada de privilegios
+    def test_privilege_escalation_attempts(self):
+        op, h, name, _ = self.user()
+        self.call(op, "/api/me/settings", {"is_admin": 1, "plan": "elite", "plan_until": 9e12, "status": "active",
+                                           "totp_enabled": 1}, h)
+        row = db.one("SELECT is_admin, plan, plan_until, totp_enabled FROM users WHERE email = ?", (name,))
+        self.assertEqual((row["is_admin"], row["plan"], row["totp_enabled"]), (0, "free", 0))
+        uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        for path, body in (("/api/admin/user", {"id": uid, "action": "approve", "plan": "elite", "days": 300}),
+                           ("/api/admin/grant", {"email": name, "plan": "elite", "days": 300, "reason": "yo"}),
+                           ("/api/admin/user/create", {"username": "otro.admin", "password": "x" * 14}),
+                           ("/api/admin/user/password", {"id": self.admin["id"], "password": "y" * 14}),
+                           ("/api/scan", {}), ("/api/settings", {"telegram_bot_token": "x"})):
+            self.assertEqual(self.call(op, path, body, h)[0], 403, path)
+        self.assertEqual(self.call(op, "/api/admin/users")[0], 403)
+        self.assertEqual(self.call(op, "/api/paper/report")[0], 403)
+        self.assertEqual(db.one("SELECT plan FROM users WHERE id = ?", (uid,))["plan"], "free")
+
+    # --- aislamiento entre usuarios
+    def test_users_cannot_touch_each_others_data(self):
+        opa, ha, a, _ = self.user("pro", 30)
+        opb, hb, b, _ = self.user("pro", 30)
+        st, pos, _ = self.call(opa, "/api/positions", {"symbol": "BTC", "entry": 100, "qty": 1}, ha)
+        self.assertEqual(st, 200, pos)
+        for action in ("close", "update", "delete"):
+            st, _, _ = self.call(opb, f"/api/positions/{pos['id']}/{action}", {"price": 1, "stop": 1}, hb)
+            self.assertEqual(st, 404, action)
+        self.assertEqual([p["id"] for p in self.call(opb, "/api/positions")[1]], [])
+        mine = self.call(opa, "/api/positions")[1]
+        self.assertEqual((mine[0]["status"], mine[0]["entry"]), ("OPEN", 100))
+        ida = db.one("SELECT id FROM users WHERE email = ?", (a,))["id"]
+        acts = self.call(opb, "/api/activity")[1]
+        self.assertTrue(acts and all("position_add" != x["action"] for x in acts))
+        self.assertFalse(any(ida in json.dumps(x) for x in self.call(opb, "/api/billing/payments")[1]))
+
+    # --- Telegram multiusuario
+    def test_telegram_link_codes(self):
+        _, _, a, _ = self.user("pro", 30)
+        _, _, b, _ = self.user("pro", 30)
+        ua = db.one("SELECT id FROM users WHERE email = ?", (a,))["id"]
+        ub = db.one("SELECT id FROM users WHERE email = ?", (b,))["id"]
+        code = telegram_bot.new_link_code(ua)
+        self.assertIn("vinculado", telegram_bot.handle({"chat": {"id": 5001}, "text": f"/start {code}"}))
+        self.assertIn("no válido", telegram_bot.handle({"chat": {"id": 5002}, "text": f"/start {code}"}))   # un solo uso
+        self.assertIsNone(auth.get_user(ub)["telegram_chat_id"])
+        code_b = telegram_bot.new_link_code(ub)
+        db.execute("UPDATE telegram_links SET expires_at = 1 WHERE code = ?", (code_b,))
+        self.assertIn("no válido", telegram_bot.handle({"chat": {"id": 5003}, "text": f"/start {code_b}"}))  # vencido
+        out = [telegram_bot.handle({"chat": {"id": 5004}, "text": f"/start {i:08X}"}) for i in range(15)]
+        self.assertTrue(any("Demasiados" in x for x in out))           # F-02: límite de intentos por chat
+        # el mismo chat solo puede quedar ligado a una cuenta
+        code_b2 = telegram_bot.new_link_code(ub)
+        telegram_bot.handle({"chat": {"id": 5001}, "text": f"/start {code_b2}"})
+        self.assertIsNone(auth.get_user(ua)["telegram_chat_id"])
+        self.assertEqual(auth.get_user(ub)["telegram_chat_id"], "5001")
+
+    # --- copias de seguridad manipuladas
+    def test_forged_backup_with_recomputed_hashes(self):
+        env = dict(os.environ, DATABASE_URL="")
+        r = subprocess.run([sys.executable, str(ROOT / "tests" / "piloto" / "ataque_backup.py")], capture_output=True,
+                           text=True, timeout=60, env=dict(env, CRYPTO_RADAR_BACKUP_KEY=""))
+        self.assertIn("NO DETECTADO", r.stdout)                         # sin clave: limitación documentada (F-01)
+        r = subprocess.run([sys.executable, str(ROOT / "tests" / "piloto" / "ataque_backup.py")], capture_output=True,
+                           text=True, timeout=60, env=dict(env, CRYPTO_RADAR_BACKUP_KEY="k" * 40))
+        self.assertIn("DETECTADO", r.stdout); self.assertNotIn("NO DETECTADO", r.stdout)
+
+    def test_backup_signature_wrong_key_rejected(self):
+        from radar import backup
+        import sqlite3
+        tmp = Path(tempfile.mkdtemp(prefix="cr-sig-")); src = str(tmp / "o.db")
+        c = sqlite3.connect(src); backup._ensure_schema(c, False); c.close()
+        old = os.environ.get("CRYPTO_RADAR_BACKUP_KEY")
+        try:
+            os.environ["CRYPTO_RADAR_BACKUP_KEY"] = "a" * 40
+            d = backup.create(src, tmp)
+            self.assertTrue(backup.verify(d)["signed"])
+            os.environ["CRYPTO_RADAR_BACKUP_KEY"] = "b" * 40
+            with self.assertRaises(backup.BackupError):
+                backup.verify(d)
+            os.environ["CRYPTO_RADAR_BACKUP_KEY"] = "corta"
+            with self.assertRaises(backup.BackupError):
+                backup.verify(d)
+        finally:
+            if old is None: os.environ.pop("CRYPTO_RADAR_BACKUP_KEY", None)
+            else: os.environ["CRYPTO_RADAR_BACKUP_KEY"] = old
+
+    # --- secretos
+    def test_no_secrets_in_responses_or_logs(self):
+        op, h, name, _ = self.user()
+        me = json.dumps(self.call(op, "/api/me")[1])
+        for k in ("pw_hash", "totp_secret", "token_hash", "scrypt$"):
+            self.assertNotIn(k, me)
+        pub = json.dumps(self.call(self.client(), "/api/public/status")[1])
+        for k in ("WOMPI", "NOWPAYMENTS", "DATABASE_URL", "secret", "key"):
+            self.assertNotIn(k, pub)
+        acts = json.dumps(self.call(op, "/api/activity")[1])
+        self.assertNotIn(self.PW, acts)
+
+
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T25_Adversarial.__dict__:
+        setattr(T25_Adversarial, _n, None)
+
+
+# ================================================================== 26. Auditoría final del piloto: pagos
+class T26_PagosAdversarial(T14_Pagos):
+    def real(self, pay, **kw):
+        d = {"status": "APPROVED", "reference": pay["reference"], "amount_in_cents": pay["amount_cents"], "currency": "COP"}
+        d.update(kw)
+        return {"data": d}
+
+    def plan(self):
+        u = auth.get_user(self.user["id"])
+        return auth.effective_plan(u), u["plan_until"]
+
+    def test_wompi_pending_then_approved(self):
+        r, pay = self._checkout()
+        self.assertEqual(billing.wompi_webhook(self._event(pay["reference"], "PENDING", pay["amount_cents"]), fetch=lambda t: {})[0], 200)
+        self.assertEqual(db.one("SELECT status, verified FROM payments WHERE reference = ?", (pay["reference"],)), {"status": "PENDING", "verified": 0})
+        self.assertEqual(self.plan()[0], "free")
+        self.assertEqual(billing.wompi_webhook(self._event(pay["reference"], amount=pay["amount_cents"]), fetch=lambda t: self.real(pay))[0], 200)
+        self.assertEqual(self.plan()[0], "pro")
+
+    def test_wompi_reference_not_signed_but_rechecked(self):
+        """La firma de Wompi no cubre la referencia: alguien puede cambiarla en un evento legítimo. La consulta a la
+        API lo detecta porque la transacción real tiene otra referencia."""
+        r, pay = self._checkout()
+        r2, other = self._checkout()
+        ev = self._event(pay["reference"], amount=pay["amount_cents"])
+        ev["data"]["transaction"]["reference"] = other["reference"]     # sigue con firma válida
+        self.assertTrue(billing.wompi_signature_ok(ev, "evsecret"))
+        self.assertEqual(billing.wompi_webhook(ev, fetch=lambda t: self.real(pay))[0], 409)
+        self.assertEqual(self.plan()[0], "free")
+
+    def test_wompi_unknown_reference_currency_and_empty_signature(self):
+        r, pay = self._checkout()
+        ev = self._event("CR-no-existe", amount=1)
+        self.assertEqual(billing.wompi_webhook(ev, fetch=lambda t: {})[0], 404)
+        ev = self._event(pay["reference"], amount=pay["amount_cents"])
+        self.assertEqual(billing.wompi_webhook(ev, fetch=lambda t: self.real(pay, currency="USD"))[0], 409)
+        self.assertEqual(billing.wompi_webhook(ev, fetch=lambda t: self.real(pay, status="DECLINED"))[0], 409)
+        ev2 = dict(ev, signature={"properties": [], "checksum": hashlib.sha256(b"1700000000").hexdigest()})
+        self.assertEqual(billing.wompi_webhook(ev2, fetch=lambda t: self.real(pay))[0], 401)
+        self.assertEqual(self.plan()[0], "free")
+
+    def test_wompi_retries_sequential_and_concurrent(self):
+        r, pay = self._checkout()
+        ev = self._event(pay["reference"], amount=pay["amount_cents"])
+        codes = []
+        ts = [threading.Thread(target=lambda: codes.append(billing.wompi_webhook(ev, fetch=lambda t: self.real(pay))[0])) for _ in range(10)]
+        [t.start() for t in ts]; [t.join() for t in ts]
+        for _ in range(5):
+            codes.append(billing.wompi_webhook(ev, fetch=lambda t: self.real(pay))[0])
+        self.assertTrue(all(c == 200 for c in codes), codes)
+        plan, until = self.plan()
+        self.assertEqual(plan, "pro"); self.assertAlmostEqual(until - time.time(), 30 * 86400, delta=120)
+        n = db.one("SELECT COUNT(*) AS n FROM activity WHERE user_id = ? AND action = 'plan_granted'", (self.user["id"],))["n"]
+        self.assertEqual(n, 1)
+
+    def test_wompi_refund_after_approval_keeps_plan(self):
+        """Riesgo documentado (R-05): un reembolso o anulación posterior NO quita el plan; requiere acción manual."""
+        r, pay = self._checkout()
+        billing.wompi_webhook(self._event(pay["reference"], amount=pay["amount_cents"]), fetch=lambda t: self.real(pay))
+        code, msg = billing.wompi_webhook(self._event(pay["reference"], "VOIDED", pay["amount_cents"]), fetch=lambda t: {})
+        self.assertEqual(code, 200)
+        self.assertEqual(self.plan()[0], "pro")
+        self.assertEqual(db.one("SELECT status FROM payments WHERE reference = ?", (pay["reference"],))["status"], "APPROVED")
+
+    def test_buying_lower_plan_replaces_higher_one(self):
+        """Riesgo documentado (R-05): con Élite vigente, pagar Pro cambia el plan a Pro y se pierde el tiempo de Élite."""
+        db.execute("UPDATE users SET plan = 'elite', plan_until = ? WHERE id = ?", (time.time() + 200 * 86400, self.user["id"]))
+        r, pay = self._checkout()
+        billing.wompi_webhook(self._event(pay["reference"], amount=pay["amount_cents"]), fetch=lambda t: self.real(pay))
+        plan, until = self.plan()
+        self.assertEqual(plan, "pro"); self.assertLess(until - time.time(), 31 * 86400)
+
+    # ---- NOWPayments
+    def crypto_checkout(self, plan="pro"):
+        old = billing._get_json
+        billing._get_json = lambda url, headers=None, data=None, method=None: {"invoice_url": "https://sandbox/x", "id": "i"}
+        try:
+            r = billing.checkout(self.user, plan, "month", "crypto", "https://app.example")
+        finally:
+            billing._get_json = old
+        return db.one("SELECT * FROM payments WHERE reference = ?", (r["reference"],))
+
+    def ipn(self, body, secret="ipn"):
+        return hmac.new(secret.encode(), json.dumps(body, sort_keys=True, separators=(",", ":")).encode(), hashlib.sha512).hexdigest()
+
+    def test_nowpayments_statuses_amounts_and_reuse(self):
+        pay = self.crypto_checkout()
+        ok_api = {"payment_status": "finished", "order_id": pay["reference"], "price_amount": 19, "price_currency": "usd"}
+        for st in ("waiting", "confirming", "partially_paid", "failed", "refunded", "expired"):
+            body = {"payment_id": 1, "order_id": pay["reference"], "payment_status": st}
+            self.assertEqual(billing.nowpayments_ipn(body, self.ipn(body), fetch=lambda p: ok_api)[0], 200, st)
+            self.assertEqual(self.plan()[0], "free", st)
+        body = {"payment_id": 1, "order_id": pay["reference"], "payment_status": "finished"}
+        sig = self.ipn(body)
+        self.assertEqual(billing.nowpayments_ipn(body, "0" * 128, fetch=lambda p: ok_api)[0], 401)
+        self.assertEqual(billing.nowpayments_ipn(body, sig, fetch=lambda p: dict(ok_api, price_currency="eur"))[0], 409)
+        self.assertEqual(billing.nowpayments_ipn(body, sig, fetch=lambda p: dict(ok_api, price_amount=18.99))[0], 409)
+        self.assertEqual(billing.nowpayments_ipn(body, sig, fetch=lambda p: dict(ok_api, payment_status="partially_paid"))[0], 409)
+        self.assertEqual(billing.nowpayments_ipn(body, sig, fetch=lambda p: dict(ok_api, order_id="CR-otro"))[0], 409)   # pago ajeno reutilizado
+        self.assertEqual(self.plan()[0], "free")
+        self.assertEqual(billing.nowpayments_ipn(body, sig.upper(), fetch=lambda p: ok_api)[0], 200)
+        until = self.plan()[1]
+        self.assertEqual(billing.nowpayments_ipn(body, sig, fetch=lambda p: ok_api)[0], 200)            # reintento
+        self.assertEqual(self.plan(), ("pro", until))
+
+    def test_nowpayments_js_style_signatures_accepted(self):
+        """F-03: NOWPayments firma con JSON.stringify; antes se rechazaban IPN con tildes o exponentes."""
+        r = subprocess.run([sys.executable, str(ROOT / "tests" / "piloto" / "firma_nowpayments.py")], capture_output=True, text=True, timeout=60)
+        self.assertEqual(r.returncode, 0, r.stdout)
+        self.assertIn("4/4", r.stdout)
+        self.assertEqual(billing._js_json({"b": 1.0, "a": "ñ", "c": [1e-07, 2.5, None, True]}), '{"a":"ñ","b":1,"c":[1e-7,2.5,null,true]}')
+
+    def test_cross_provider_reference_rejected(self):
+        r, wpay = self._checkout()
+        body = {"payment_id": 9, "order_id": wpay["reference"], "payment_status": "finished"}
+        self.assertEqual(billing.nowpayments_ipn(body, self.ipn(body), fetch=lambda p: {})[0], 404)     # referencia de Wompi
+
+
+for _n in [n for n in dir(T14_Pagos) if n.startswith("test_")]:
+    if _n not in T26_PagosAdversarial.__dict__:
+        setattr(T26_PagosAdversarial, _n, None)
+
+
+# ================================================================== 27. Auditoría final del piloto: servidor con hilos fijos
+class T27_ServidorHilosFijos(unittest.TestCase):
+    def test_burst_without_resets_and_bounded_threads(self):
+        """F-04/F-05: con un hilo por petición y cola de 5, una ráfaga de 50 conexiones daba ConnectionResetError
+        (18 de 50 inicios de sesión en la prueba de carga) y una conexión a PostgreSQL por petición."""
+        from radar import server
+        httpd = server.PooledHTTPServer(("127.0.0.1", 0), server.Handler, workers=4)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        port = httpd.server_address[1]
+        try:
+            self.assertEqual(httpd.request_queue_size, 128)
+            before = threading.active_count()
+            out = []
+            def hit():
+                try:
+                    out.append(urllib.request.urlopen(f"http://127.0.0.1:{port}/healthz", timeout=20).status)
+                except Exception as e:
+                    out.append(type(e).__name__)
+            ts = [threading.Thread(target=hit) for _ in range(80)]
+            [t.start() for t in ts]; [t.join() for t in ts]
+            self.assertEqual(out.count(200), 80, {str(x): out.count(x) for x in set(out)})
+            names = [t.name for t in threading.enumerate() if t.name.startswith(httpd.thread_prefix)]
+            self.assertEqual(len(names), 4)                            # no crece con la concurrencia
+            self.assertLessEqual(threading.active_count(), before + 1)
+        finally:
+            httpd.shutdown(); httpd.server_close()
+
+    def test_worker_survives_handler_errors(self):
+        from radar import server
+        class Boom(server.Handler):
+            def do_GET(self):
+                raise RuntimeError("fallo provocado")
+        httpd = server.PooledHTTPServer(("127.0.0.1", 0), Boom, workers=2)
+        httpd.handle_error = lambda *a: None
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        port = httpd.server_address[1]
+        try:
+            for _ in range(6):
+                with self.assertRaises(Exception):
+                    urllib.request.urlopen(f"http://127.0.0.1:{port}/x", timeout=5)
+            self.assertEqual(len([t for t in threading.enumerate() if t.name.startswith(httpd.thread_prefix)]), 2)
+        finally:
+            httpd.shutdown(); httpd.server_close()
+        time.sleep(0.3)
+        self.assertEqual([t for t in threading.enumerate() if t.name.startswith(httpd.thread_prefix)], [])   # se cierran
+
+    @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
+    def test_pg_reconnects_after_server_terminates_connection(self):
+        """F-06: con hilos fijos la conexión vive más; si PostgreSQL/Neon la corta, la siguiente consulta debe
+        reconectar sola (antes fallaba una petición por hilo: 16 de 40 en tests/piloto/entorno.py)."""
+        code = r'''
+import sys, psycopg; sys.path.insert(0, sys.argv[1])
+from radar import db
+db.init()
+pid = db.one("SELECT pg_backend_pid() AS p", ())["p"]
+with psycopg.connect(db.URL, autocommit=True) as k:
+    k.execute("SELECT pg_terminate_backend(%s)", (pid,))
+import time; time.sleep(0.2)
+ok = [db.one("SELECT 1 AS x", ())["x"] for _ in range(3)]
+print("RECONEXION_OK" if ok == [1, 1, 1] and db.one("SELECT pg_backend_pid() AS p", ())["p"] != pid else "FALLO")
+'''
+        env = dict(os.environ, DATABASE_URL=os.environ["TEST_DATABASE_URL"], CRYPTO_RADAR_HOME=tempfile.mkdtemp())
+        r = subprocess.run([sys.executable, "-c", code, str(ROOT)], capture_output=True, text=True, env=env, timeout=120)
+        self.assertIn("RECONEXION_OK", r.stdout, r.stderr[-2000:])
+
+    def test_serve_uses_pooled_server(self):
+        src = (ROOT / "radar" / "server.py").read_text(encoding="utf-8")
+        self.assertIn("httpd = PooledHTTPServer((host, port), Handler)", src)
+        self.assertNotIn("httpd = ThreadingHTTPServer((host, port), Handler)", src)
 
 
 if __name__ == "__main__":

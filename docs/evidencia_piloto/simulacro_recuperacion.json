@@ -1,0 +1,124 @@
+{
+ "bases_temporales": [
+  "cr_drill_src_9ca9e0",
+  "cr_drill_dst_9ca9e0",
+  "cr_drill_new_9ca9e0"
+ ],
+ "pasos": [
+  {
+   "paso": "Base de origen poblada con la app",
+   "ok": true,
+   "detalle": "{\"users\": 41, \"sessions\": 40, \"positions\": 52, \"payments\": 10, \"activity\": 193, \"telegram_links\": 5, \"kv\": 1}"
+  },
+  {
+   "paso": "Copia creada, firmada y verificada (restauración de prueba en SQLite)",
+   "ok": true,
+   "detalle": "{\"users\": 41, \"activity\": 193, \"positions\": 52, \"payments\": 10, \"telegram_links\": 5, \"kv\": 1}"
+  },
+  {
+   "paso": "Copia idéntica al origen",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "Alteración detectada: monto de un pago cambiado",
+   "ok": true,
+   "detalle": "Copia dañada: payments: SHA-256 distinto"
+  },
+  {
+   "paso": "Alteración detectada: usuario borrado",
+   "ok": true,
+   "detalle": "Copia dañada: users: 40 filas, el manifiesto dice 41; users: SHA-256 distinto"
+  },
+  {
+   "paso": "Alteración detectada: usuario elevado a admin con hashes recalculados",
+   "ok": true,
+   "detalle": "Firma HMAC inválida: la copia fue alterada o se firmó con otra clave"
+  },
+  {
+   "paso": "Alteración detectada: firma eliminada",
+   "ok": true,
+   "detalle": "La copia no está firmada y CRYPTO_RADAR_BACKUP_KEY está definida: no se acepta"
+  },
+  {
+   "paso": "Alteración detectada: tabla sustituida",
+   "ok": true,
+   "detalle": "Copia dañada: positions: 1 filas, el manifiesto dice 52; positions: SHA-256 distinto"
+  },
+  {
+   "paso": "Restaurada en base vacía",
+   "ok": true,
+   "detalle": "{\"users\": 41, \"activity\": 193, \"positions\": 52, \"payments\": 10, \"telegram_links\": 5, \"kv\": 1}"
+  },
+  {
+   "paso": "Registros idénticos campo por campo (usuarios, pagos, posiciones, actividad, Telegram, kv)",
+   "ok": true,
+   "detalle": "{\"users\": true, \"activity\": true, \"positions\": true, \"payments\": true, \"telegram_links\": true, \"kv\": true}"
+  },
+  {
+   "paso": "Sesiones NO restauradas (diseño: hay que volver a entrar)",
+   "ok": true,
+   "detalle": "origen 40 → destino 0"
+  },
+  {
+   "paso": "Segunda restauración sobre base con datos rechazada",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "Desastre: base de origen eliminada",
+   "ok": true,
+   "detalle": "cr_drill_src_9ca9e0"
+  },
+  {
+   "paso": "App arranca sobre la base recuperada (migraciones y esquema)",
+   "ok": true,
+   "detalle": "admin: verificado"
+  },
+  {
+   "paso": "Inicio de sesión con la contraseña original",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "Plan y posiciones intactos",
+   "ok": true,
+   "detalle": "plan pro, posiciones 2"
+  },
+  {
+   "paso": "Reintento de webhook tras recuperar no concede dos veces",
+   "ok": true,
+   "detalle": ""
+  },
+  {
+   "paso": "Pérdida de datos posterior a la copia (RPO) medida",
+   "ok": true,
+   "detalle": "perdido (escrito después de la copia)"
+  }
+ ],
+ "origen": {
+  "users": 41,
+  "sessions": 40,
+  "positions": 52,
+  "payments": 10,
+  "activity": 193,
+  "telegram_links": 5,
+  "kv": 1
+ },
+ "segundos_copia": 0.03,
+ "segundos_restauracion": 0.14,
+ "rto_segundos": 0.64,
+ "despues": {
+  "schema_ok": true,
+  "admin": "verificado",
+  "login_ok": true,
+  "plan_cliente04": "pro",
+  "posiciones_cliente04": 2,
+  "usuario_posterior": "perdido (escrito después de la copia)",
+  "webhook_reintento": 200,
+  "plan_no_extendido": true,
+  "sesiones_restauradas": 0,
+  "segundos_app": 0.27
+ },
+ "resultado": "TODO OK"
+}

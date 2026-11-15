@@ -36,6 +36,18 @@
   riesgo (`/aviso-de-riesgo`). La solicitud de acceso exige aceptarlos y guarda versión y fecha del consentimiento.
 - `docs/PRODUCCION_RENDER_NEON.md` y `docs/PREPARACION_PRODUCCION.md`.
 
+### Auditoría final antes del piloto cerrado
+- Servidor con hilos fijos (`CRYPTO_RADAR_WORKERS`, 16) y cola de escucha de 128: con 100 usuarios simultáneos,
+  0 errores (antes 23 % de inicios de sesión rechazados), 15 conexiones a PostgreSQL en total (antes una por
+  petición) y 345 MB (antes 514 MB). Reconexión automática si PostgreSQL/Neon corta la conexión.
+- Copias de seguridad firmadas con HMAC (`CRYPTO_RADAR_BACKUP_KEY`): ya no se pueden alterar recalculando hashes.
+- NOWPayments: la firma se verifica sobre el JSON de JavaScript (antes se rechazaban IPN con tildes o exponentes).
+- Telegram: 10 intentos de vinculación por chat y hora.
+- `render.yaml`: `MALLOC_ARENA_MAX=2`.
+- 27 pruebas nuevas (258) y scripts reproducibles en `tests/piloto/`: ataques, XSS en navegador, simulacro de
+  desastre, carga y entorno. Informes `docs/AUDITORIA_FINAL_PILOTO.md`, `PRUEBAS_RENDIMIENTO.md`,
+  `RECUPERACION_DESASTRES.md` y `MATRIZ_RIESGOS_PENDIENTES.md`. Veredicto: apto para piloto cerrado con condiciones.
+
 ## 2.0.0 — 2026-11-15 (rama `claude/project-thread-i8udp5`)
 
 Respaldo de la versión anterior: rama `main` (commit 34f6898) y etiqueta local `backup-pre-2.0`.

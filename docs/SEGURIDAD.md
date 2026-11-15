@@ -141,7 +141,19 @@ válida, firma falsa, monto alterado, rechazo, repetición, modo off) y falla si
 ## 8. Copias de seguridad
 
 `python main.py backup create|verify|compare|restore`, en `radar/backup.py`. Ver `docs/PRODUCCION_RENDER_NEON.md`.
+Con `CRYPTO_RADAR_BACKUP_KEY` (32+ caracteres, guardada fuera de la copia) el manifiesto lleva un HMAC-SHA256 y
+`verify`/`restore` rechazan copias sin firma o alteradas. **Sin esa clave los hashes solo detectan daños accidentales**:
+quien pueda escribir en la copia también puede recalcularlos (auditoría del piloto, F-01).
 La copia contiene datos personales, hashes de contraseñas y secretos TOTP: archivos con permisos 600, carpeta 700, y
 debe guardarse cifrada y fuera del repositorio (`backups/` está en `.gitignore`). La restauración solo escribe en una
 base vacía y nunca borra datos.
+
+## 9. Auditoría final del piloto (resumen)
+
+- Telegram: cada chat puede intentar 10 códigos de vinculación por hora (antes, sin límite).
+- NOWPayments: la firma se comprueba sobre el JSON tal como lo serializa JavaScript (antes se rechazaban IPN
+  legítimas con tildes o números en notación exponencial).
+- Servidor con hilos fijos (`CRYPTO_RADAR_WORKERS`, 16) y cola de escucha de 128: sin conexiones rechazadas en ráfagas
+  y como máximo una conexión a PostgreSQL por hilo. Reconexión automática si PostgreSQL/Neon corta la conexión.
+- Detalle y evidencia: `docs/AUDITORIA_FINAL_PILOTO.md`.
 

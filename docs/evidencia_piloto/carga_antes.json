@@ -1,0 +1,130 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 30.0,
+  "pausa_s": 1.0,
+  "activos_en_informe": 40,
+  "preparacion_s": 33.5,
+  "rss_mb_reposo": 81.6,
+  "rss_mb_final": 513.7
+ },
+ "niveles": [
+  {
+   "usuarios": 10,
+   "login": {
+    "n": 10,
+    "p50_ms": 160.5,
+    "p95_ms": 191.1,
+    "p99_ms": 194.6,
+    "max_ms": 195.5,
+    "codigos": {
+     "200": 10
+    },
+    "segundos_rafaga": 0.2
+   },
+   "panel": {
+    "n": 298,
+    "p50_ms": 14.8,
+    "p95_ms": 38.1,
+    "p99_ms": 53.5,
+    "max_ms": 1038.6,
+    "codigos": {
+     "200": 275,
+     "402": 23
+    },
+    "rps": 9.9
+   },
+   "errores": {},
+   "respuestas_402_por_plan": 23,
+   "rss_mb_max": 240.9,
+   "rss_mb_min": 81.6,
+   "hilos_max": 4,
+   "cpu_pct_medio": 7.6,
+   "pg_conexiones_max": 4,
+   "pg_conexiones_abiertas": 308,
+   "peticiones_http": 308,
+   "muestras_con_esperas_por_bloqueo": "0/119"
+  },
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 1014.6,
+    "p95_ms": 1241.8,
+    "p99_ms": 1248.9,
+    "max_ms": 1254.4,
+    "codigos": {
+     "200": 32,
+     "EXC:ConnectionResetError": 18
+    },
+    "segundos_rafaga": 1.26
+   },
+   "panel": {
+    "n": 938,
+    "p50_ms": 14.8,
+    "p95_ms": 59.0,
+    "p99_ms": 1091.9,
+    "max_ms": 1246.4,
+    "codigos": {
+     "200": 896,
+     "402": 42
+    },
+    "rps": 31.3
+   },
+   "errores": {},
+   "respuestas_402_por_plan": 42,
+   "rss_mb_max": 369.4,
+   "rss_mb_min": 240.9,
+   "hilos_max": 13,
+   "cpu_pct_medio": 21.3,
+   "pg_conexiones_max": 12,
+   "pg_conexiones_abiertas": 970,
+   "peticiones_http": 988,
+   "muestras_con_esperas_por_bloqueo": "0/124"
+  },
+  {
+   "usuarios": 100,
+   "login": {
+    "n": 100,
+    "p50_ms": 1276.1,
+    "p95_ms": 2302.8,
+    "p99_ms": 2321.6,
+    "max_ms": 2342.7,
+    "codigos": {
+     "200": 77,
+     "EXC:ConnectionResetError": 23
+    },
+    "segundos_rafaga": 2.38
+   },
+   "panel": {
+    "n": 2234,
+    "p50_ms": 15.1,
+    "p95_ms": 78.4,
+    "p99_ms": 1355.0,
+    "max_ms": 1895.5,
+    "codigos": {
+     "200": 2095,
+     "402": 135,
+     "EXC:ConnectionResetError": 4
+    },
+    "rps": 74.5
+   },
+   "errores": {
+    "EXC:ConnectionResetError": 4
+   },
+   "respuestas_402_por_plan": 135,
+   "rss_mb_max": 513.9,
+   "rss_mb_min": 369.3,
+   "hilos_max": 25,
+   "cpu_pct_medio": 47.1,
+   "pg_conexiones_max": 25,
+   "pg_conexiones_abiertas": 2307,
+   "peticiones_http": 2334,
+   "muestras_con_esperas_por_bloqueo": "0/129"
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0
+}

@@ -14,6 +14,7 @@ La copia SÍ contiene datos personales, hashes de contraseñas y secretos TOTP: 
 """
 from __future__ import annotations
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -31,6 +32,21 @@ SKIPPED = ("sessions", "rate_limits")
 
 class BackupError(Exception):
     pass
+
+
+def _key():
+    """Clave de firma (CRYPTO_RADAR_BACKUP_KEY). Sin ella los hashes solo detectan daños accidentales: quien pueda
+    escribir en la copia también puede recalcularlos. Con ella, el manifiesto lleva un HMAC-SHA256 que no se puede
+    falsificar sin la clave, y verify/restore rechazan copias sin firma o con firma inválida."""
+    k = (os.environ.get("CRYPTO_RADAR_BACKUP_KEY") or "").strip()
+    if k and len(k) < 32:
+        raise BackupError("CRYPTO_RADAR_BACKUP_KEY debe tener al menos 32 caracteres")
+    return k.encode() if k else None
+
+
+def _sign(man, key):
+    body = {k: v for k, v in man.items() if k != "hmac_sha256"}
+    return hmac.new(key, json.dumps(body, sort_keys=True).encode(), hashlib.sha256).hexdigest()
 
 
 def mask(url: str) -> str:
@@ -131,6 +147,9 @@ def create(source: str, out_dir) -> Path:
            "source_backend": "postgresql" if pg else "sqlite", "source": mask(source) if pg else Path(source).name,
            "skipped_tables": list(SKIPPED), "tables": _summary(dump)}
     man["manifest_sha256"] = hashlib.sha256(json.dumps(man, sort_keys=True).encode()).hexdigest()
+    key = _key()
+    if key:
+        man["hmac_sha256"] = _sign(man, key)
     with open(os.open(d / "manifest.json", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
         json.dump(man, f, indent=1, ensure_ascii=False)
     return d
@@ -144,9 +163,15 @@ def _load(backup_dir):
         raise BackupError(f"Manifiesto ilegible: {e}") from e
     if man.get("format") != FORMAT:
         raise BackupError("Formato de copia desconocido")
-    body = {k: v for k, v in man.items() if k != "manifest_sha256"}
+    body = {k: v for k, v in man.items() if k not in ("manifest_sha256", "hmac_sha256")}
     if hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest() != man.get("manifest_sha256"):
         raise BackupError("El manifiesto fue modificado (hash distinto)")
+    key = _key()
+    if key:
+        if not man.get("hmac_sha256"):
+            raise BackupError("La copia no está firmada y CRYPTO_RADAR_BACKUP_KEY está definida: no se acepta")
+        if not hmac.compare_digest(_sign(man, key), str(man["hmac_sha256"])):
+            raise BackupError("Firma HMAC inválida: la copia fue alterada o se firmó con otra clave")
     data, problems = {}, []
     for t in TABLES:
         info = man["tables"].get(t)
@@ -223,7 +248,8 @@ def verify(backup_dir) -> dict:
     man, _ = _load(backup_dir)
     with tempfile.TemporaryDirectory(prefix="cr-verify-") as tmp:
         rows = restore(backup_dir, str(Path(tmp) / "restore-test.db"))
-    return {"created_utc": man.get("created_utc"), "source_backend": man.get("source_backend"), "rows": rows}
+    return {"created_utc": man.get("created_utc"), "source_backend": man.get("source_backend"), "rows": rows,
+            "signed": bool(man.get("hmac_sha256")) and _key() is not None}
 
 
 def compare(backup_dir, source: str) -> list:
@@ -258,11 +284,15 @@ def cli(args) -> int:
             diff = compare(d, src)
             print("Comparación con el origen:", "idéntica" if not diff else "; ".join(diff) + " (hubo escrituras durante la copia)")
             print("AVISO: contiene datos personales y secretos TOTP. Guárdala cifrada y fuera del repositorio.")
+            if not man.get("hmac_sha256"):
+                print("AVISO: copia SIN firma HMAC. Define CRYPTO_RADAR_BACKUP_KEY (32+ caracteres) para detectar alteraciones deliberadas.")
             return 0
         if sub == "verify" and len(args) > 1:
             r = verify(args[1])
             print(f"Copia íntegra y restaurable ({r['source_backend']}, {r['created_utc']}): " +
                   ", ".join(f"{t} {n}" for t, n in r["rows"].items()))
+            print("Firma HMAC verificada." if r["signed"] else
+                  "AVISO: sin firma HMAC (defina CRYPTO_RADAR_BACKUP_KEY): los hashes no protegen contra alteraciones deliberadas.")
             return 0
         if sub == "compare" and len(args) > 1:
             diff = compare(args[1], default_source())
