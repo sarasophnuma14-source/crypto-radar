@@ -797,6 +797,12 @@ class T13_SaaS(unittest.TestCase):
         from radar import server
         cls.httpd.shutdown(); server.ACCOUNTS = False
 
+    def test_client_ip_not_spoofable_via_forwarded_for(self):
+        from radar import server
+        class H: pass
+        h = H(); h.headers = {"X-Forwarded-For": "1.2.3.4, 203.0.113.9"}; h.client_address = ("10.0.0.1", 0)
+        self.assertEqual(server.Handler._client_ip(h), "203.0.113.9")   # el último lo añade el proxy
+
     def test_registration_rate_limited_per_ip(self):
         from radar import auth as _a
         for i in range(5):

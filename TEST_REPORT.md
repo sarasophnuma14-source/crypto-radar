@@ -7,20 +7,20 @@ Fecha de ejecución: 2026-11-15 · Rama `claude/project-thread-i8udp5` · Python
 ```
 $ TEST_DATABASE_URL=postgresql://radar@127.0.0.1:55432/radar python3 tests/test_suite.py -v
 ...
-Ran 157 tests in 7.363s
+Ran 158 tests in 7.243s
 
 OK
 ```
 
-**157 pruebas ejecutadas, 157 aprobadas, 0 fallidas, 0 omitidas.** Todas usan datos sintéticos generados en la propia prueba
+**158 pruebas ejecutadas, 158 aprobadas, 0 fallidas, 0 omitidas.** Todas usan datos sintéticos generados en la propia prueba
 (sin red ni datos de mercado reales), así que son reproducibles. La prueba T17 (PostgreSQL de extremo a extremo) solo corre
-si se define `TEST_DATABASE_URL`; sin esa variable se omite y el total aprobado es 156.
+si se define `TEST_DATABASE_URL`; sin esa variable se omite y el total aprobado es 157.
 
 Cómo repetirlo:
 
 ```
-python3 tests/test_suite.py -v                                   # 156 pruebas (SQLite)
-TEST_DATABASE_URL=postgresql://usuario@host/db python3 tests/test_suite.py -v   # 157, incluye PostgreSQL
+python3 tests/test_suite.py -v                                   # 157 pruebas (SQLite)
+TEST_DATABASE_URL=postgresql://usuario@host/db python3 tests/test_suite.py -v   # 158, incluye PostgreSQL
 ```
 
 Además se ejecutaron los scripts de humo existentes `tests/run_fake.py` y `tests/run_portfolio_fake.py` (mercado simulado
@@ -42,7 +42,7 @@ de extremo a extremo): ambos terminan sin errores.
 | T10 Backtest | 19 | Llenado de órdenes límite y stop-buy, stop el mismo día, huecos, parciales, costes, expiración, universo por fecha, pausa por drawdown no permanente |
 | T11 Almacén y alertas | 8 | Escrituras atómicas entre hilos, deduplicación de alertas (también en paralelo), textos sin promesas de rentabilidad, resumen diario una sola vez |
 | T12 Escáner | 8 | Escaneo completo con mercado simulado, secciones del informe, régimen, ranking ordenado que prefiere fases tempranas y excluye sobreextendidas |
-| T13 SaaS | 23 | Registro, contraseñas débiles, correo duplicado, bloqueo de cuenta, límite por IP, CSRF, origen ajeno, POST no JSON, cuerpo > 64 KB, cookie HttpOnly, cabeceras de seguridad, hash scrypt con sal, token de sesión guardado con hash, cierre de sesión, plan vencido vuelve a Libre, aislamiento entre usuarios, límites del plan Libre, permisos de administrador |
+| T13 SaaS | 24 | Registro, IP del cliente no falsificable con X-Forwarded-For, contraseñas débiles, correo duplicado, bloqueo de cuenta, límite por IP, CSRF, origen ajeno, POST no JSON, cuerpo > 64 KB, cookie HttpOnly, cabeceras de seguridad, hash scrypt con sal, token de sesión guardado con hash, cierre de sesión, plan vencido vuelve a Libre, aislamiento entre usuarios, límites del plan Libre, permisos de administrador |
 | T14 Pagos | 9 | Firma de integridad Wompi, webhook con firma inválida, monto distinto, transacción rechazada, API caída (no se concede nada), concesión solo tras confirmar con la API, idempotencia, firma de NOWPayments, concesión manual solo de administrador con motivo |
 | T15 Telegram y memecoins | 5 | Vinculación por código, código inválido, comandos sin vincular, perfil de riesgo de memecoins, on-chain N/D |
 | T16 Interfaz | 3 | Las 11 secciones existen, sintaxis de `app.js` válida, la vista de backtest no tiene cifras escritas a mano |
@@ -60,6 +60,7 @@ del código o error de la prueba:
 | `random.randint(0, 1e9)` en el ayudante de registro | Error de la prueba | `10**9` (causaba 24 errores en cascada) |
 | El límite de 5 registros por IP y hora bloqueaba las pruebas siguientes | Error de la prueba (el límite funciona) | Se limpia el contador en cada prueba y se añadió una prueba explícita del límite |
 | La prueba de pivotes esperaba `None` al final, pero la lista arrastra el último pivote confirmado | Error de la prueba | Ahora comprueba que un máximo en la vela 198 aún no aparece como pivote |
+| La IP del cliente se tomaba del primer valor de X-Forwarded-For, que escribe el propio cliente: los límites por IP se podían saltar (hallado al preparar el informe para auditoría) | **Fallo real** | `radar/server.py` usa el último valor, el que añade el proxy de Render; prueba nueva |
 | La prueba del universo por fecha tenía la aserción invertida | Error de la prueba | Corregida: el día 130 la moneda con más volumen reciente encabeza el universo |
 
 ## Lo que estas pruebas NO demuestran
@@ -224,13 +225,14 @@ del código o error de la prueba:
 - `test_report_sections`: ok
 - `test_scan_completes`: ok
 
-### T13_SaaS (23 pruebas)
+### T13_SaaS (24 pruebas)
 
 - `test_account_lockout`: ok
 - `test_activity_log`: ok
 - `test_admin_email_gets_admin`: ok
 - `test_body_too_large`: ok
 - `test_checkout_disabled_without_keys`: ok
+- `test_client_ip_not_spoofable_via_forwarded_for`: ok
 - `test_csrf_required`: ok
 - `test_duplicate_email`: ok
 - `test_expired_plan_is_free`: ok

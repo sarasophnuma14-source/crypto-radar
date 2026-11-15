@@ -128,8 +128,9 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _client_ip(self):
+        # El primer valor de X-Forwarded-For lo escribe el cliente (falsificable); el último lo añade el proxy de Render.
         fwd = self.headers.get("X-Forwarded-For", "")
-        return (fwd.split(",")[0].strip() if fwd else self.client_address[0]) or "?"
+        return (fwd.split(",")[-1].strip() if fwd else self.client_address[0]) or "?"
 
     def _same_origin(self):
         """Defensa CSRF: las peticiones que cambian datos deben venir de esta misma web y en JSON."""

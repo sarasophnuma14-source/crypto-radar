@@ -43,7 +43,7 @@ Respaldo de la versión anterior: rama `main` (commit 34f6898) y etiqueta local 
   Backtesting, Rendimiento, Alertas, Configuración. Inicio de sesión, planes y administración. Solo datos del backend.
 
 ### Fase N · Pruebas
-- `tests/test_suite.py`: 157 pruebas ejecutadas y aprobadas (`TEST_REPORT.md`). Encontraron y se corrigieron 2 fallos reales:
+- `tests/test_suite.py`: 158 pruebas ejecutadas y aprobadas (`TEST_REPORT.md`). Encontraron y se corrigieron 3 fallos reales: IP falsificable en los límites por IP,
   texto como bytes en PostgreSQL SQL_ASCII y datos desactualizados marcados como válidos.
 
 ### Fase O · Documentación
@@ -69,4 +69,4 @@ Respaldo de la versión anterior: rama `main` (commit 34f6898) y etiqueta local 
 | Persistencia en Render | Se borraba en cada reinicio | PostgreSQL |
 | Telegram | Un chat fijo | Cada usuario vincula su chat; comandos y resúmenes |
 | Panel | Vistas originales | 11 secciones con datos reales |
-| Pruebas | Scripts de humo | 157 pruebas automáticas |
+| Pruebas | Scripts de humo | 158 pruebas automáticas |
