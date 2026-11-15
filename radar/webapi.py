@@ -44,14 +44,20 @@ def handle(h, method):
     user = sess["user"] if sess else None
 
     if method == "GET":
-        if p.startswith("/static/") or p in ("/", "/index.html"):
+        if p.startswith("/static/"):
             return h._get_single(skip_auth=True)
+        if p in ("/", "/index.html"):
+            return h._static("landing.html")                 # web de ventas (pública)
+        if p == "/entrar":
+            return h._redirect("/app") if user else h._static("entrar.html")
+        if p == "/app":
+            return h._static("index.html") if user else h._redirect("/entrar")
         if p == "/healthz":
             return h._get_single(skip_auth=True)
         if p == "/api/public/status":
             rep = storage.read("latest.json", {}) or {}
             m = rep.get("market") or {}
-            return h._send(200, {"version": __version__, "last_scan": rep.get("at"), "regime": m.get("regime"),
+            return h._send(200, {"version": __version__, "last_scan": rep.get("at"), "access": "approval", "regime": m.get("regime"),
                                  "regime_label": m.get("regime_label"), "verdict": rep.get("verdict"),
                                  "accounts": True, "billing": billing.status(),
                                  "sales_url": os.environ.get("SALES_URL")})
@@ -90,9 +96,7 @@ def handle(h, method):
         if p == "/api/admin/users":
             if not user["is_admin"]:
                 return h._send(403, {"error": "solo administradores"})
-            rows = db.all_("SELECT id, email, created_at, plan, plan_until, is_admin, disabled, "
-                           "telegram_chat_id IS NOT NULL AS telegram FROM users ORDER BY created_at DESC LIMIT 500", ())
-            return h._send(200, rows)
+            return h._send(200, auth.admin_list())
         if p == "/api/settings":
             if not user["is_admin"]:
                 return h._send(200, auth.public(user)["settings"])
@@ -118,12 +122,12 @@ def handle(h, method):
         if p == "/api/billing/wompi/webhook":
             code, msg = billing.wompi_webhook(b)
             return h._send(code, {"result": msg})
-        if p == "/api/auth/register":
-            auth.register(b.get("email"), b.get("password"), ip)
-            tok, csrf, usr = auth.login(b.get("email"), b.get("password"), ip, h.headers.get("User-Agent"))
-            return h._send_cookie(200, {"user": auth.public(usr), "csrf": csrf}, tok, auth.SESSION_DAYS * 86400)
+        if p in ("/api/auth/request", "/api/auth/register"):
+            # no hay registro abierto: la cuenta queda pendiente hasta que el administrador la apruebe
+            auth.request_access(b.get("username") or b.get("email"), b.get("password"), b.get("contact"), b.get("note"), ip)
+            return h._send(200, {"ok": True, "msg": "Solicitud enviada. Podrás entrar cuando el administrador la apruebe."})
         if p == "/api/auth/login":
-            tok, csrf, usr = auth.login(b.get("email"), b.get("password"), ip, h.headers.get("User-Agent"))
+            tok, csrf, usr = auth.login(b.get("username") or b.get("email"), b.get("password"), ip, h.headers.get("User-Agent"))
             if token:
                 auth.logout(token)            # rotación: la sesión anterior deja de valer
             return h._send_cookie(200, {"user": auth.public(usr), "csrf": csrf}, tok, auth.SESSION_DAYS * 86400)
@@ -170,6 +174,15 @@ def handle(h, method):
                 return h._send(400, {"error": "ruta no válida"})
             clean = {k: _f(b.get(k)) for k in ("price", "stop", "tp1", "tp2", "tp3", "qty")}
             multiuser.act(user["id"], parts[3], parts[4], clean)
+            return h._send(200, {"ok": True})
+        if p == "/api/admin/user":
+            auth.admin_set_status(user, b.get("id"), str(b.get("action")), str(b.get("plan") or "free"), b.get("days", 0), ip)
+            return h._send(200, {"ok": True})
+        if p == "/api/admin/user/create":
+            auth.admin_create(user, b.get("username"), b.get("password"), str(b.get("plan") or "free"), b.get("days", 0), ip)
+            return h._send(200, {"ok": True})
+        if p == "/api/admin/user/password":
+            auth.admin_reset_password(user, b.get("id"), b.get("password"), ip)
             return h._send(200, {"ok": True})
         if p == "/api/admin/grant":
             billing.admin_grant(user, b.get("email"), b.get("plan"), b.get("days", 0), b.get("reason", ""))

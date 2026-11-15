@@ -26,7 +26,8 @@ from pathlib import Path
 HOME = tempfile.mkdtemp(prefix="cr-test-")
 os.environ["CRYPTO_RADAR_HOME"] = HOME
 os.environ.pop("DATABASE_URL", None)
-os.environ["CRYPTO_RADAR_ADMIN_EMAIL"] = "admin@example.com"
+os.environ["CRYPTO_RADAR_ADMIN_USER"] = "admin"
+os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave de admin muy segura"
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests"))
 import shutil
@@ -788,6 +789,8 @@ class T13_SaaS(unittest.TestCase):
         from http.server import ThreadingHTTPServer
         server.ACCOUNTS = True
         db.init()
+        auth.ensure_admin()
+        cls.admin = db.one("SELECT * FROM users WHERE email = 'admin'", ())
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
         cls.base = f"http://127.0.0.1:{cls.httpd.server_address[1]}"
         threading.Thread(target=cls.httpd.serve_forever, daemon=True).start()
@@ -805,7 +808,7 @@ class T13_SaaS(unittest.TestCase):
 
     def test_registration_rate_limited_per_ip(self):
         from radar import auth as _a
-        for i in range(5):
+        for i in range(3):
             _a.register(f"rl{i}{random.randint(0, 10**9)}@example.com", "clave muy segura 123", ip="10.9.9.9")
         with self.assertRaises(_a.AuthError) as cm:
             _a.register(f"rl6{random.randint(0, 10**9)}@example.com", "clave muy segura 123", ip="10.9.9.9")
@@ -824,11 +827,26 @@ class T13_SaaS(unittest.TestCase):
         except urllib.error.HTTPError as e:
             return e.code, json.loads(e.read() or b"{}"), e.headers
 
+    def request(self, username=None, pw="clave muy segura 123", op=None, note=None):
+        username = username or f"u{random.randint(0, 10**9)}"
+        body = {"username": username, "password": pw}
+        if note: body["note"] = note
+        return self.call(op or self.client(), "/api/auth/request", body), username
+
+    def approve(self, username, plan="free", days=0):
+        uid = db.one("SELECT id FROM users WHERE email = ?", (username,))["id"]
+        auth.admin_set_status(self.admin, uid, "approve", plan, days)
+        return uid
+
     def signup(self, email=None, pw="clave muy segura 123"):
-        op = self.client(); email = email or f"u{random.randint(0, 10**9)}@example.com"
-        st, r, h = self.call(op, "/api/auth/register", {"email": email, "password": pw})
+        auth._rate.clear()
+        (st, r, _), username = self.request(email, pw)
         self.assertEqual(st, 200, r)
-        return op, r["csrf"], email
+        self.approve(username)
+        op = self.client()
+        st, r, h = self.call(op, "/api/auth/login", {"username": username, "password": pw})
+        self.assertEqual(st, 200, r)
+        return op, r["csrf"], username
 
     def test_password_hash_scrypt_salted(self):
         a, b = auth.hash_password("x" * 12), auth.hash_password("x" * 12)
@@ -836,21 +854,27 @@ class T13_SaaS(unittest.TestCase):
         self.assertTrue(auth.verify_password("x" * 12, a)); self.assertFalse(auth.verify_password("y" * 12, a))
 
     def test_weak_password_rejected(self):
-        st, r, _ = self.call(self.client(), "/api/auth/register", {"email": "weak@example.com", "password": "123"})
+        auth._rate.clear()
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "weakuser", "password": "123"})
         self.assertEqual(st, 400)
+        st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "weakuser", "password": "weakuser12345"})
+        self.assertEqual(st, 400)                                   # contiene el usuario
 
-    def test_invalid_email_rejected(self):
-        st, _, _ = self.call(self.client(), "/api/auth/register", {"email": "no-es-correo", "password": "clave muy segura 123"})
-        self.assertEqual(st, 400)
+    def test_invalid_username_rejected(self):
+        for bad in ("No Válido!", "ab", "x" * 40, "<script>", "a b"):
+            auth._rate.clear()
+            st, _, _ = self.call(self.client(), "/api/auth/request", {"username": bad, "password": "clave muy segura 123"})
+            self.assertEqual(st, 400, bad)
 
     def test_duplicate_email(self):
         op, csrf, email = self.signup()
-        st, _, _ = self.call(self.client(), "/api/auth/register", {"email": email, "password": "clave muy segura 123"})
+        st, _, _ = self.call(self.client(), "/api/auth/request", {"username": email, "password": "clave muy segura 123"})
         self.assertEqual(st, 409)
 
     def test_session_cookie_flags(self):
-        op = self.client()
-        st, r, h = self.call(op, "/api/auth/register", {"email": "flags@example.com", "password": "clave muy segura 123"})
+        (st, r, _), u = self.request("flags.user")
+        self.approve(u)
+        st, r, h = self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})
         ck = h.get("Set-Cookie")
         self.assertIn("HttpOnly", ck); self.assertIn("SameSite=Lax", ck)
 
@@ -890,7 +914,7 @@ class T13_SaaS(unittest.TestCase):
     def test_account_lockout(self):
         op, csrf, email = self.signup()
         bad = self.client()
-        codes = [self.call(bad, "/api/auth/login", {"email": email, "password": "incorrecta 12345"})[0] for _ in range(6)]
+        codes = [self.call(bad, "/api/auth/login", {"username": email, "password": "incorrecta 12345"})[0] for _ in range(6)]
         self.assertEqual(codes[-1], 429)
 
     def test_logout_invalidates_session(self):
@@ -911,10 +935,111 @@ class T13_SaaS(unittest.TestCase):
         self.assertEqual(self.call(op, "/api/scan", {}, {"X-CSRF-Token": csrf})[0], 403)
         self.assertEqual(self.call(op, "/api/settings", {"universe_size": 5}, {"X-CSRF-Token": csrf})[0], 403)
 
-    def test_admin_email_gets_admin(self):
+    def test_env_admin_is_admin_and_registration_cannot_create_admins(self):
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": "admin", "password": "clave de admin muy segura"})
+        self.assertEqual(st, 200, r); self.assertTrue(r["user"]["is_admin"])
+        (st, r, _), u = self.request("admin2")
+        self.assertEqual(st, 200)
+        self.assertEqual(db.one("SELECT is_admin, status FROM users WHERE email = 'admin2'", ()), {"is_admin": 0, "status": "pending"})
+
+    def test_request_does_not_log_in_and_pending_cannot_enter(self):
         op = self.client()
-        st, r, _ = self.call(op, "/api/auth/register", {"email": "admin@example.com", "password": "clave muy segura 123"})
-        self.assertTrue(r["user"]["is_admin"])
+        (st, r, h), u = self.request(op=op)
+        self.assertEqual(st, 200); self.assertIsNone(h.get("Set-Cookie")); self.assertNotIn("csrf", r)
+        self.assertEqual(self.call(op, "/api/me")[0], 401)
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})
+        self.assertEqual(st, 403); self.assertIn("pendiente", r["error"])
+        # con la contraseña equivocada no se revela que existe una solicitud
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": u, "password": "otra clave 98765"})
+        self.assertEqual(st, 401)
+        self.approve(u)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u.upper(), "password": "clave muy segura 123"})[0], 200)
+
+    def test_same_error_for_unknown_user_and_wrong_password(self):
+        op, csrf, u = self.signup()
+        a = self.call(self.client(), "/api/auth/login", {"username": u, "password": "mala clave 12345"})
+        b = self.call(self.client(), "/api/auth/login", {"username": "no.existe", "password": "mala clave 12345"})
+        self.assertEqual((a[0], a[1]["error"]), (b[0], b[1]["error"]))
+
+    def test_rejected_and_disabled_users(self):
+        (st, r, _), u = self.request()
+        uid = db.one("SELECT id FROM users WHERE email = ?", (u,))["id"]
+        auth.admin_set_status(self.admin, uid, "reject")
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})[0], 403)
+        op, csrf, u2 = self.signup()
+        uid2 = db.one("SELECT id FROM users WHERE email = ?", (u2,))["id"]
+        auth.admin_set_status(self.admin, uid2, "disable")
+        self.assertEqual(self.call(op, "/api/me")[0], 401)                 # su sesión se cierra al momento
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u2, "password": "clave muy segura 123"})[0], 403)
+
+    def admin_client(self):
+        op = self.client()
+        st, r, _ = self.call(op, "/api/auth/login", {"username": "admin", "password": "clave de admin muy segura"})
+        return op, r["csrf"]
+
+    def test_admin_api_approve_create_reset(self):
+        op, csrf = self.admin_client()
+        (st, r, _), u = self.request(note="quiero el plan pro")
+        users = self.call(op, "/api/admin/users")[1]
+        row = next(x for x in users if x["email"] == u)
+        self.assertEqual(row["status"], "pending"); self.assertEqual(users[0]["status"], "pending")
+        st, r, _ = self.call(op, "/api/admin/user", {"id": row["id"], "action": "approve", "plan": "pro", "days": 30}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        st, r, _ = self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave muy segura 123"})
+        self.assertEqual(r["user"]["plan"], "pro")
+        st, r, _ = self.call(op, "/api/admin/user/create", {"username": "creado.por.admin", "password": "otra clave segura 1", "plan": "free"}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": "creado.por.admin", "password": "otra clave segura 1"})[0], 200)
+        st, r, _ = self.call(op, "/api/admin/user/password", {"id": row["id"], "password": "clave nueva segura 7"}, {"X-CSRF-Token": csrf})
+        self.assertEqual(st, 200, r)
+        self.assertEqual(self.call(self.client(), "/api/auth/login", {"username": u, "password": "clave nueva segura 7"})[0], 200)
+        # sin CSRF no se puede aprobar
+        self.assertEqual(self.call(op, "/api/admin/user", {"id": row["id"], "action": "disable"})[0], 403)
+
+    def test_non_admin_cannot_manage_users(self):
+        op, csrf, u = self.signup()
+        (st, r, _), other = self.request()
+        oid = db.one("SELECT id FROM users WHERE email = ?", (other,))["id"]
+        self.assertEqual(self.call(op, "/api/admin/users")[0], 403)
+        self.assertEqual(self.call(op, "/api/admin/user", {"id": oid, "action": "approve"}, {"X-CSRF-Token": csrf})[0], 403)
+        self.assertEqual(self.call(op, "/api/admin/user/create", {"username": "hacker1", "password": "clave muy segura 123"}, {"X-CSRF-Token": csrf})[0], 403)
+        self.assertEqual(db.one("SELECT status FROM users WHERE id = ?", (oid,))["status"], "pending")
+
+    def test_admin_cannot_be_disabled_from_panel(self):
+        op, csrf = self.admin_client()
+        aid = self.admin["id"]
+        self.assertEqual(self.call(op, "/api/admin/user", {"id": aid, "action": "disable"}, {"X-CSRF-Token": csrf})[0], 400)
+
+    def test_pages_and_redirects(self):
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *a, **k): return None
+        op = urllib.request.build_opener(NoRedirect, urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+        def get(o, path):
+            try:
+                r = o.open(self.base + path); return r.status, r.read().decode(), r.headers
+            except urllib.error.HTTPError as e:
+                return e.code, "", e.headers
+        st, body, _ = get(op, "/"); self.assertEqual(st, 200); self.assertIn("Solicitar acceso", body)
+        st, body, _ = get(op, "/entrar"); self.assertEqual(st, 200); self.assertIn("loginForm", body)
+        st, _, h = get(op, "/app"); self.assertEqual(st, 302); self.assertEqual(h["Location"], "/entrar")
+        self.call(op, "/api/auth/login", {"username": "admin", "password": "clave de admin muy segura"})
+        st, body, _ = get(op, "/app"); self.assertEqual(st, 200); self.assertIn('id="app"', body)
+        st, _, h = get(op, "/entrar"); self.assertEqual(st, 302); self.assertEqual(h["Location"], "/app")
+        for page in ("/", "/entrar"):
+            st, body, h = get(self.client(), page)
+            self.assertNotIn("<script>", body)                              # sin JS en línea: lo permite la CSP estricta
+            self.assertNotIn("https://cdn", body)
+        self.assertEqual(get(self.client(), "/static/vendor/gsap.min.js")[0], 200)
+
+    def test_pending_requests_capped(self):
+        old = auth.MAX_PENDING
+        try:
+            auth.MAX_PENDING = db.one("SELECT COUNT(*) AS n FROM users WHERE status = 'pending'", ())["n"]
+            auth._rate.clear()
+            st, r, _ = self.call(self.client(), "/api/auth/request", {"username": "uno.mas", "password": "clave muy segura 123"})
+            self.assertEqual(st, 503)
+        finally:
+            auth.MAX_PENDING = old
 
     def test_user_isolation_positions(self):
         a, ca, ea = self.signup(); b, cb, eb = self.signup()
@@ -939,7 +1064,7 @@ class T13_SaaS(unittest.TestCase):
     def test_activity_log(self):
         op, csrf, email = self.signup()
         acts = [r["action"] for r in self.call(op, "/api/activity")[1]]
-        self.assertIn("register", acts); self.assertIn("login", acts)
+        self.assertIn("access_requested", acts); self.assertIn("login", acts)
 
     def test_expired_plan_is_free(self):
         self.assertEqual(auth.effective_plan({"plan": "pro", "plan_until": time.time() - 1, "is_admin": 0}), "free")
@@ -1098,7 +1223,15 @@ assert db.IS_PG
 for t in ("users", "sessions", "activity", "positions", "payments", "telegram_links", "kv"):
     db.execute(f"DROP TABLE IF EXISTS {t}")
 db._ready = False; db.init()
+os.environ["CRYPTO_RADAR_ADMIN_USER"] = "pgadmin"; os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave de admin muy segura"
+auth.ensure_admin(); adm = db.one("SELECT * FROM users WHERE email = 'pgadmin'", ())
 u = auth.register("pg@example.com", "clave muy segura 123")
+assert u["status"] == "pending"
+try:
+    auth.login("pg@example.com", "clave muy segura 123"); raise SystemExit("pendiente no debería entrar")
+except auth.AuthError as e:
+    assert e.code == 403
+auth.admin_set_status(adm, u["id"], "approve")
 tok, csrf, _ = auth.login("pg@example.com", "clave muy segura 123")
 assert auth.session(tok)["user"]["email"] == "pg@example.com"
 storage.write("latest.json", {"a": [1, 2]}); assert storage.read("latest.json") == {"a": [1, 2]}

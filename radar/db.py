@@ -46,6 +46,16 @@ SCHEMA = [
 ]
 
 
+# Columnas añadidas después de crear la tabla (se aplican una vez; si ya existen, se ignora el error).
+MIGRATIONS = [
+    "ALTER TABLE users ADD COLUMN status TEXT NOT NULL DEFAULT 'active'",   # pending | active | rejected
+    "ALTER TABLE users ADD COLUMN contact TEXT",
+    "ALTER TABLE users ADD COLUMN request_note TEXT",
+    "ALTER TABLE users ADD COLUMN approved_at DOUBLE PRECISION",
+    "ALTER TABLE users ADD COLUMN approved_by TEXT",
+]
+
+
 def _connect():
     if IS_PG:
         import psycopg   # pip install "psycopg[binary]"
@@ -78,6 +88,12 @@ def init():
         for stmt in SCHEMA:
             s = stmt if IS_PG else stmt.replace("DOUBLE PRECISION", "REAL").replace("BIGINT", "INTEGER")
             c.execute(s)
+        for stmt in MIGRATIONS:
+            s = stmt if IS_PG else stmt.replace("DOUBLE PRECISION", "REAL")
+            try:
+                c.execute(s.replace("ADD COLUMN", "ADD COLUMN IF NOT EXISTS") if IS_PG else s)
+            except Exception:
+                pass                                  # SQLite: la columna ya existe
         if not IS_PG:
             c.commit()
         _ready = True

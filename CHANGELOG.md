@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 2.1.0 — 2026-11-15 · Sitio unificado y acceso aprobado por el administrador
+
+- Una sola web: ventas en `/`, inicio de sesión moderno en `/entrar` y la app en `/app` (se elimina `ventas/`).
+- Se acabó la ventana de contraseña del navegador: cada persona elige usuario y contraseña al solicitar acceso, y solo
+  entra cuando el administrador la aprueba. El administrador sale de `CRYPTO_RADAR_ADMIN_USER` / `_PASSWORD`.
+- Panel de administración: aprobar, rechazar, desactivar, eliminar, asignar plan y días, crear usuarios y restablecer claves.
+- Seguridad: contraseñas con scrypt, sesión HttpOnly/SameSite/Secure rotada al entrar, CSRF, bloqueo tras 5 fallos,
+  límites por IP y global en solicitudes, mismo error para usuario inexistente y clave errónea, CSP sin scripts en línea
+  ni CDN (librerías servidas desde `/static/vendor`), HSTS, COOP y Permissions-Policy.
+- La sección de resultados y backtests de la web de ventas se sustituye por «Primero protege tu capital».
+
 ## 2.0.0 — 2026-11-15 (rama `claude/project-thread-i8udp5`)
 
 Respaldo de la versión anterior: rama `main` (commit 34f6898) y etiqueta local `backup-pre-2.0`.

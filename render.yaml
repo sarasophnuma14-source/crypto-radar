@@ -1,5 +1,6 @@
 # Despliegue en Render (Blueprint), plan GRATIS.
-# Un solo servicio: panel web + escáner cada 4 h + vigilancia de precio cada 15 min.
+# Un solo servicio: web de ventas (/), inicio de sesión (/entrar) y panel (/app) + escáner cada 4 h
+# + vigilancia de precio cada 15 min.
 # Limitaciones del plan gratis: el disco se borra en cada reinicio/despliegue (historial, posiciones y diario
 # se pierden); por eso Telegram y los ajustes clave van como variables de entorno.
 services:
@@ -29,10 +30,10 @@ services:
         sync: false            # "1" activa cuentas; déjalo vacío para el modo de un solo usuario actual
       - key: DATABASE_URL
         sync: false            # PostgreSQL (Neon gratis). Obligatorio con cuentas: el disco de Render se borra
-      - key: CRYPTO_RADAR_ADMIN_EMAIL
-        sync: false            # el primer registro con este correo queda como administrador
-      - key: SALES_URL
-        sync: false
+      - key: CRYPTO_RADAR_ADMIN_USER
+        sync: false            # usuario del administrador (se crea al arrancar; aprueba las solicitudes de acceso)
+      - key: CRYPTO_RADAR_ADMIN_PASSWORD
+        sync: false            # contraseña del administrador, mínimo 12 caracteres
       - key: WOMPI_PUBLIC_KEY
         sync: false
       - key: WOMPI_INTEGRITY_SECRET
@@ -45,14 +46,3 @@ services:
         sync: false
       - key: NOWPAYMENTS_IPN_SECRET
         sync: false
-
-  # Web de ventas: sitio estático gratis (no se duerme ni consume las 750 h del plan gratis).
-  - type: web
-    name: crypto-radar-ventas
-    runtime: static
-    buildCommand: "echo sitio estatico"
-    staticPublishPath: ./ventas
-    headers:
-      - path: /*
-        name: X-Frame-Options
-        value: DENY

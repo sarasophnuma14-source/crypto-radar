@@ -142,28 +142,9 @@ const phase = p => PH[p] || cap(p);
 const manip = (r, l) => `<span class="${r >= 60 ? "neg" : r >= 35 ? "amb" : "muted"}" title="Riesgo de manipulación">${r ?? "—"}${l ? " · " + esc(cap(l)) : ""}</span>`;
 
 /* ---------- Cuenta (modo SaaS) ---------- */
-let AUTH_MODE = "login";
-function showAuth(){ $("#auth").classList.remove("hidden"); $("#app").classList.add("hidden"); }
-function hideAuth(){ $("#auth").classList.add("hidden"); $("#app").classList.remove("hidden"); }
-$("#authSwitch").onclick = () => {
-  AUTH_MODE = AUTH_MODE === "login" ? "register" : "login";
-  const reg = AUTH_MODE === "register";
-  $("#authTitle").textContent = reg ? "Crea tu cuenta" : "Inicia sesión";
-  $("#authBtn").textContent = reg ? "Crear cuenta" : "Entrar";
-  $("#pwHint").classList.toggle("hidden", !reg);
-  $("#authForm").password.autocomplete = reg ? "new-password" : "current-password";
-  $("#authSwitch").textContent = reg ? "¿Ya tienes cuenta? Inicia sesión" : "¿No tienes cuenta? Crear cuenta gratis";
-  $("#authMsg").textContent = "";
-};
-$("#authForm").onsubmit = async e => {
-  e.preventDefault(); const f = e.target; $("#authMsg").textContent = ""; $("#authBtn").disabled = true;
-  try {
-    const r = await post("/api/auth/" + AUTH_MODE, {email: f.email.value, password: f.password.value});
-    if (r.error) { $("#authMsg").textContent = r.error; return; }
-    CSRF = r.csrf; ME = r.user; f.password.value = ""; hideAuth(); applyUser(); refresh(); show(VIEW);
-  } catch (err) { $("#authMsg").textContent = "No se pudo contactar el servidor"; }
-  finally { $("#authBtn").disabled = false; }
-};
+// El inicio de sesión vive en /entrar (página propia); aquí solo se redirige.
+function showAuth(){ location.replace("/entrar"); }
+function hideAuth(){ const a = $("#auth"); if (a) a.classList.add("hidden"); $("#app").classList.remove("hidden"); }
 function applyUser(){
   const admin = !ACCOUNTS || ME?.is_admin;
   $$(".admin-only").forEach(el => el.classList.toggle("hidden", !admin));
@@ -543,7 +524,7 @@ $("#exportBtn").onclick = () => {
 async function loadSettings(){
   if (ACCOUNTS && ME) {
     const until = ME.plan_until ? new Date(ME.plan_until * 1000).toLocaleDateString("es-CO") : null;
-    $("#accBox").innerHTML = `<div class="meta col"><span>Correo <b>${esc(ME.email)}</b></span><span>Plan <b>${esc(ME.plan_label)}</b>${until ? ` hasta ${until}` : ""}</span></div>`;
+    $("#accBox").innerHTML = `<div class="meta col"><span>Usuario <b>${esc(ME.username || ME.email)}</b></span><span>Plan <b>${esc(ME.plan_label)}</b>${until ? ` hasta ${until}` : ""}</span></div>`;
     try {
       const b = await api("/api/billing/status");
       const P = b.prices_usd || {}, can = b.wompi || b.crypto;
@@ -574,12 +555,63 @@ document.addEventListener("click", async e => {
     if (r.url) location.href = r.url; else toast(r.error || "No se pudo iniciar el pago"); }
   finally { b.disabled = false; }
 });
+const ST_LABEL = {pending: "Pendiente", active: "Activo", rejected: "Rechazado"};
+const PLAN_OPTS = `<option value="free">Libre</option><option value="pro">Pro</option><option value="elite">Élite</option>`;
 async function loadAdmin(){
   $("#adminBox").classList.remove("hidden");
-  const u = await api("/api/admin/users");
-  $("#adminUsers").innerHTML = Array.isArray(u) ? `<div class="tbl"><table><thead><tr><th>Correo</th><th>Plan</th><th>Hasta</th><th>Telegram</th><th>Alta</th></tr></thead><tbody>${u.map(x =>
-    `<tr><td>${esc(x.email)}${x.is_admin ? ' <span class="tag">admin</span>' : ""}</td><td>${esc(x.plan)}</td><td>${x.plan_until ? new Date(x.plan_until * 1000).toLocaleDateString("es-CO") : "—"}</td><td>${x.telegram ? "Sí" : "No"}</td><td>${when(tsIso(x.created_at))}</td></tr>`).join("")}</tbody></table></div>` : "";
+  let u; try { u = await api("/api/admin/users"); } catch (e) { return; }
+  if (!Array.isArray(u)) { $("#adminUsers").innerHTML = `<p class="note">${esc(u?.error || "No disponible")}</p>`; return; }
+  const pend = u.filter(x => x.status === "pending");
+  const badge = $("#adminBadge"); if (badge) { badge.textContent = pend.length; badge.classList.toggle("hidden", !pend.length); }
+  const st = x => x.disabled && x.status === "active" ? "Desactivado" : (ST_LABEL[x.status] || "Activo");
+  const acts = x => {
+    if (x.is_admin) return `<span class="muted">—</span>`;
+    if (x.status === "pending" || x.status === "rejected") return `<div class="row adm-row"><select data-plan="${x.id}" aria-label="Plan">${PLAN_OPTS}</select>
+      <input data-days="${x.id}" type="number" min="0" max="3650" value="30" aria-label="Días de plan" title="Días de plan (Pro/Élite)">
+      <button class="btn a small" data-act="approve" data-id="${x.id}">Aprobar</button>
+      ${x.status === "pending" ? `<button class="btn small" data-act="reject" data-id="${x.id}">Rechazar</button>` : ""}
+      <button class="btn small" data-act="delete" data-id="${x.id}">Eliminar</button></div>`;
+    return `<div class="row adm-row">${x.disabled ? `<button class="btn small" data-act="enable" data-id="${x.id}">Activar</button>`
+      : `<button class="btn small" data-act="disable" data-id="${x.id}">Desactivar</button>`}
+      <button class="btn small" data-act="delete" data-id="${x.id}">Eliminar</button></div>`;
+  };
+  const rows = u.map(x => `<tr class="${x.status === "pending" ? "pend" : ""}"><td><b>${esc(x.email)}</b>${x.is_admin ? ' <span class="tag">admin</span>' : ""}</td>
+    <td>${esc(st(x))}</td><td>${esc(x.contact || "—")}</td><td class="wrap-cell">${esc(x.request_note || "—")}</td>
+    <td>${x.is_admin ? "Élite" : ({free: "Libre", pro: "Pro", elite: "Élite"}[x.plan] || esc(x.plan))}${!x.is_admin && x.plan_until ? " hasta " + new Date(x.plan_until * 1000).toLocaleDateString("es-CO") : ""}</td>
+    <td>${when(tsIso(x.created_at))}</td><td>${acts(x)}</td></tr>`).join("");
+  const opts = u.filter(x => !x.is_admin).map(x => `<option value="${x.id}">${esc(x.email)}</option>`).join("");
+  $("#adminUsers").innerHTML = `
+    <p class="note">${pend.length ? `<b>${pend.length} solicitud${pend.length > 1 ? "es" : ""} pendiente${pend.length > 1 ? "s" : ""}.</b> ` : "Sin solicitudes pendientes. "}Nadie entra sin tu aprobación.</p>
+    <div class="tbl"><table><thead><tr><th>Usuario</th><th>Estado</th><th>Contacto</th><th>Mensaje</th><th>Plan</th><th>Solicitud</th><th>Acciones</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <details class="adm-forms"><summary>Crear usuario o restablecer contraseña</summary>
+      <form id="admCreate" class="settings" autocomplete="off"><h4>Crear usuario aprobado</h4>
+        <div class="grid2"><label>Usuario<input name="username" required maxlength="32" autocapitalize="none" placeholder="usuario"></label>
+        <label>Contraseña inicial<input name="password" type="password" required minlength="10" autocomplete="new-password"></label>
+        <label>Plan<select name="plan">${PLAN_OPTS}</select></label><label>Días de plan<input name="days" type="number" min="0" max="3650" value="30"></label></div>
+        <div class="row"><button class="btn a" type="submit">Crear</button></div></form>
+      <form id="admReset" class="settings" autocomplete="off"><h4>Restablecer contraseña</h4>
+        <div class="grid2"><label>Usuario<select name="id">${opts}</select></label>
+        <label>Contraseña nueva<input name="password" type="password" required minlength="10" autocomplete="new-password"></label></div>
+        <div class="row"><button class="btn" type="submit">Restablecer</button></div></form>
+    </details>
+    <p class="msg" id="admMsg" role="status"></p>`;
+  const msg = t => { const m = $("#admMsg"); if (m) m.textContent = t; };
+  $("#admCreate").onsubmit = async e => { e.preventDefault(); const f = e.target;
+    const r = await post("/api/admin/user/create", {username: f.username.value.trim().toLowerCase(), password: f.password.value, plan: f.plan.value, days: f.days.value});
+    if (r.error) return msg(r.error); await loadAdmin(); msg("Usuario creado."); };
+  $("#admReset").onsubmit = async e => { e.preventDefault(); const f = e.target;
+    const r = await post("/api/admin/user/password", {id: f.id.value, password: f.password.value});
+    if (r.error) return msg(r.error); f.reset(); msg("Contraseña restablecida; se cerraron sus sesiones."); };
 }
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const id = b.dataset.id, act = b.dataset.act;
+  if ((act === "delete" || act === "reject") && b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "¿Seguro?"; setTimeout(() => { b.dataset.confirm = ""; b.textContent = act === "delete" ? "Eliminar" : "Rechazar"; }, 4000); return; }
+  b.disabled = true;
+  const plan = document.querySelector(`[data-plan="${id}"]`)?.value || "free", days = document.querySelector(`[data-days="${id}"]`)?.value || 0;
+  try { const r = await post("/api/admin/user", {id, action: act, plan, days}); if (r.error) { toast(r.error); b.disabled = false; return; } await loadAdmin(); }
+  catch (err) { toast("No se pudo contactar el servidor"); b.disabled = false; }
+});
 $("#setForm").onsubmit = async e => {
   e.preventDefault(); const f = e.target, b = {};
   for (const el of f.elements) { if (!el.name) continue; b[el.name] = el.type === "checkbox" ? el.checked : el.value; }
@@ -595,10 +627,10 @@ $("#userSet").onsubmit = async e => {
 $("#pwForm").onsubmit = async e => {
   e.preventDefault(); const f = e.target;
   const r = await post("/api/auth/password", {old: f.old.value, new: f.new.value});
-  $("#accMsg").textContent = r.error || r.msg || ""; if (r.ok) setTimeout(() => location.reload(), 1500);
+  $("#accMsg").textContent = r.error || r.msg || ""; if (r.ok) setTimeout(() => location.replace("/entrar"), 1500);
 };
-$("#logoutBtn").onclick = async () => { await post("/api/auth/logout"); location.reload(); };
-$("#logoutAll").onclick = async () => { await post("/api/auth/logout_all"); location.reload(); };
+$("#logoutBtn").onclick = async () => { try { await post("/api/auth/logout"); } catch (e) {} location.replace("/entrar"); };
+$("#logoutAll").onclick = async () => { try { await post("/api/auth/logout_all"); } catch (e) {} location.replace("/entrar"); };
 $("#tgTest").onclick = async ev => {
   const b = ev.currentTarget; if (b.disabled) return; b.disabled = true; $("#setMsg").textContent = "Enviando…";
   try { const r = await post("/api/telegram/test"); $("#setMsg").textContent = r.ok ? "Mensaje enviado a Telegram." : "Telegram: " + (r.msg || r.error); }
@@ -612,7 +644,6 @@ async function boot(){
   try {
     const st = await api("/api/public/status");
     ACCOUNTS = !!st?.accounts;
-    if (st?.sales_url) { const a = $("#salesLink"); a.href = st.sales_url; a.classList.remove("hidden"); }
   } catch (e) {}
   if (ACCOUNTS) {
     try { const me = await api("/api/me"); if (me?.user) { ME = me.user; CSRF = me.csrf; } } catch (e) {}
