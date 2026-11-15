@@ -28,6 +28,12 @@ from . import db, totp
 
 SESSION_DAYS = 14
 LOCK_AFTER, LOCK_S = 5, 15 * 60
+# Inicio de sesión (docs/RATE_LIMITING.md). Ventana fija de 15 minutos para todos los contadores.
+LOGIN_WINDOW_S = 15 * 60
+LOGIN_IP_FAILS = 20          # intentos FALLIDOS por IP (antes: 20 intentos de cualquier tipo, aciertos incluidos)
+LOGIN_IP_FAILS_SPRAY = 5     # fallidos por IP mientras hay un ataque repartido entre muchas IP (modo estricto)
+LOGIN_SPRAY_GLOBAL = 200     # fallidos en todo el sitio dentro de la ventana que activan el modo estricto
+LOGIN_IP_ATTEMPTS = 300      # tope de intentos de cualquier tipo por IP: protege la CPU (scrypt) de una inundación
 EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,190}\.[a-z]{2,24}$", re.I)
 USER_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{2,31}$")
 MAX_PENDING = 300
@@ -84,6 +90,43 @@ def _rate_mem(key, limit, window_s):
     return blocked
 
 
+def _rate_key(key, window_s, t):
+    bucket = int(t // window_s)
+    return hashlib.sha256(f"{key}|{window_s}|{bucket}".encode()).hexdigest(), (bucket + 1) * window_s
+
+
+def rate_bump(key, window_s, delta=1):
+    """Suma `delta` (puede ser -1) al contador de `key` en la ventana actual y devuelve el valor resultante.
+
+    Misma tabla y misma clave con hash que `rate_limited`. Si la base falla, usa el contador en memoria.
+    """
+    t = time.time()
+    k, exp = _rate_key(key, window_s, t)
+    try:
+        db.execute("INSERT INTO rate_limits(k, n, expires_at) VALUES (?, ?, ?) "
+                   "ON CONFLICT (k) DO UPDATE SET n = rate_limits.n + ?", (k, max(delta, 0), exp, delta))
+        return (db.one("SELECT n FROM rate_limits WHERE k = ?", (k,)) or {}).get("n", 0)
+    except Exception as e:
+        print(f"AVISO: límite de intentos en memoria ({type(e).__name__})", flush=True)
+        ev = [x for x in _rate.get(key, []) if t - x < window_s]
+        if delta > 0:
+            ev += [t] * delta
+        elif ev:
+            ev = ev[:delta] if len(ev) > -delta else []
+        _rate[key] = ev
+        return len(ev)
+
+
+def rate_peek(key, window_s):
+    """Valor actual del contador de `key` en la ventana actual, sin registrar nada."""
+    t = time.time()
+    k, _ = _rate_key(key, window_s, t)
+    try:
+        return (db.one("SELECT n FROM rate_limits WHERE k = ?", (k,)) or {}).get("n", 0)
+    except Exception:
+        return len([x for x in _rate.get(key, []) if t - x < window_s])
+
+
 def rate_limited(key, limit, window_s):
     """True si `key` superó `limit` eventos en la ventana actual de `window_s` segundos (y registra este evento).
 
@@ -91,11 +134,10 @@ def rate_limited(key, limit, window_s):
     instancias que compartan la base. Si la base falla, usa un contador en memoria (nunca deja pasar sin límite).
     """
     t = time.time()
-    bucket = int(t // window_s)
-    k = hashlib.sha256(f"{key}|{window_s}|{bucket}".encode()).hexdigest()
+    k, exp = _rate_key(key, window_s, t)
     try:
         db.execute("INSERT INTO rate_limits(k, n, expires_at) VALUES (?, 1, ?) "
-                   "ON CONFLICT (k) DO UPDATE SET n = rate_limits.n + 1", (k, (bucket + 1) * window_s))
+                   "ON CONFLICT (k) DO UPDATE SET n = rate_limits.n + 1", (k, exp))
         n = (db.one("SELECT n FROM rate_limits WHERE k = ?", (k,)) or {}).get("n", 1)
         if secrets.randbelow(50) == 0:
             db.execute("DELETE FROM rate_limits WHERE expires_at < ?", (t,))
@@ -356,21 +398,45 @@ def _accept_totp(u, code_given):
 
 
 def login(email, pw, ip=None, ua=None, code=None):
+    """Inicio de sesión con protección combinada (docs/RATE_LIMITING.md):
+
+    1. Tope de intentos por IP (LOGIN_IP_ATTEMPTS): frena inundaciones que solo buscan gastar CPU en scrypt.
+    2. Intentos FALLIDOS por IP (LOGIN_IP_FAILS, o LOGIN_IP_FAILS_SPRAY en modo estricto): cada intento cuenta como
+       fallido ANTES de comprobar la contraseña y se descuenta solo si la contraseña es correcta. Así, ni con
+       peticiones simultáneas se superan los fallidos permitidos, y los usuarios legítimos detrás de la misma IP
+       (oficina, CGNAT) no se bloquean entre sí al entrar bien.
+    3. Modo estricto: si en la ventana hay más de LOGIN_SPRAY_GLOBAL fallos en todo el sitio (ataque repartido entre
+       muchas IP), el límite de fallidos por IP baja a LOGIN_IP_FAILS_SPRAY.
+    4. Por cuenta: LOCK_AFTER fallos bloquean la cuenta LOCK_S segundos (también para nombres que no existen).
+    """
     email = norm_login(email)
-    if rate_limited(f"login:{ip}", 20, 900):
+    w = LOGIN_WINDOW_S
+    if rate_limited(f"login:{ip}", LOGIN_IP_ATTEMPTS, w):
         raise AuthError("Demasiados intentos desde esta conexión; espera 15 minutos", 429)
+    strict = rate_peek("loginfail:*", w) >= LOGIN_SPRAY_GLOBAL
+    if rate_bump(f"loginfail:{ip}", w) > (LOGIN_IP_FAILS_SPRAY if strict else LOGIN_IP_FAILS):
+        rate_bump("loginfail:*", w)
+        raise AuthError("Demasiados intentos fallidos desde esta conexión; espera 15 minutos", 429)
+
+    def failed():
+        rate_bump("loginfail:*", w)          # el fallo por IP ya quedó contado arriba
+
     u = db.one("SELECT * FROM users WHERE email = ?", (email,))
     if not u:
         verify_password(pw or "", "scrypt$16384$8$1$" + "00" * 16 + "$" + "00" * 32)   # mismo tiempo exista o no
+        failed()
         # mismo bloqueo aparente que una cuenta real tras LOCK_AFTER fallos: el 429 no revela si el usuario existe
         if rate_limited(f"lockname:{email}", LOCK_AFTER, LOCK_S):
             raise AuthError("Cuenta bloqueada temporalmente por intentos fallidos; espera 15 minutos", 429)
         raise AuthError("Usuario o contraseña incorrectos", 401)
     if u["locked_until"] and u["locked_until"] > time.time():
+        failed()
         raise AuthError("Cuenta bloqueada temporalmente por intentos fallidos; espera 15 minutos", 429)
     if not verify_password(pw or "", u["pw_hash"]):
+        failed()
         _fail(u, ip)
         raise AuthError("Usuario o contraseña incorrectos", 401)
+    rate_bump(f"loginfail:{ip}", w, -1)      # contraseña correcta: no era un intento fallido
     # el estado solo se revela a quien conoce la contraseña
     status = u.get("status") or "active"
     if status == "pending":
@@ -383,6 +449,7 @@ def login(email, pw, ip=None, ua=None, code=None):
         if not code:
             raise AuthError("Escribe el código de 6 dígitos de tu app de autenticación", 401, totp_required=True)
         if not _accept_totp(u, code):
+            rate_bump(f"loginfail:{ip}", w); failed()
             _fail(u, ip, "login_totp_failed")
             raise AuthError("Código de verificación incorrecto o ya usado", 401, totp_required=True)
     db.execute("UPDATE users SET failed_logins = 0, locked_until = NULL WHERE id = ?", (u["id"],))

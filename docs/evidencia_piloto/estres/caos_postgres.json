@@ -1,0 +1,304 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 120.0,
+  "pausa_s": 1.0,
+  "escaneo_en_s": 5.0,
+  "repetir_escaneo": true,
+  "telegram_por_s": 2.0,
+  "difusion_cada_s": 30.0,
+  "caos": "cortar@30,reiniciar@70",
+  "datos": "sinteticos",
+  "escaneo_frio": false,
+  "malloc_arena_max": null,
+  "escaner": "hilo (actual)",
+  "activos_en_informe": 40,
+  "escaneo_inicial_s": 25.31,
+  "escaneo_en_reposo_s": 3.98,
+  "preparacion_s": 32.3,
+  "rss_mb_reposo": 100.3,
+  "rss_mb_final": 419.9,
+  "vmhwm_mb": 419.9
+ },
+ "niveles": [
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 555.0,
+    "p95_ms": 740.2,
+    "p99_ms": 743.4,
+    "max_ms": 743.4,
+    "codigos": {
+     "200": 50
+    },
+    "segundos_rafaga": 0.77
+   },
+   "panel_total": {
+    "n": 5904,
+    "p50_ms": 8.0,
+    "p95_ms": 116.2,
+    "p99_ms": 245.2,
+    "max_ms": 434.0,
+    "codigos": {
+     "200": 5597,
+     "402": 292,
+     "500": 15
+    },
+    "rps": 49.2
+   },
+   "panel_durante_escaneo": {
+    "n": 1657,
+    "p50_ms": 9.9,
+    "p95_ms": 229.6,
+    "p99_ms": 334.1,
+    "max_ms": 434.0,
+    "codigos": {
+     "200": 1581,
+     "402": 76
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 4247,
+    "p50_ms": 7.2,
+    "p95_ms": 25.9,
+    "p99_ms": 64.7,
+    "max_ms": 236.7,
+    "codigos": {
+     "200": 4016,
+     "402": 216,
+     "500": 15
+    }
+   },
+   "errores": {
+    "500": 15
+   },
+   "errores_segundos_desde_inicio": [
+    70.0,
+    70.0,
+    70.0,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1,
+    70.1
+   ],
+   "escaneos": [
+    {
+     "s": 4.3,
+     "error": null,
+     "inicio_s": 5.0
+    },
+    {
+     "s": 4.34,
+     "error": null,
+     "inicio_s": 19.3
+    },
+    {
+     "s": 4.26,
+     "error": null,
+     "inicio_s": 33.7
+    },
+    {
+     "s": 4.17,
+     "error": null,
+     "inicio_s": 48.0
+    },
+    {
+     "s": 4.18,
+     "error": null,
+     "inicio_s": 62.3
+    },
+    {
+     "s": 4.24,
+     "error": null,
+     "inicio_s": 76.6
+    },
+    {
+     "s": 4.39,
+     "error": null,
+     "inicio_s": 90.9
+    },
+    {
+     "s": 4.41,
+     "error": null,
+     "inicio_s": 105.6
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 5.7
+    },
+    {
+     "t": 19.3,
+     "codigo": 200,
+     "ms": 5.8
+    },
+    {
+     "t": 33.7,
+     "codigo": 200,
+     "ms": 6.9
+    },
+    {
+     "t": 48.0,
+     "codigo": 200,
+     "ms": 5.9
+    },
+    {
+     "t": 62.3,
+     "codigo": 200,
+     "ms": 12.8
+    },
+    {
+     "t": 76.6,
+     "codigo": 200,
+     "ms": 5.2
+    },
+    {
+     "t": 90.9,
+     "codigo": 200,
+     "ms": 4.1
+    },
+    {
+     "t": 105.6,
+     "codigo": 200,
+     "ms": 5.3
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 5460,
+     "p50": 0.1,
+     "p99": 22.8,
+     "max": 69.6
+    },
+    "fuera_de_escaneo": {
+     "n": 16396,
+     "p50": 0.1,
+     "p99": 5.7,
+     "max": 36.1
+    }
+   },
+   "telegram": {
+    "comandos": 250,
+    "respuesta_durante_escaneo": {
+     "n": 67,
+     "p50_ms": 37.5,
+     "p95_ms": 176.4,
+     "p99_ms": 272.2,
+     "max_ms": 283.0,
+     "codigos": {
+      "200": 67
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 183,
+     "p50_ms": 35.6,
+     "p95_ms": 51.0,
+     "p99_ms": 65.2,
+     "max_ms": 74.0,
+     "codigos": {
+      "200": 183
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794757032.15,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757064.864,
+      "s": 2.7,
+      "enviados": 33,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794757097.589,
+      "s": 3.11,
+      "enviados": 33,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 99
+   },
+   "rss_mb_max": 419.9,
+   "rss_mb_max_durante_escaneo": 419.9,
+   "rss_mb_final": 419.9,
+   "vmhwm_mb_proceso": 419.9,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 30.3,
+   "cpu_pct_medio_durante_escaneo": 40.4,
+   "cpu_pct_medio_fuera_de_escaneo": 26.3,
+   "hilos_max": 23,
+   "pg_conexiones_max": 19,
+   "pg_conexiones_final": 18,
+   "pg_conexiones_abiertas_en_el_tramo": 59,
+   "pg_estado_conexiones_al_final": {
+    "idle": 18
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/474",
+   "pg_muestras_sin_respuesta_del_monitor": 1,
+   "caos": [
+    {
+     "accion": "pg_terminate_backend",
+     "conexiones_cortadas": 19,
+     "t": 30.0
+    },
+    {
+     "accion": "reinicio de PostgreSQL",
+     "s": 0.22,
+     "rc": 0,
+     "salida": "waiting for server to shut down.... done\nserver stopped\nwaiting for server to start.... done\nserver started\n",
+     "t": 70.2
+    }
+   ],
+   "peticiones_http": 5954,
+   "recuperacion": [
+    {
+     "accion": "pg_terminate_backend",
+     "errores_tras_el_evento": 15,
+     "ultimo_error_s_tras_el_evento": 40.13
+    },
+    {
+     "accion": "reinicio de PostgreSQL",
+     "errores_tras_el_evento": 0,
+     "ultimo_error_s_tras_el_evento": 0
+    }
+   ]
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0,
+ "trazas_en_registro_del_servidor": 16,
+ "registro_servidor_ultimas_lineas": [
+  "  File \"/home/user/crypto-radar/radar/db.py\", line 191, in one",
+  "    cur = execute(q, params)",
+  "          ^^^^^^^^^^^^^^^^^^",
+  "  File \"/home/user/crypto-radar/radar/db.py\", line 169, in execute",
+  "    c = conn()",
+  "        ^^^^^^",
+  "  File \"/home/user/crypto-radar/radar/db.py\", line 109, in conn",
+  "    c = _local.c = _connect()",
+  "                   ^^^^^^^^^^",
+  "  File \"/home/user/crypto-radar/radar/db.py\", line 97, in _connect",
+  "    c = psycopg.connect(URL, autocommit=True)",
+  "        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^",
+  "  File \"/tmp/claude-0/-home-user/8e604177-83ef-5982-ada1-52e19c3ad590/scratchpad/venv312/lib/python3.12/site-packages/psycopg/connection.py\", line 126, in connect",
+  "    raise last_ex.with_traceback(None)",
+  "psycopg.OperationalError: connection failed: connection to server at \"127.0.0.1\", port 55432 failed: FATAL:  the database system is starting up"
+ ]
+}

@@ -196,7 +196,7 @@ def main(out=None):
     env.update({"DATABASE_URL": ADMIN_URL.rsplit("/", 1)[0] + "/" + DB, "CRYPTO_RADAR_ACCOUNTS": "1",
                 "CRYPTO_RADAR_HOME": tempfile.mkdtemp(prefix="cr-carga-"), "CRYPTO_RADAR_ADMIN_USER": "jefe.carga",
                 "CRYPTO_RADAR_ADMIN_PASSWORD": "clave del jefe de carga 1", "CRYPTO_RADAR_ADMIN_TOTP": "optional",
-                "CRYPTO_RADAR_HOST": "127.0.0.1"})
+                "CRYPTO_RADAR_HOST": "127.0.0.1", "CRYPTO_RADAR_TRUSTED_PROXIES": "127.0.0.1/32"})
     import shutil
     shutil.copytree(ROOT / "web", Path(env["CRYPTO_RADAR_HOME"]) / "web")
     srv = subprocess.Popen([sys.executable, "-c", SERVER, str(ROOT), str(port), str(total), PW], env=env,

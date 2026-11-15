@@ -1,0 +1,195 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 200.0,
+  "pausa_s": 1.0,
+  "escaneo_en_s": 5.0,
+  "repetir_escaneo": false,
+  "telegram_por_s": 2.0,
+  "difusion_cada_s": 30.0,
+  "caos": "",
+  "datos": "reales",
+  "escaneo_frio": false,
+  "malloc_arena_max": "2",
+  "escaner": "hilo (actual)",
+  "activos_en_informe": 74,
+  "escaneo_inicial_s": 131.75,
+  "escaneo_en_reposo_s": 0.0,
+  "preparacion_s": 134.6,
+  "rss_mb_reposo": 115.0,
+  "rss_mb_final": 219.9,
+  "vmhwm_mb": 339.6
+ },
+ "niveles": [
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 541.3,
+    "p95_ms": 805.1,
+    "p99_ms": 823.2,
+    "max_ms": 825.2,
+    "codigos": {
+     "200": 50
+    },
+    "segundos_rafaga": 0.85
+   },
+   "panel_total": {
+    "n": 9894,
+    "p50_ms": 9.3,
+    "p95_ms": 33.3,
+    "p99_ms": 98.1,
+    "max_ms": 342.4,
+    "codigos": {
+     "200": 9403,
+     "402": 491
+    },
+    "rps": 49.5
+   },
+   "panel_durante_escaneo": {
+    "n": 2150,
+    "p50_ms": 10.9,
+    "p95_ms": 51.9,
+    "p99_ms": 182.4,
+    "max_ms": 294.8,
+    "codigos": {
+     "200": 2050,
+     "402": 100
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 7744,
+    "p50_ms": 8.8,
+    "p95_ms": 30.1,
+    "p99_ms": 51.6,
+    "max_ms": 342.4,
+    "codigos": {
+     "200": 7353,
+     "402": 391
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 43.42,
+     "error": null,
+     "inicio_s": 5.0
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 5.2
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 7483,
+     "p50": 0.1,
+     "p99": 8.4,
+     "max": 149.98
+    },
+    "fuera_de_escaneo": {
+     "n": 28239,
+     "p50": 0.1,
+     "p99": 7.2,
+     "max": 58.33
+    }
+   },
+   "telegram": {
+    "comandos": 410,
+    "respuesta_durante_escaneo": {
+     "n": 89,
+     "p50_ms": 37.2,
+     "p95_ms": 56.9,
+     "p99_ms": 215.8,
+     "max_ms": 323.2,
+     "codigos": {
+      "200": 89
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 321,
+     "p50_ms": 37.0,
+     "p95_ms": 61.9,
+     "p99_ms": 76.9,
+     "max_ms": 80.7,
+     "codigos": {
+      "200": 321
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794758640.653,
+      "s": 3.17,
+      "enviados": 33,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794758673.825,
+      "s": 2.73,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758706.56,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758739.274,
+      "s": 2.73,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758772.008,
+      "s": 2.72,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758804.732,
+      "s": 2.75,
+      "enviados": 33,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 198
+   },
+   "rss_mb_max": 327.6,
+   "rss_mb_max_durante_escaneo": 267.9,
+   "rss_mb_final": 219.9,
+   "vmhwm_mb_proceso": 339.6,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 31.5,
+   "cpu_pct_medio_durante_escaneo": 32.7,
+   "cpu_pct_medio_fuera_de_escaneo": 31.1,
+   "hilos_max": 27,
+   "pg_conexiones_max": 20,
+   "pg_conexiones_final": 19,
+   "pg_conexiones_abiertas_en_el_tramo": 17,
+   "pg_estado_conexiones_al_final": {
+    "idle": 19
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/788",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [],
+   "peticiones_http": 9944
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0,
+ "trazas_en_registro_del_servidor": 0,
+ "registro_servidor_ultimas_lineas": [
+  "Modo cuentas activo · base de datos postgresql · esquema verificado",
+  "Administrador: jefe.estres · verificado",
+  "Crypto Radar 2.1.0 en http://localhost:44517  (16 hilos; Ctrl+C para detener)"
+ ]
+}

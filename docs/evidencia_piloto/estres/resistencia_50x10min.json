@@ -1,0 +1,443 @@
+{
+ "entorno": {
+  "cpu": 4,
+  "python": "3.12.3",
+  "postgres": "16.15 (Ubuntu 16.15-0ubuntu0.24.04.1)",
+  "duracion_s": 600.0,
+  "pausa_s": 1.0,
+  "escaneo_en_s": 5.0,
+  "repetir_escaneo": true,
+  "telegram_por_s": 2.0,
+  "difusion_cada_s": 30.0,
+  "caos": "",
+  "datos": "sinteticos",
+  "escaneo_frio": true,
+  "malloc_arena_max": "2",
+  "escaner": "hilo (actual)",
+  "activos_en_informe": 40,
+  "escaneo_inicial_s": 24.79,
+  "escaneo_en_reposo_s": 3.81,
+  "preparacion_s": 31.6,
+  "rss_mb_reposo": 97.8,
+  "rss_mb_final": 232.9,
+  "vmhwm_mb": 338.1
+ },
+ "niveles": [
+  {
+   "usuarios": 50,
+   "login": {
+    "n": 50,
+    "p50_ms": 533.9,
+    "p95_ms": 762.2,
+    "p99_ms": 774.7,
+    "max_ms": 782.8,
+    "codigos": {
+     "200": 50
+    },
+    "segundos_rafaga": 0.82
+   },
+   "panel_total": {
+    "n": 29621,
+    "p50_ms": 7.3,
+    "p95_ms": 31.8,
+    "p99_ms": 184.3,
+    "max_ms": 406.9,
+    "codigos": {
+     "200": 28126,
+     "402": 1495
+    },
+    "rps": 49.4
+   },
+   "panel_durante_escaneo": {
+    "n": 3624,
+    "p50_ms": 10.7,
+    "p95_ms": 216.7,
+    "p99_ms": 305.8,
+    "max_ms": 406.9,
+    "codigos": {
+     "200": 3457,
+     "402": 167
+    }
+   },
+   "panel_fuera_de_escaneo": {
+    "n": 25997,
+    "p50_ms": 6.7,
+    "p95_ms": 21.3,
+    "p99_ms": 36.4,
+    "max_ms": 224.2,
+    "codigos": {
+     "200": 24669,
+     "402": 1328
+    }
+   },
+   "errores": {},
+   "errores_segundos_desde_inicio": [],
+   "escaneos": [
+    {
+     "s": 4.06,
+     "error": null,
+     "inicio_s": 5.0
+    },
+    {
+     "s": 4.18,
+     "error": null,
+     "inicio_s": 39.2
+    },
+    {
+     "s": 4.09,
+     "error": null,
+     "inicio_s": 73.5
+    },
+    {
+     "s": 4.41,
+     "error": null,
+     "inicio_s": 107.7
+    },
+    {
+     "s": 4.18,
+     "error": null,
+     "inicio_s": 142.5
+    },
+    {
+     "s": 4.28,
+     "error": null,
+     "inicio_s": 177.1
+    },
+    {
+     "s": 4.35,
+     "error": null,
+     "inicio_s": 211.8
+    },
+    {
+     "s": 4.29,
+     "error": null,
+     "inicio_s": 246.6
+    },
+    {
+     "s": 4.22,
+     "error": null,
+     "inicio_s": 281.3
+    },
+    {
+     "s": 4.26,
+     "error": null,
+     "inicio_s": 315.5
+    },
+    {
+     "s": 4.09,
+     "error": null,
+     "inicio_s": 350.3
+    },
+    {
+     "s": 4.18,
+     "error": null,
+     "inicio_s": 384.5
+    },
+    {
+     "s": 4.3,
+     "error": null,
+     "inicio_s": 419.1
+    },
+    {
+     "s": 4.14,
+     "error": null,
+     "inicio_s": 453.8
+    },
+    {
+     "s": 4.07,
+     "error": null,
+     "inicio_s": 488.0
+    },
+    {
+     "s": 4.06,
+     "error": null,
+     "inicio_s": 522.2
+    },
+    {
+     "s": 4.17,
+     "error": null,
+     "inicio_s": 556.4
+    },
+    {
+     "s": 4.08,
+     "error": null,
+     "inicio_s": 590.6
+    }
+   ],
+   "peticiones_escaneo": [
+    {
+     "t": 5.0,
+     "codigo": 200,
+     "ms": 11.2
+    },
+    {
+     "t": 39.2,
+     "codigo": 200,
+     "ms": 23.0
+    },
+    {
+     "t": 73.5,
+     "codigo": 200,
+     "ms": 14.0
+    },
+    {
+     "t": 107.7,
+     "codigo": 200,
+     "ms": 11.5
+    },
+    {
+     "t": 142.4,
+     "codigo": 200,
+     "ms": 20.6
+    },
+    {
+     "t": 177.1,
+     "codigo": 200,
+     "ms": 21.3
+    },
+    {
+     "t": 211.9,
+     "codigo": 200,
+     "ms": 25.8
+    },
+    {
+     "t": 246.6,
+     "codigo": 200,
+     "ms": 22.9
+    },
+    {
+     "t": 281.3,
+     "codigo": 200,
+     "ms": 22.9
+    },
+    {
+     "t": 315.5,
+     "codigo": 200,
+     "ms": 18.0
+    },
+    {
+     "t": 350.3,
+     "codigo": 200,
+     "ms": 11.5
+    },
+    {
+     "t": 384.5,
+     "codigo": 200,
+     "ms": 26.3
+    },
+    {
+     "t": 419.1,
+     "codigo": 200,
+     "ms": 15.8
+    },
+    {
+     "t": 453.8,
+     "codigo": 200,
+     "ms": 30.4
+    },
+    {
+     "t": 488.0,
+     "codigo": 200,
+     "ms": 9.3
+    },
+    {
+     "t": 522.2,
+     "codigo": 200,
+     "ms": 14.0
+    },
+    {
+     "t": 556.4,
+     "codigo": 200,
+     "ms": 30.1
+    },
+    {
+     "t": 590.6,
+     "codigo": 200,
+     "ms": 19.2
+    }
+   ],
+   "sonda_retraso_ms": {
+    "durante_escaneo": {
+     "n": 11799,
+     "p50": 0.1,
+     "p99": 22.0,
+     "max": 64.83
+    },
+    "fuera_de_escaneo": {
+     "n": 100965,
+     "p50": 0.1,
+     "p99": 5.4,
+     "max": 34.72
+    }
+   },
+   "telegram": {
+    "comandos": 1284,
+    "respuesta_durante_escaneo": {
+     "n": 144,
+     "p50_ms": 36.2,
+     "p95_ms": 194.4,
+     "p99_ms": 310.8,
+     "max_ms": 455.1,
+     "codigos": {
+      "200": 144
+     }
+    },
+    "respuesta_fuera_de_escaneo": {
+     "n": 1140,
+     "p50_ms": 35.5,
+     "p95_ms": 55.8,
+     "p99_ms": 68.5,
+     "max_ms": 101.6,
+     "codigos": {
+      "200": 1140
+     }
+    },
+    "difusiones": [
+     {
+      "t": 1794757517.982,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757550.697,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757583.409,
+      "s": 2.69,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757616.104,
+      "s": 2.7,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757648.806,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757681.515,
+      "s": 2.73,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757714.248,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757746.954,
+      "s": 2.72,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757779.669,
+      "s": 2.72,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757812.391,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757845.1,
+      "s": 2.71,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757877.808,
+      "s": 2.73,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757910.541,
+      "s": 3.13,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794757943.674,
+      "s": 3.2,
+      "enviados": 33,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794757976.871,
+      "s": 2.76,
+      "enviados": 33,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794758009.628,
+      "s": 2.81,
+      "enviados": 33,
+      "durante_escaneo": true
+     },
+     {
+      "t": 1794758042.44,
+      "s": 2.74,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758075.188,
+      "s": 2.69,
+      "enviados": 33,
+      "durante_escaneo": false
+     },
+     {
+      "t": 1794758107.882,
+      "s": 2.68,
+      "enviados": 33,
+      "durante_escaneo": false
+     }
+    ],
+    "mensajes_de_difusion_total_proceso": 627
+   },
+   "rss_mb_max": 338.4,
+   "rss_mb_max_durante_escaneo": 232.9,
+   "rss_mb_final": 232.9,
+   "vmhwm_mb_proceso": 338.1,
+   "rss_mb_max_hijos": 0.0,
+   "cpu_pct_medio": 26.3,
+   "cpu_pct_medio_durante_escaneo": 42.9,
+   "cpu_pct_medio_fuera_de_escaneo": 24.0,
+   "hilos_max": 23,
+   "pg_conexiones_max": 20,
+   "pg_conexiones_final": 19,
+   "pg_conexiones_abiertas_en_el_tramo": 33,
+   "pg_estado_conexiones_al_final": {
+    "idle": 19
+   },
+   "pg_idle_in_transaction_max": 0,
+   "pg_muestras_con_esperas_por_bloqueo": "0/2436",
+   "pg_muestras_sin_respuesta_del_monitor": 0,
+   "caos": [],
+   "peticiones_http": 29671
+  }
+ ],
+ "consultas_lentas_por_sentencia": {},
+ "consultas_lentas_total": 0,
+ "trazas_en_registro_del_servidor": 0,
+ "registro_servidor_ultimas_lineas": [
+  "Modo cuentas activo · base de datos postgresql · esquema verificado",
+  "Administrador: jefe.estres · verificado",
+  "Crypto Radar 2.1.0 en http://localhost:34015  (16 hilos; Ctrl+C para detener)"
+ ]
+}

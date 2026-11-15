@@ -1,0 +1,33 @@
+{
+ "python": "3.12.3",
+ "malloc_arena_max": "2",
+ "casos": [
+  {
+   "datos": "sinteticos",
+   "activos": 40,
+   "s": 25.3,
+   "error": null,
+   "rss_mb_tras_importar": 36.4,
+   "pico_mb": 62.5,
+   "rss_mb_al_terminar": 61.4
+  },
+  {
+   "datos": "sinteticos",
+   "activos": 40,
+   "s": 3.8,
+   "error": null,
+   "rss_mb_tras_importar": 36.3,
+   "pico_mb": 63.0,
+   "rss_mb_al_terminar": 61.6
+  },
+  {
+   "datos": "real",
+   "activos": 74,
+   "s": 39.7,
+   "error": null,
+   "rss_mb_tras_importar": 36.4,
+   "pico_mb": 150.5,
+   "rss_mb_al_terminar": 80.5
+  }
+ ]
+}

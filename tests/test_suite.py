@@ -18,6 +18,7 @@ import tempfile
 import threading
 import time
 import unittest
+from unittest import mock
 import urllib.error
 import urllib.request
 import http.cookiejar
@@ -806,7 +807,12 @@ class T13_SaaS(unittest.TestCase):
         from radar import server
         class H: pass
         h = H(); h.headers = {"X-Forwarded-For": "1.2.3.4, 203.0.113.9"}; h.client_address = ("10.0.0.1", 0)
-        self.assertEqual(server.Handler._client_ip(h), "203.0.113.9")   # el último lo añade el proxy
+        with mock.patch.dict(os.environ, {"RENDER": "true"}):
+            os.environ.pop("CRYPTO_RADAR_TRUSTED_PROXIES", None)
+            self.assertEqual(server.Handler._client_ip(h), "203.0.113.9")   # en Render, el último lo añade el proxy
+        with mock.patch.dict(os.environ, {}):
+            os.environ.pop("RENDER", None); os.environ.pop("CRYPTO_RADAR_TRUSTED_PROXIES", None)
+            self.assertEqual(server.Handler._client_ip(h), "10.0.0.1")      # sin proxy autorizado no se confía
 
     def test_registration_rate_limited_per_ip(self):
         from radar import auth as _a
@@ -2669,11 +2675,198 @@ print("RECONEXION_OK" if ok == [1, 1, 1] and db.one("SELECT pg_backend_pid() AS 
         r = subprocess.run([sys.executable, "-c", code, str(ROOT)], capture_output=True, text=True, env=env, timeout=120)
         self.assertIn("RECONEXION_OK", r.stdout, r.stderr[-2000:])
 
+    def test_pg_connect_retries_while_database_starts(self):
+        """Prueba de estrés (caos): tras reiniciar PostgreSQL, 15 peticiones devolvieron 500 con «the database
+        system is starting up». La conexión se reintenta con esperas cortas; la sentencia nunca se repite aquí."""
+        import psycopg
+        calls = []
+        class FakeConn:
+            def execute(self, *a): return None
+        def fake_connect(url, **kw):
+            calls.append(kw)
+            if len(calls) < 3:
+                raise psycopg.OperationalError("FATAL:  the database system is starting up")
+            return FakeConn()
+        with mock.patch.object(db, "IS_PG", True), mock.patch.object(db, "URL", "postgresql://x/y"), \
+             mock.patch.object(db, "CONNECT_RETRY_S", (0.01, 0.01, 0.01)), mock.patch.object(psycopg, "connect", fake_connect):
+            self.assertIsInstance(db._connect(), FakeConn)
+            self.assertEqual(len(calls), 3)
+            self.assertEqual(calls[0].get("connect_timeout"), 10)
+            calls.clear()
+            with mock.patch.object(psycopg, "connect", side_effect=psycopg.OperationalError("caída")) as m:
+                with self.assertRaises(psycopg.OperationalError):
+                    db._connect()
+                self.assertEqual(m.call_count, 4)                  # 3 esperas + último intento, y se rinde
+
     def test_serve_uses_pooled_server(self):
         src = (ROOT / "radar" / "server.py").read_text(encoding="utf-8")
         self.assertIn("httpd = PooledHTTPServer((host, port), Handler)", src)
         self.assertNotIn("httpd = ThreadingHTTPServer((host, port), Handler)", src)
 
+
+class T28_RateLimitingCombinado(T13_SaaS):
+    """Protección combinada del inicio de sesión (docs/RATE_LIMITING.md): IP, cuenta, ventana e intentos fallidos,
+    y X-Forwarded-For solo desde proxies autorizados."""
+    PW = "clave muy segura 123"
+
+    def setUp(self):
+        auth.reset_rate_limits()
+
+    def users(self, n, plan="free"):
+        out = []
+        for _ in range(n):
+            auth.reset_rate_limits()
+            (st, r, _), name = self.request()
+            self.assertEqual(st, 200, r)
+            self.approve(name, plan)
+            out.append(name)
+        auth.reset_rate_limits()
+        return out
+
+    def try_login(self, name, pw, ip):
+        try:
+            auth.login(name, pw, ip=ip); return 200
+        except auth.AuthError as e:
+            return e.code
+
+    # --- el problema de la auditoría: 30 de 50 usuarios legítimos tras la misma IP recibían 429
+    def test_shared_ip_legit_logins_not_blocked(self):
+        names = self.users(30)
+        codes = [self.try_login(n, self.PW, "198.51.100.7") for n in names]
+        self.assertEqual(codes, [200] * 30)
+
+    def test_shared_ip_concurrent_legit_logins_not_blocked(self):
+        # 16 a la vez = los hilos del servidor (CRYPTO_RADAR_WORKERS): nunca hay más inicios de sesión en curso
+        names = self.users(16)
+        codes = []
+        ts = [threading.Thread(target=lambda n=n: codes.append(self.try_login(n, self.PW, "198.51.100.8"))) for n in names]
+        [t.start() for t in ts]; [t.join() for t in ts]
+        self.assertEqual(sorted(codes), [200] * 16)
+
+    def test_more_simultaneous_logins_than_failure_limit_is_known_limit(self):
+        """Límite conocido (docs/RATE_LIMITING.md): cada intento cuenta como fallido mientras se comprueba, así que
+        con más de LOGIN_IP_FAILS comprobaciones simultáneas desde una IP las que sobran reciben 429. Con el
+        servidor real no ocurre mientras CRYPTO_RADAR_WORKERS ≤ LOGIN_IP_FAILS (16 ≤ 20)."""
+        from radar import server
+        self.assertLessEqual(16, auth.LOGIN_IP_FAILS)
+        self.assertIn("LOGIN_IP_FAILS", (ROOT / "radar" / "server.py").read_text(encoding="utf-8"))
+
+    # --- la protección contra fuerza bruta no se debilita
+    def test_ip_failure_limit_still_blocks_brute_force(self):
+        names = self.users(1)
+        codes = [self.try_login(f"nadie.bf{i}", "mala clave 12345", "198.51.100.9") for i in range(auth.LOGIN_IP_FAILS)]
+        self.assertEqual(codes, [401] * auth.LOGIN_IP_FAILS)
+        self.assertEqual(self.try_login(names[0], self.PW, "198.51.100.9"), 429)          # ni con la clave buena
+        self.assertEqual(self.try_login(names[0], self.PW, "198.51.100.10"), 200)      # otra IP sigue entrando
+
+    def test_ip_failure_limit_counts_nonexistent_users(self):
+        for i in range(auth.LOGIN_IP_FAILS):
+            self.assertEqual(self.try_login(f"nadie{i}", "mala clave 12345", "198.51.100.11"), 401)
+        self.assertEqual(self.try_login("otro.nadie", "mala clave 12345", "198.51.100.11"), 429)
+
+    def test_successful_logins_do_not_reset_failure_count(self):
+        good, = self.users(1)
+        victims = self.users(5)
+        for i in range(auth.LOGIN_IP_FAILS - 1):
+            self.try_login(victims[i % 5], f"mala {i:06d}", "198.51.100.12")
+            self.assertEqual(self.try_login(good, self.PW, "198.51.100.12"), 200)      # acertar no devuelve intentos
+        self.try_login(victims[0], "mala final 0001", "198.51.100.12")
+        self.assertEqual(self.try_login(victims[1], "mala final 0002", "198.51.100.12"), 429)
+
+    def test_concurrent_guesses_never_exceed_failure_limit(self):
+        names = self.users(5)
+        codes = []
+        ts = [threading.Thread(target=lambda i=i: codes.append(self.try_login(names[i % 5], f"mala {i:06d}", "198.51.100.13")))
+              for i in range(60)]
+        [t.start() for t in ts]; [t.join() for t in ts]
+        self.assertLessEqual(codes.count(401) + codes.count(200), auth.LOGIN_IP_FAILS)   # comprobadas: como mucho 20
+        self.assertNotIn(200, codes)
+
+    def test_account_lock_unchanged_across_ips(self):
+        name, = self.users(1)
+        for i in range(auth.LOCK_AFTER):
+            self.assertEqual(self.try_login(name, f"mala {i:06d}", f"203.0.113.{i}"), 401)
+        self.assertEqual(self.try_login(name, self.PW, "203.0.113.99"), 429)               # bloqueo por cuenta
+
+    def test_spray_mode_tightens_per_ip_failures(self):
+        names = self.users(2)
+        with mock.patch.object(auth, "LOGIN_SPRAY_GLOBAL", 10):
+            for i in range(10):
+                self.try_login(f"spray{i}", "mala clave 12345", f"192.0.2.{i}")            # 10 IP distintas
+            codes = [self.try_login(f"spray.x{i}", "mala clave 12345", "192.0.2.200") for i in range(auth.LOGIN_IP_FAILS_SPRAY)]
+            self.assertEqual(codes, [401] * auth.LOGIN_IP_FAILS_SPRAY)
+            self.assertEqual(self.try_login(names[0], self.PW, "192.0.2.200"), 429)        # modo estricto: 5 fallos bastan
+            self.assertEqual(self.try_login(names[1], self.PW, "192.0.2.201"), 200)        # sin fallos se sigue entrando
+
+    def test_flood_cap_counts_every_attempt(self):
+        name, = self.users(1)
+        with mock.patch.object(auth, "LOGIN_IP_ATTEMPTS", 4):
+            codes = [self.try_login(name, self.PW, "198.51.100.14") for _ in range(5)]
+        self.assertEqual(codes, [200, 200, 200, 200, 429])
+
+    def test_totp_prompt_is_not_a_failure_but_wrong_code_is(self):
+        from radar import totp
+        name, = self.users(1)
+        uid = db.one("SELECT id FROM users WHERE email = ?", (name,))["id"]
+        db.execute("UPDATE users SET totp_secret = ?, totp_enabled = 1 WHERE id = ?", (totp.new_secret(), uid))
+        for _ in range(auth.LOGIN_IP_FAILS + 5):
+            self.assertEqual(self.try_login(name, self.PW, "198.51.100.15"), 401)        # pide el código: no cuenta
+        self.assertEqual(auth.rate_peek("loginfail:198.51.100.15", auth.LOGIN_WINDOW_S), 0)
+        try:
+            auth.login(name, self.PW, ip="198.51.100.15", code="000000")
+        except auth.AuthError:
+            pass
+        self.assertEqual(auth.rate_peek("loginfail:198.51.100.15", auth.LOGIN_WINDOW_S), 1)
+
+    def test_login_ip_limit_over_http(self):
+        names = self.users(25)
+        for n in names:
+            st, r, _ = self.call(self.client(), "/api/auth/login", {"username": n, "password": self.PW})
+            self.assertEqual(st, 200, r)                  # 25 usuarios desde 127.0.0.1: ninguno bloqueado
+
+    # --- X-Forwarded-For solo desde proxies autorizados
+    def test_forwarded_for_ignored_from_untrusted_peer(self):
+        from radar import server
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_TRUSTED_PROXIES": "10.0.0.0/8"}):
+            self.assertEqual(server.client_ip("198.51.100.20", "1.1.1.1"), "198.51.100.20")
+            self.assertEqual(server.client_ip("10.1.2.3", "1.1.1.1"), "1.1.1.1")
+            self.assertEqual(server.client_ip("10.1.2.3", "6.6.6.6, 1.1.1.1, 10.9.9.9"), "1.1.1.1")   # salta proxies
+            self.assertEqual(server.client_ip("10.1.2.3", "no-es-ip"), "10.1.2.3")
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_TRUSTED_PROXIES": ""}):
+            self.assertEqual(server.client_ip("10.1.2.3", "1.1.1.1"), "10.1.2.3")
+
+    def test_forwarded_for_cannot_dodge_limit_without_trusted_proxy(self):
+        names = self.users(1)
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_TRUSTED_PROXIES": ""}):
+            os.environ.pop("RENDER", None)
+            codes = [self.call(self.client(), "/api/auth/login", {"username": f"nadie{i}", "password": "mala clave 12345"},
+                               {"X-Forwarded-For": f"203.0.113.{i}"})[0] for i in range(auth.LOGIN_IP_FAILS + 1)]
+        self.assertEqual(codes[-1], 429)                  # todas cuentan para 127.0.0.1 aunque cambie el encabezado
+
+    def test_forwarded_for_trusted_proxy_separates_clients(self):
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_TRUSTED_PROXIES": "127.0.0.1/32"}):
+            for i in range(auth.LOGIN_IP_FAILS):
+                self.call(self.client(), "/api/auth/login", {"username": f"nadie{i}", "password": "mala clave 12345"},
+                          {"X-Forwarded-For": "203.0.113.50"})
+            st1 = self.call(self.client(), "/api/auth/login", {"username": "x.nadie", "password": "mala clave 12345"},
+                            {"X-Forwarded-For": "203.0.113.50"})[0]
+            st2 = self.call(self.client(), "/api/auth/login", {"username": "x.nadie2", "password": "mala clave 12345"},
+                            {"X-Forwarded-For": "203.0.113.51"})[0]
+        self.assertEqual((st1, st2), (429, 401))
+
+    def test_rate_bump_memory_fallback(self):
+        with mock.patch.object(db, "execute", side_effect=RuntimeError("caída")), \
+             mock.patch.object(db, "one", side_effect=RuntimeError("caída")):
+            self.assertEqual(auth.rate_bump("mem:x", 900), 1)
+            self.assertEqual(auth.rate_bump("mem:x", 900), 2)
+            self.assertEqual(auth.rate_bump("mem:x", 900, -1), 1)
+            self.assertEqual(auth.rate_peek("mem:x", 900), 1)
+
+
+
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T28_RateLimitingCombinado.__dict__:
+        setattr(T28_RateLimitingCombinado, _n, None)    # no repetir las pruebas heredadas de T13
 
 if __name__ == "__main__":
     unittest.main(verbosity=2 if "-v" in sys.argv else 1, argv=[sys.argv[0]] + [a for a in sys.argv[1:] if a != "-v"])
