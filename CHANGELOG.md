@@ -20,6 +20,8 @@
 - Migraciones: solo se tolera «la columna ya existe»; el esquema completo se comprueba antes de arrancar.
 - Límites de intentos guardados en la base (sobreviven a reinicios). En Render, el modo cuentas sin PostgreSQL no arranca.
 - `docs/SEGURIDAD.md` con la matriz de permisos, las limitaciones y la propuesta para producción. 181 pruebas.
+- `serve()` exige `CRYPTO_RADAR_ADMIN_USER` y `CRYPTO_RADAR_ADMIN_PASSWORD` en modo cuentas y se detiene si falta
+  alguna o si no se confirma el administrador. 11 pruebas nuevas del arranque real en procesos aislados (192 en total).
 
 ## 2.0.0 — 2026-11-15 (rama `claude/project-thread-i8udp5`)
 

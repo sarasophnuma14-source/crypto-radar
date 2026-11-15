@@ -5,7 +5,10 @@ Este documento resume cómo se protege el acceso y qué limitaciones quedan. Apl
 
 ## 1. Arranque del administrador
 
-El administrador sale de `CRYPTO_RADAR_ADMIN_USER` y `CRYPTO_RADAR_ADMIN_PASSWORD`. La contraseña debe tener
+El administrador sale de `CRYPTO_RADAR_ADMIN_USER` y `CRYPTO_RADAR_ADMIN_PASSWORD`. **En modo cuentas las dos son
+obligatorias**: si falta cualquiera (o está vacía), `serve()` se detiene con `SystemExit` antes de abrir la base y el
+mensaje nombra la variable que falta, sin mostrar contraseñas. Si `ensure_admin()` no confirma un administrador, el
+servidor tampoco arranca. No existe ningún arranque en modo cuentas sin administrador. La contraseña debe tener
 12 caracteres o más y no puede contener el usuario. `auth.ensure_admin()` se ejecuta en cada arranque y el registro
 del servidor muestra `Administrador: <usuario> · <resultado>`.
 

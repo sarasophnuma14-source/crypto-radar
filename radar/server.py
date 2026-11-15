@@ -423,6 +423,9 @@ def paper_scheduler():
             print("paper trading:", e, flush=True)
 
 
+ADMIN_ENV = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD")
+
+
 def serve(port=None, host=None, schedule=True):
     s = load_settings()
     port = int(port or os.environ.get("PORT") or s["port"])
@@ -431,6 +434,12 @@ def serve(port=None, host=None, schedule=True):
         raise SystemExit("Por seguridad, define CRYPTO_RADAR_PASSWORD (o activa cuentas con CRYPTO_RADAR_ACCOUNTS=1) "
                          "antes de exponer el panel a internet.")
     if ACCOUNTS:
+        # En modo cuentas el administrador es obligatorio: sin él nadie aprueba solicitudes ni gestiona usuarios,
+        # y un servidor así no debe quedar expuesto. Se comprueba antes de tocar la base.
+        missing = [k for k in ADMIN_ENV if not (os.environ.get(k) or "").strip()]
+        if missing:
+            raise SystemExit("No arranco: el modo cuentas (CRYPTO_RADAR_ACCOUNTS=1) exige administrador. "
+                             "Falta definir: " + ", ".join(missing) + ".")
         from . import db, telegram_bot
         if os.environ.get("RENDER") and not db.IS_PG and os.environ.get("CRYPTO_RADAR_ALLOW_SQLITE") != "1":
             raise SystemExit("Modo cuentas en Render sin DATABASE_URL: el disco es efímero y se perderían cuentas, "
@@ -442,9 +451,10 @@ def serve(port=None, host=None, schedule=True):
             raise SystemExit(f"No arranco: {e}")
         print(f"Modo cuentas activo · base de datos {db.backend()} · esquema verificado", flush=True)
         from . import auth
-        adm = auth.ensure_admin()
-        print(f"Administrador: {adm['user']} · {adm['result']}" if adm else
-              "AVISO: sin CRYPTO_RADAR_ADMIN_USER/PASSWORD no hay administrador que apruebe solicitudes.", flush=True)
+        adm = auth.ensure_admin()                       # AdminBootstrapError (SystemExit) si el entorno no es válido
+        if not adm or not adm.get("user"):
+            raise SystemExit("No arranco: no se pudo confirmar el administrador del modo cuentas.")
+        print(f"Administrador: {adm['user']} · {adm['result']}", flush=True)
         if schedule:
             telegram_bot.start()
     if schedule:

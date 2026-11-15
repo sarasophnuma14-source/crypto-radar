@@ -1493,6 +1493,133 @@ for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
         setattr(T18_SeguridadFinal, _n, None)
 
 
+# ================================================================== 19. serve(): nunca arranca en modo cuentas sin administrador
+SERVE_HARNESS = r"""
+import os, sys, json
+sys.path.insert(0, sys.argv[1])
+cfg = json.loads(sys.argv[2])
+from radar import server, auth, db
+
+class FakeHTTPServer:                       # sustituye solo al socket: todo lo anterior es el serve() real
+    def __init__(self, *a, **k): pass
+    def serve_forever(self): print("SERVING", flush=True)
+server.ThreadingHTTPServer = FakeHTTPServer
+
+if cfg.get("squatter"):                     # alguien reservó el nombre antes de configurar el administrador
+    adm = os.environ.pop("CRYPTO_RADAR_ADMIN_USER", None)
+    uid = auth.request_access(cfg["squatter"], "clave del intruso 99", ip="10.7.7.7")
+    auth.admin_set_status({"id": "x", "is_admin": 1, "email": "prueba"}, uid, "approve")
+    if adm: os.environ["CRYPTO_RADAR_ADMIN_USER"] = adm
+    print("SQUATTER", uid, flush=True)
+if cfg.get("ensure_none"):
+    auth.ensure_admin = lambda: None
+try:
+    server.serve(port=0, host=cfg.get("host"), schedule=False)
+except SystemExit as e:
+    print("REFUSED", e, flush=True)
+if cfg.get("report"):
+    rows = db.all_("SELECT id, email, is_admin, status, approved_by FROM users ORDER BY created_at", ())
+    print("USERS", json.dumps(rows), flush=True)
+"""
+
+
+class T19_ServeAdminObligatorio(unittest.TestCase):
+    STRIP = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD", "CRYPTO_RADAR_ADMIN_RESET",
+             "CRYPTO_RADAR_ADMIN_TAKEOVER", "CRYPTO_RADAR_ACCOUNTS", "CRYPTO_RADAR_PASSWORD", "RENDER",
+             "DATABASE_URL", "CRYPTO_RADAR_HOST", "PAPER_TRADING", "KEEPALIVE")
+
+    def run_serve(self, env=None, home=None, **cfg):
+        e = {k: v for k, v in os.environ.items() if k not in self.STRIP}
+        e["CRYPTO_RADAR_HOME"] = home or tempfile.mkdtemp(prefix="cr-serve-")
+        e.update(env or {})
+        r = subprocess.run([sys.executable, "-c", SERVE_HARNESS, str(ROOT), json.dumps(cfg)],
+                           capture_output=True, text=True, env=e, timeout=90)
+        return r.stdout + r.stderr
+
+    ADMIN = {"CRYPTO_RADAR_ACCOUNTS": "1", "CRYPTO_RADAR_ADMIN_USER": "duenio",
+             "CRYPTO_RADAR_ADMIN_PASSWORD": "clave larga del jefe 2026"}
+
+    def refused(self, out):
+        self.assertIn("REFUSED", out, out[-2000:]); self.assertNotIn("SERVING", out, out[-2000:])
+
+    def test_1_accounts_without_both_vars_refuses(self):
+        out = self.run_serve({"CRYPTO_RADAR_ACCOUNTS": "1"})
+        self.refused(out)
+        self.assertIn("CRYPTO_RADAR_ADMIN_USER", out); self.assertIn("CRYPTO_RADAR_ADMIN_PASSWORD", out)
+
+    def test_2_missing_user_refuses(self):
+        env = dict(self.ADMIN); env.pop("CRYPTO_RADAR_ADMIN_USER")
+        out = self.run_serve(env); self.refused(out)
+        self.assertIn("Falta definir: CRYPTO_RADAR_ADMIN_USER.", out)
+        self.assertNotIn("clave larga del jefe 2026", out)                         # nunca muestra la contraseña
+
+    def test_3_missing_password_refuses(self):
+        env = dict(self.ADMIN); env.pop("CRYPTO_RADAR_ADMIN_PASSWORD")
+        out = self.run_serve(env); self.refused(out)
+        self.assertIn("Falta definir: CRYPTO_RADAR_ADMIN_PASSWORD.", out)
+
+    def test_3b_blank_values_count_as_missing(self):
+        out = self.run_serve(dict(self.ADMIN, CRYPTO_RADAR_ADMIN_USER="   ", CRYPTO_RADAR_ADMIN_PASSWORD=""))
+        self.refused(out); self.assertIn("CRYPTO_RADAR_ADMIN_USER, CRYPTO_RADAR_ADMIN_PASSWORD", out)
+
+    def test_3c_invalid_admin_password_refuses(self):
+        out = self.run_serve(dict(self.ADMIN, CRYPTO_RADAR_ADMIN_PASSWORD="corta"))
+        self.refused(out); self.assertNotIn("corta\n", out.replace("REFUSED", ""))
+
+    def test_4_valid_admin_boots(self):
+        out = self.run_serve(self.ADMIN, report=True)
+        self.assertIn("Administrador: duenio · creado", out, out[-2000:]); self.assertIn("SERVING", out, out[-2000:])
+        self.assertNotIn("clave larga del jefe 2026", out)
+        users = json.loads(out.split("USERS ", 1)[1].splitlines()[0])
+        self.assertEqual([(u["email"], u["is_admin"], u["approved_by"]) for u in users], [("duenio", 1, "entorno")])
+
+    def test_5_ensure_admin_none_refuses(self):
+        out = self.run_serve(self.ADMIN, ensure_none=True)
+        self.refused(out); self.assertIn("no se pudo confirmar el administrador", out)
+
+    def test_6_single_user_mode_unchanged(self):
+        out = self.run_serve({})                                                   # local, sin cuentas: arranca
+        self.assertIn("SERVING", out, out[-2000:]); self.assertNotIn("Administrador", out)
+        out = self.run_serve({}, host="0.0.0.0")                                   # expuesto sin contraseña: no
+        self.refused(out); self.assertIn("CRYPTO_RADAR_PASSWORD", out)
+        out = self.run_serve({"CRYPTO_RADAR_PASSWORD": "clave del panel 123"}, host="0.0.0.0")
+        self.assertIn("SERVING", out, out[-2000:])
+
+    def test_7_squatter_never_becomes_admin_via_serve(self):
+        home = tempfile.mkdtemp(prefix="cr-serve-")
+        out = self.run_serve(self.ADMIN, home=home, squatter="duenio", report=True)
+        self.refused(out); self.assertIn("apropiación", out)
+        users = json.loads(out.split("USERS ", 1)[1].splitlines()[0])
+        self.assertEqual([(u["email"], u["is_admin"]) for u in users], [("duenio", 0)])
+        out = self.run_serve(self.ADMIN, home=home, report=True)                  # reintentar no cambia nada
+        self.refused(out)
+        users = json.loads(out.split("USERS ", 1)[1].splitlines()[0])
+        self.assertEqual([(u["email"], u["is_admin"]) for u in users], [("duenio", 0)])
+
+    def test_8_takeover_quarantines_and_boots(self):
+        home = tempfile.mkdtemp(prefix="cr-serve-")
+        out = self.run_serve(self.ADMIN, home=home, squatter="duenio")
+        self.refused(out)
+        squat_id = out.split("SQUATTER ", 1)[1].split()[0]
+        out = self.run_serve(dict(self.ADMIN, CRYPTO_RADAR_ADMIN_TAKEOVER="1"), home=home, report=True)
+        self.assertIn("Administrador: duenio · cuarentena", out, out[-2000:]); self.assertIn("SERVING", out)
+        users = {u["id"]: u for u in json.loads(out.split("USERS ", 1)[1].splitlines()[0])}
+        old = users.pop(squat_id)
+        self.assertEqual((old["is_admin"], old["status"]), (0, "rejected")); self.assertNotEqual(old["email"], "duenio")
+        (new,) = users.values()
+        self.assertEqual((new["email"], new["is_admin"], new["approved_by"]), ("duenio", 1, "entorno"))
+        out = self.run_serve(self.ADMIN, home=home)                                # siguiente arranque normal
+        self.assertIn("Administrador: duenio · verificado", out, out[-2000:]); self.assertIn("SERVING", out)
+
+    @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
+    def test_9_postgres_boot_requires_admin(self):
+        pg = {"DATABASE_URL": os.environ["TEST_DATABASE_URL"]}
+        out = self.run_serve(dict(pg, CRYPTO_RADAR_ACCOUNTS="1")); self.refused(out)
+        out = self.run_serve(dict(pg, **dict(self.ADMIN, CRYPTO_RADAR_ADMIN_USER="pgserve")))
+        self.assertIn("base de datos postgresql · esquema verificado", out, out[-2000:])
+        self.assertRegex(out, r"Administrador: pgserve · (creado|verificado)"); self.assertIn("SERVING", out)
+
+
 # ================================================================== 17. PostgreSQL (opcional, real)
 @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "TEST_DATABASE_URL no definido")
 class T17_Postgres(unittest.TestCase):
