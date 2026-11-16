@@ -75,7 +75,7 @@ def scheduler():
             if time.time() - last_meme >= MEME_EVERY_S and load_settings().get("meme_strategy", True) and not scanner.status["scanning"]:
                 last_meme = time.time()
                 memes.run()
-            if now() >= next_scan_time() and not scanner.status["scanning"]:
+            if now() >= next_scan_time() and not scanner.status["scanning"] and leader.confirm():
                 print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
                 scanner.run_scan()
                 health.invalidate()
@@ -437,7 +437,7 @@ def paper_scheduler():
         if nxt <= n:
             nxt += dt.timedelta(days=1)
         time.sleep((nxt - n).total_seconds())
-        if not leader.is_leader():
+        if not (leader.is_leader() and leader.confirm()):
             print("paper trading: otra instancia es la líder; este paso lo procesa ella", flush=True)
             continue
         try:

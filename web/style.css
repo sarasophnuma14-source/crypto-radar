@@ -308,3 +308,7 @@ td.wrap-cell{white-space:normal;max-width:260px;color:var(--muted)}
 .sigmeta{margin:-4px 0 14px;font-size:.8rem;color:var(--muted)}
 .sigmeta b{color:#F0C27A;font-weight:600}
 @media (max-width:760px){.validbar,.stalebar{margin:10px 16px 0}}
+
+/* atribución de fuentes de datos (R-02, R-03) */
+.attrib{margin:0 0 8px;color:var(--muted)}
+.attrib a,a.attr{color:inherit;text-decoration:underline;text-underline-offset:2px}

@@ -10,13 +10,26 @@ El candado se libera solo si el proceso muere o la conexión se cae; la otra ins
 Sin PostgreSQL (uso local con SQLite o archivos) hay un solo proceso y siempre es líder.
 
 El servidor web nunca espera por este candado: las peticiones se atienden en todas las instancias.
+
+Un candado de sesión no tiene «lease» con caducidad: dura lo que dura la conexión. Para que una conexión colgada no deje
+a dos instancias creyéndose líderes:
+- la conexión del candado usa keepalives TCP y tcp_user_timeout (una red caída se detecta en unos 30 s);
+- antes de cada trabajo, confirm() comprueba EN LA BASE (pg_locks) que esta conexión sigue teniendo el candado, con
+  statement_timeout. Si no responde o ya no lo tiene, la instancia deja de ser líder antes de empezar el trabajo.
+Si la base termina la sesión (pg_terminate_backend, reinicio o suspensión de Neon), el candado se libera y la otra
+instancia lo toma en el siguiente intento.
 """
 from __future__ import annotations
+import os
 import threading
 import time
 
 LOCK_ID = 7_315_002_101          # distinto del candado de inicialización de esquema (db.INIT_LOCK_ID)
-RETRY_S = 15
+RETRY_S = float(os.environ.get("CRYPTO_RADAR_LEADER_RETRY_S", "15"))
+CONFIRM_TIMEOUT_MS = 5000
+_CONN_KW = {"connect_timeout": 10, "keepalives": 1, "keepalives_idle": 10, "keepalives_interval": 5,
+            "keepalives_count": 3, "tcp_user_timeout": 20000,
+            "options": f"-c statement_timeout={CONFIRM_TIMEOUT_MS}"}
 _state = {"leader": False, "since": None, "conn": None, "started": False}
 _lock = threading.Lock()
 
@@ -39,13 +52,51 @@ def status():
 
 def _try_acquire(url):
     import psycopg
-    kw = {} if "connect_timeout" in url else {"connect_timeout": 10}
+    kw = {k: v for k, v in _CONN_KW.items() if k not in url}
     c = psycopg.connect(url, autocommit=True, **kw)
     got = c.execute("SELECT pg_try_advisory_lock(%s)", (LOCK_ID,)).fetchone()[0]
     if not got:
         c.close()
         return None
     return c
+
+
+def _drop(reason):
+    with _lock:
+        was = _state["leader"]
+        try:
+            if _state["conn"] is not None:
+                _state["conn"].close()
+        except Exception:
+            pass
+        _state.update(conn=None, leader=False, since=None)
+    if was:
+        print(f"Instancia líder: se perdió el candado ({reason}); se reintenta", flush=True)
+
+
+def confirm():
+    """Comprobación de «fencing» justo antes de un trabajo: ¿esta conexión sigue teniendo el candado EN LA BASE?
+
+    Sin PostgreSQL siempre es True. Si la consulta falla, tarda más de CONFIRM_TIMEOUT_MS o el candado ya no es de esta
+    sesión, la instancia deja de ser líder y devuelve False: el trabajo no se ejecuta."""
+    is_pg, _ = _pg()
+    if not is_pg:
+        return True
+    c = _state["conn"]
+    if c is None or not _state["leader"]:
+        return False
+    try:
+        with _lock:
+            held = c.execute(
+                "SELECT count(*) FROM pg_locks WHERE locktype = 'advisory' AND granted AND pid = pg_backend_pid() "
+                "AND ((classid::bigint << 32) | objid::bigint) = %s", (LOCK_ID,)).fetchone()[0]
+    except Exception as e:
+        _drop(type(e).__name__)
+        return False
+    if not held:
+        _drop("la base ya no lo registra")
+        return False
+    return True
 
 
 def _loop():
@@ -60,17 +111,9 @@ def _loop():
                         _state.update(conn=c, leader=True, since=time.time())
                     print("Instancia líder: ejecuta el escaneo, el paper trading y Telegram", flush=True)
             else:
-                c.execute("SELECT 1")             # comprueba que la conexión (y con ella el candado) sigue viva
+                confirm()                         # comprueba en la base que el candado sigue siendo de esta sesión
         except Exception as e:
-            if _state["leader"]:
-                print(f"Instancia líder: se perdió el candado ({type(e).__name__}); se reintenta", flush=True)
-            with _lock:
-                try:
-                    if _state["conn"] is not None:
-                        _state["conn"].close()
-                except Exception:
-                    pass
-                _state.update(conn=None, leader=False, since=None)
+            _drop(type(e).__name__)
         time.sleep(RETRY_S)
 
 

@@ -176,7 +176,10 @@ class Lider(unittest.TestCase):
     def test_trabajo_de_fondo_respeta_al_lider(self):
         src = (ROOT / "radar" / "server.py").read_text("utf-8")
         self.assertIn("if not leader.is_leader():", src[src.index("def scheduler"):src.index("def _f(")])
-        self.assertIn("if not leader.is_leader():", src[src.index("def paper_scheduler"):src.index("ADMIN_ENV =")])
+        sched = src[src.index("def scheduler"):src.index("def _f(")]
+        self.assertIn("leader.confirm()", sched[sched.index("next_scan_time()"):])     # fencing antes del escaneo
+        self.assertIn("if not (leader.is_leader() and leader.confirm()):",
+                      src[src.index("def paper_scheduler"):src.index("ADMIN_ENV =")])
         tg = (ROOT / "radar" / "telegram_bot.py").read_text("utf-8")
         self.assertIn("if not leader.is_leader():", tg[tg.index("def poll_forever"):])
 
@@ -187,6 +190,155 @@ class EstadoPublico(unittest.TestCase):
         blk = src[src.index('if p == "/api/public/status":'):src.index('if p == "/api/billing/status":')]
         for k in ('"verdict"', '"regime"', '"regime_label"'):
             self.assertNotIn(k, blk)
+
+
+@unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "sin TEST_DATABASE_URL")
+class LiderMultiproceso(unittest.TestCase):
+    """Dos procesos reales compiten por el candado sobre PostgreSQL 16 (como dos instancias de Render en un despliegue)."""
+
+    def setUp(self):
+        import psycopg
+        self.url = os.environ["TEST_DATABASE_URL"]
+        self.db = psycopg.connect(self.url, autocommit=True)
+        self.db.execute("DROP TABLE IF EXISTS leader_jobs")
+        self.db.execute("CREATE TABLE leader_jobs(worker TEXT NOT NULL, at TIMESTAMPTZ NOT NULL)")
+        self.procs = {}
+
+    def tearDown(self):
+        for p in self.procs.values():
+            if p.poll() is None:
+                p.kill()
+            p.wait(10)
+        self.db.execute("DROP TABLE IF EXISTS leader_jobs")
+        self.db.close()
+
+    def spawn(self, name):
+        import subprocess
+        env = dict(os.environ, DATABASE_URL=self.url, CRYPTO_RADAR_LEADER_RETRY_S="0.5",
+                   CRYPTO_RADAR_HOME=tempfile.mkdtemp(prefix="cr-lider-"))
+        p = subprocess.Popen([sys.executable, str(ROOT / "tests" / "lider_worker.py"), name], env=env,
+                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        self.assertEqual(p.stdout.readline().strip(), "listo")
+        self.procs[name] = p
+        return p
+
+    def rows(self):
+        return self.db.execute("SELECT worker, at FROM leader_jobs ORDER BY at").fetchall()
+
+    def wait_for(self, worker, since=None, timeout=15):
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            q = "SELECT count(*) FROM leader_jobs WHERE worker = %s" + (" AND at > %s" if since else "")
+            if self.db.execute(q, (worker, since) if since else (worker,)).fetchone()[0] > 0:
+                return True
+            time.sleep(0.2)
+        return False
+
+    def holder_pid(self):
+        r = self.db.execute("SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND granted "
+                            "AND ((classid::bigint << 32) | objid::bigint) = %s", (leader.LOCK_ID,)).fetchone()
+        return r and r[0]
+
+    def assert_no_overlap(self, rows):
+        """Cada cambio de líder es definitivo hasta el siguiente: nunca se intercalan trabajos de dos instancias."""
+        runs = [w for i, (w, _) in enumerate(rows) if i == 0 or rows[i - 1][0] != w]
+        # con dos instancias, el líder solo cambia por caída o corte: a lo sumo un relevo por evento provocado
+        self.assertLessEqual(len(runs), 3, f"líderes intercalados: {runs}")
+        return runs
+
+    def test_dos_instancias_un_solo_lider(self):
+        self.spawn("a"); self.spawn("b")
+        time.sleep(4)
+        workers = {w for w, _ in self.rows()}
+        self.assertEqual(len(workers), 1, f"trabajaron {workers}")
+        self.assertGreater(len(self.rows()), 5)
+
+    def test_caida_del_lider_y_traspaso(self):
+        self.spawn("a")
+        self.assertTrue(self.wait_for("a"))
+        self.spawn("b")
+        time.sleep(2)
+        self.assertEqual({w for w, _ in self.rows()}, {"a"}, "b no trabaja mientras a viva")
+        self.procs["a"].kill(); self.procs["a"].wait(10)            # el líder muere sin cerrar nada (SIGKILL)
+        t_kill = self.db.execute("SELECT clock_timestamp()").fetchone()[0]
+        self.assertTrue(self.wait_for("b", since=t_kill), "b toma el relevo")
+        rows = self.rows()
+        self.assertFalse([1 for w, at in rows if w == "a" and at > t_kill], "a no trabaja después de morir")
+        self.assertEqual(self.assert_no_overlap(rows), ["a", "b"])
+
+    def test_sesion_terminada_en_la_base_equivale_a_lease_vencido(self):
+        self.spawn("a")
+        self.assertTrue(self.wait_for("a"))
+        self.spawn("b")
+        time.sleep(1)
+        pid = self.holder_pid()
+        self.assertIsNotNone(pid)
+        self.db.execute("SELECT pg_terminate_backend(%s)", (pid,))  # red caída, reinicio o suspensión de Neon
+        t_cut = self.db.execute("SELECT clock_timestamp()").fetchone()[0]
+        deadline = time.time() + 15
+        while time.time() < deadline:
+            rows = self.rows()
+            if any(at > t_cut for _, at in rows) and len({w for w, at in rows if at > t_cut}) >= 1:
+                break
+            time.sleep(0.3)
+        time.sleep(2)
+        rows = self.rows()
+        after = [(w, at) for w, at in rows if at > t_cut]
+        self.assertTrue(after, "alguien retoma el trabajo")
+        self.assert_no_overlap(rows)
+        # el proceso «a» sigue vivo: recuperación cuando el nuevo líder muere
+        new = after[-1][0]
+        if new != "a":
+            self.procs[new].kill(); self.procs[new].wait(10)
+            t2 = self.db.execute("SELECT clock_timestamp()").fetchone()[0]
+            self.assertTrue(self.wait_for("a", since=t2), "la instancia que perdió la sesión vuelve a ser líder")
+        self.assert_no_overlap(self.rows())
+
+    def test_confirm_detecta_sesion_perdida_en_proceso(self):
+        import psycopg
+        os.environ["DATABASE_URL"] = self.url
+        try:
+            from radar import db as _db
+            with mock.patch.object(_db, "IS_PG", True), mock.patch.object(_db, "URL", self.url):
+                c = leader._try_acquire(self.url)
+                self.assertIsNotNone(c)
+                leader._state.update(conn=c, leader=True, since=time.time())
+                self.assertTrue(leader.confirm())
+                pid = c.execute("SELECT pg_backend_pid()").fetchone()[0]
+                self.db.execute("SELECT pg_terminate_backend(%s)", (pid,))
+                time.sleep(0.3)
+                self.assertFalse(leader.confirm(), "con la sesión cortada ya no es líder")
+                self.assertFalse(leader.is_leader())
+        finally:
+            os.environ.pop("DATABASE_URL", None)
+            leader._state.update(conn=None, leader=False, since=None)
+
+
+class AtribucionYLanding(unittest.TestCase):
+    """R-02 y R-03 (atribución de fuentes) y la página pública de la 2.1 sin promesas falsas (C-1 de la auditoría)."""
+
+    def test_atribuciones_visibles(self):
+        html = (ROOT / "web" / "index.html").read_text("utf-8")
+        js = (ROOT / "web" / "app.js").read_text("utf-8")
+        self.assertIn('<a href="https://www.coingecko.com/"', html)
+        self.assertIn("Data provided by CoinGecko", html)
+        self.assertIn("https://alternative.me/crypto/fear-and-greed-index/", html)
+        self.assertIn("ATTR_FG", js[js.index("function renderDash"):])            # junto al dato de sentimiento
+
+    def test_landing_publica_honesta(self):
+        import re
+        html = (ROOT / "web" / "landing.html").read_text("utf-8")
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", re.sub(r"<(style|script)[\s\S]*?</\1>", "", html)))
+        self.assertIn("Crypto Radar es una plataforma de análisis y monitoreo de criptomonedas. Sus modelos se encuentran "
+                      "en evaluación y no existe una ventaja estadística consistente demostrada. La información no garantiza "
+                      "resultados financieros.", text)
+        for bad in ("fundador", "cupos", "días de prueba", "sin tarjeta", "Tarjeta de cualquier país", "+31", "+18",
+                    "US$19", "US$29", "US$39", "checkout"):
+            self.assertNotIn(bad.lower(), text.lower(), bad)
+        self.assertNotRegex(html, r"<script>(?!</script>)", "la CSP de la 2.1 bloquea scripts en línea")
+        self.assertIn('<script src="/static/landing-piloto.js"></script>', html)
+        self.assertIn('href="/entrar"', html)
+        self.assertNotIn("<form", html.lower())
 
 
 LECTOR = r"""

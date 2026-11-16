@@ -188,6 +188,8 @@ async function refresh(){
 function setStatus(cls, txt){ const s = $("#status"); s.className = "status " + cls; s.querySelector("span").textContent = txt; s.title = txt; }
 
 /* ---------- 1. Dashboard ---------- */
+// Atribución exigida por la fuente, junto al dato (docs/REQUISITOS_LANZAMIENTO.md R-03)
+const ATTR_FG = ` · <a class="attr" href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">Fear &amp; Greed: alternative.me</a>`;
 const FG = {"Extreme Fear": "Miedo extremo", "Fear": "Miedo", "Neutral": "Neutral", "Greed": "Codicia", "Extreme Greed": "Codicia extrema"};
 const mini = (l, v, s = "", x = "") => `<div class="mini ${x}"><div class="l">${l}</div><div class="v">${v}</div>${s ? `<div class="s">${s}</div>` : ""}</div>`;
 function renderDash(rep){
@@ -197,7 +199,7 @@ function renderDash(rep){
     mini("Bitcoin", px(m.btc_price), `7 d ${pctTxt(m.btc_chg_7d)} · 30 d ${pctTxt(m.btc_chg_30d)}`) +
     mini("Régimen", esc(m.regime_label || cap(m.regime || "—")), `Puntaje mínimo ${m.min_buy_score ?? "—"}`) +
     mini("Amplitud", m.breadth != null ? nf0.format(m.breadth) + "%" : "—", "altcoins sobre su EMA50") +
-    mini("Sentimiento", fg ? fg.value : "—", fg ? (FG[fg.label] || fg.label) : "sin dato", "x");
+    mini("Sentimiento", fg ? fg.value : "—", (fg ? (FG[fg.label] || fg.label) : "sin dato") + ATTR_FG, "x");
   $("#outlook").textContent = rep.outlook || "";
   const pc = rep.phase_counts || {}, tot = Object.values(pc).reduce((a, b) => a + b, 0) || 1;
   $("#phaseBar").innerHTML = Object.keys(PH).filter(k => pc[k]).map(k => `<span class="ph ph-${k.toLowerCase()}" style="flex:${pc[k]}" title="${phase(k)}: ${pc[k]}">${pc[k] / tot > .07 ? phase(k) + " " + pc[k] : ""}</span>`).join("");
