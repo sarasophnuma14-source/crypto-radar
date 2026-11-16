@@ -18,12 +18,12 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 from http.cookies import SimpleCookie
-from . import storage, scanner, alerts, memes, __version__
+from . import storage, scanner, alerts, memes, health, leader, __version__
 from .config import WEB_DIR, ROOT, ACCOUNTS, load_settings, save_settings
 
 COOKIE = "cr_session"
 LEGAL_PAGES = {"/privacidad": "privacidad.html", "/aviso-de-riesgo": "aviso-de-riesgo.html"}
-PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/api/public/status", "/api/billing/status") + tuple(LEGAL_PAGES)
+PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/livez", "/readyz", "/api/public/status", "/api/billing/status") + tuple(LEGAL_PAGES)
 PUBLIC_POST = ("/api/auth/register", "/api/auth/request", "/api/auth/login", "/api/billing/wompi/webhook", "/api/billing/nowpayments/ipn")
 
 WATCH_EVERY_S = 15 * 60
@@ -58,10 +58,18 @@ def keepalive():
             pass
 
 
+_SCHED = {"on": False}
+HEALTH_PATHS = ("/healthz", "/livez", "/readyz")
+
+
 def scheduler():
     last_watch = 0.0
     last_meme = 0.0
     while True:
+        health.beat("scheduler")
+        if not leader.is_leader():          # otra instancia (p. ej. la anterior durante un despliegue) hace el trabajo
+            time.sleep(30)
+            continue
         try:
             if time.time() - last_meme >= MEME_EVERY_S and load_settings().get("meme_strategy", True) and not scanner.status["scanning"]:
                 last_meme = time.time()
@@ -69,6 +77,7 @@ def scheduler():
             if now() >= next_scan_time() and not scanner.status["scanning"]:
                 print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
                 scanner.run_scan()
+                health.invalidate()
                 print(f"[{now():%Y-%m-%d %H:%M}] Escaneo terminado. {scanner.status['last_error'] or ''}", flush=True)
                 if scanner.status["last_error"]:
                     # reintento en 20 min si falló (p. ej. sin internet al despertar el Mac)
@@ -187,7 +196,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _authorized(self):
         pw = os.environ.get("CRYPTO_RADAR_PASSWORD")
-        if not pw or self.path == "/healthz":
+        if not pw or urlparse(self.path).path in HEALTH_PATHS:
             return True
         ip = self._client_ip()
         if _too_many_fails(ip):
@@ -267,15 +276,16 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         p = u.path
-        if p == "/healthz":
-            # diagnóstico mínimo sin datos privados: si el escaneo corre, cuándo terminó y el último error
-            rep = storage.read("latest.json", {}) or {}
-            err = scanner.status.get("last_error")
-            return self._send(200, {"ok": True, "scanning": scanner.status.get("scanning"),
-                                    "progress": scanner.status.get("progress"),
-                                    "last_scan": rep.get("generated_at") or rep.get("at"),
-                                    "last_error": (str(err)[:300] if err else None),
-                                    "sources": rep.get("sources")})
+        if p == "/livez":
+            code, body = health.liveness(__version__)
+            return self._send(code, body)
+        if p in ("/healthz", "/readyz"):
+            # readiness: 503 si la base o el planificador no sirven; "degradado" (200) si el escaneo va atrasado.
+            # Solo campos públicos, sin secretos ni trazas (radar/health.py).
+            code, body = health.readiness(storage=storage, scanner_status=scanner.status,
+                                          scan_every_hours=load_settings()["scan_every_hours"],
+                                          uses_db=storage.USE_DB, scheduler_expected=_SCHED["on"], version=__version__)
+            return self._send(code, body)
         if p in ("/", "/index.html", "/app"):
             return self._static("index.html")
         if p == "/entrar":
@@ -426,6 +436,9 @@ def paper_scheduler():
         if nxt <= n:
             nxt += dt.timedelta(days=1)
         time.sleep((nxt - n).total_seconds())
+        if not leader.is_leader():
+            print("paper trading: otra instancia es la líder; este paso lo procesa ella", flush=True)
+            continue
         try:
             from .paper_trading import storage as ps
             if not ps.open_store(name).read_json("spec.json"):
@@ -603,7 +616,10 @@ def serve(port=None, host=None, schedule=True):
             print(f"AVISO: {ts['en_claro']} secretos TOTP sin cifrar. Define CRYPTO_RADAR_TOTP_KEY.", flush=True)
         if schedule:
             telegram_bot.start()
+    if schedule or os.environ.get("PAPER_TRADING") == "1":
+        leader.start()                                  # instancia única para el trabajo de fondo (radar/leader.py)
     if schedule:
+        _SCHED["on"] = True
         threading.Thread(target=scheduler, daemon=True).start()
     if os.environ.get("PAPER_TRADING") == "1":
         threading.Thread(target=paper_scheduler, daemon=True).start()

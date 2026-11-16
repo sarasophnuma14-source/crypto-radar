@@ -89,13 +89,13 @@ def handle(h, method):
             return h._static(LEGAL_PAGES[p])
         if p == "/app":
             return h._static("index.html") if user else h._redirect("/entrar")
-        if p == "/healthz":
+        if p in ("/healthz", "/livez", "/readyz"):
             return h._get_single(skip_auth=True)
         if p == "/api/public/status":
+            # Público: sin veredicto ni régimen (son salidas de un motor no validado y no deben circular como
+            # recomendación fuera del panel; hallazgo A-7 de docs/AUDITORIA_INTEGRAL_CRYPTO_RADAR.md).
             rep = storage.read("latest.json", {}) or {}
-            m = rep.get("market") or {}
-            return h._send(200, {"version": __version__, "last_scan": rep.get("at"), "access": "approval", "regime": m.get("regime"),
-                                 "regime_label": m.get("regime_label"), "verdict": rep.get("verdict"),
+            return h._send(200, {"version": __version__, "last_scan": rep.get("at"), "access": "approval",
                                  "accounts": True, "billing": billing.status(),
                                  "sales_url": os.environ.get("SALES_URL")})
         if p == "/api/billing/status":

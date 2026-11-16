@@ -173,6 +173,11 @@ async function refresh(){
   else setStatus(rep.at ? "ok" : "", rep.at ? "Actualizado " + ago(rep.at) : "Sin escaneos todavía");
   const eb = $("#errBar"); eb.classList.toggle("hidden", !st.last_error);
   if (st.last_error) eb.textContent = "El último escaneo no terminó: " + st.last_error + ". Los datos mostrados son del último escaneo completo.";
+  // Frescura: un informe de más de 2 ciclos de escaneo se marca como desactualizado (nunca se presenta como actual)
+  const ageH = rep.at ? (Date.now() - new Date(rep.at).getTime()) / 36e5 : null, staleH = 2 * (STATE.scan_every_hours || 4) + 1;
+  const sb = $("#staleBar"); sb.classList.toggle("hidden", !(ageH > staleH));
+  if (ageH > staleH) sb.textContent = `Datos desactualizados: el último escaneo completo fue ${ago(rep.at)} (${when(rep.at)}). Precios, zonas y fases pueden no reflejar el mercado actual.`;
+  $("#validWhen").textContent = rep.at ? `Generadas en el escaneo del ${when(rep.at)}; válidas hasta el próximo (${when(STATE.next_scan)}).` : "";
   const lb = $("#lockBar"); lb.classList.toggle("hidden", !rep.locked);
   if (rep.locked) lb.innerHTML = `Plan Libre: ves el top 3 con su plan completo. <button class="linkbtn small" data-view="settings">Mejora a Pro</button> para el ranking completo, cartera, salidas, memecoins y alertas por Telegram.`;
   $("#sideFoot").innerHTML = `Último escaneo: <b>${rep.at ? ago(rep.at) : "nunca"}</b><br>Próximo: ${when(STATE.next_scan)}${STATE.version ? `<br>Versión ${esc(STATE.version)}` : ""}`;
@@ -276,6 +281,7 @@ async function detail(sym){
   $("#detailBody").innerHTML = `
     <div class="d-head"><h2 id="dTitle">${esc(a.symbol)}</h2><span class="muted">${esc(a.name || "")}</span>${sc(a.score)}${act(a.action)}</div>
     <div class="d-sub">Fase <b>${phase(a.phase)}</b> · ${esc(a.action_reason || "")} · Cobertura ${a.coverage ?? "—"}% · Calidad de datos ${q.score ?? "—"}/100</div>
+    <p class="sigmeta"><b>Señal analítica, no validada</b> · generada ${when(STATE?.report?.at)} · caduca con el próximo escaneo (${when(STATE?.next_scan)})${(() => { const nd = Object.values(a.families || {}).filter(f => f.score == null).map(f => f.label); return nd.length ? " · Datos faltantes: " + esc(nd.join(", ")) : ""; })()}</p>
     <canvas id="chart"></canvas>
     <div class="plan">
       ${lv("Precio", px(a.price))}${lv("Zona de entrada", `${px(p.entry_low)} – ${px(p.entry_high)}`)}${lv("Ruptura (alternativa)", px(p.trigger_breakout))}

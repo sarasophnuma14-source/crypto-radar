@@ -300,3 +300,11 @@ td.wrap-cell{white-space:normal;max-width:260px;color:var(--muted)}
 /* verificación en dos pasos */
 .mfa{margin-top:18px;border-top:1px solid var(--line, rgba(191,211,214,.12));padding-top:14px}
 .mfa code.secret{font-size:1.05rem;letter-spacing:.06em;word-break:break-all}
+
+/* Estado de validación y frescura de las señales (hallazgo A-7 de la auditoría) */
+.validbar{margin:12px 28px 0;border:1px solid rgba(240,174,69,.35);background:rgba(240,174,69,.07);color:#E5D3B0;border-radius:12px;padding:10px 14px;font-size:.82rem}
+.validbar b{color:#F0C27A;font-weight:600}
+.stalebar{margin:12px 28px 0;border:1px solid rgba(224,122,107,.45);background:rgba(224,122,107,.1);color:#F2B5AB;border-radius:12px;padding:10px 14px;font-size:.84rem}
+.sigmeta{margin:-4px 0 14px;font-size:.8rem;color:var(--muted)}
+.sigmeta b{color:#F0C27A;font-weight:600}
+@media (max-width:760px){.validbar,.stalebar{margin:10px 16px 0}}
