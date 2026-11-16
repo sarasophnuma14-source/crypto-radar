@@ -1,0 +1,1902 @@
+{
+ "generated": "2026-11-15T03:05:06+00:00",
+ "coins": 661,
+ "period": [
+  "2020-07-19",
+  "2026-11-14"
+ ],
+ "split": "2024-01-01",
+ "universe_size": 150,
+ "defaults": {
+  "capital": 10000.0,
+  "fee_pct": 0.1,
+  "slippage_pct": 0.1,
+  "spread_pct": 0.1,
+  "order_expiry_days": 3,
+  "universe_size": 150,
+  "min_bars": 120,
+  "min_avg_volume_usd": 1000000,
+  "min_score_offset": 0,
+  "min_risk_reward": 2.5,
+  "partials": [
+   0.33,
+   0.33
+  ],
+  "use_exit_intelligence": true,
+  "max_hold_days": null,
+  "dd_cooldown_days": 30
+ },
+ "base_full": {
+  "capital_initial": 10000.0,
+  "capital_final": 12575.12,
+  "total_return_pct": 25.75,
+  "cagr_pct": 3.69,
+  "trades": 599,
+  "win_rate_pct": 35.4,
+  "profit_factor": 1.13,
+  "expectancy_usd": 4.3,
+  "avg_R": 0.029,
+  "sharpe": 0.43,
+  "sortino": 0.62,
+  "max_drawdown_pct": -26.61,
+  "longest_recovery_days": 95,
+  "days_under_water_at_end": 1838,
+  "avg_exposure_pct": 9.4,
+  "fees_usd": 473.18,
+  "days": 2309,
+  "by_regime": {
+   "BULLISH": {
+    "trades": 118,
+    "pnl_usd": 1821.93,
+    "wins": 43,
+    "win_rate_pct": 36.4
+   },
+   "NEUTRAL": {
+    "trades": 343,
+    "pnl_usd": -296.52,
+    "wins": 114,
+    "win_rate_pct": 33.2
+   },
+   "HIGH VOLATILITY": {
+    "trades": 52,
+    "pnl_usd": 1004.87,
+    "wins": 25,
+    "win_rate_pct": 48.1
+   },
+   "BEARISH": {
+    "trades": 84,
+    "pnl_usd": 51.36,
+    "wins": 29,
+    "win_rate_pct": 34.5
+   },
+   "CAPITULATION": {
+    "trades": 2,
+    "pnl_usd": -6.41,
+    "wins": 1,
+    "win_rate_pct": 50.0
+   }
+  },
+  "by_cap_bucket": {
+   "Liquidez baja (<5 M$/día)": {
+    "trades": 91,
+    "pnl_usd": 903.31,
+    "wins": 40,
+    "win_rate_pct": 44.0
+   },
+   "Liquidez media (5-50 M$/día)": {
+    "trades": 356,
+    "pnl_usd": 836.45,
+    "wins": 119,
+    "win_rate_pct": 33.4
+   },
+   "Liquidez alta (>50 M$/día)": {
+    "trades": 152,
+    "pnl_usd": 835.47,
+    "wins": 53,
+    "win_rate_pct": 34.9
+   }
+  },
+  "by_phase": {
+   "BREAKOUT": {
+    "trades": 414,
+    "pnl_usd": 3044.44,
+    "wins": 153,
+    "win_rate_pct": 37.0
+   },
+   "MOMENTUM": {
+    "trades": 100,
+    "pnl_usd": -1673.2,
+    "wins": 26,
+    "win_rate_pct": 26.0
+   },
+   "PRE-EXPLOSION": {
+    "trades": 28,
+    "pnl_usd": 249.36,
+    "wins": 8,
+    "win_rate_pct": 28.6
+   },
+   "ACCUMULATION": {
+    "trades": 57,
+    "pnl_usd": 954.63,
+    "wins": 25,
+    "win_rate_pct": 43.9
+   }
+  },
+  "by_exit": {
+   "Stop": {
+    "trades": 224,
+    "pnl_usd": -14798.52,
+    "wins": 6,
+    "win_rate_pct": 2.7
+   },
+   "TP3": {
+    "trades": 66,
+    "pnl_usd": 13802.13,
+    "wins": 66,
+    "win_rate_pct": 100.0
+   },
+   "Exit Intelligence: cerrar": {
+    "trades": 242,
+    "pnl_usd": 1817.27,
+    "wins": 86,
+    "win_rate_pct": 35.5
+   },
+   "Stop a la entrada tras TP1": {
+    "trades": 52,
+    "pnl_usd": 2448.94,
+    "wins": 52,
+    "win_rate_pct": 100.0
+   },
+   "Stop el mismo día de la entrada": {
+    "trades": 10,
+    "pnl_usd": -707.74,
+    "wins": 0,
+    "win_rate_pct": 0.0
+   },
+   "Fin del periodo (cierre a mercado)": {
+    "trades": 5,
+    "pnl_usd": 13.15,
+    "wins": 2,
+    "win_rate_pct": 40.0
+   }
+  },
+  "btc_buy_hold_pct": 596.6,
+  "btc_max_drawdown_pct": -76.63,
+  "drawdown_pauses": 2,
+  "ambiguous_bars": 3,
+  "orders_cancelled": 121,
+  "orders_rejected_by_limits": {
+   "Tamaño": 702,
+   "Máximo": 22108,
+   "Correlación": 49,
+   "Protección": 109
+  }
+ },
+ "base_is": {
+  "capital_initial": 10000.0,
+  "capital_final": 14474.13,
+  "total_return_pct": 44.74,
+  "cagr_pct": 11.31,
+  "trades": 311,
+  "win_rate_pct": 38.9,
+  "profit_factor": 1.44,
+  "expectancy_usd": 14.39,
+  "avg_R": 0.141,
+  "sharpe": 1.09,
+  "sortino": 1.61,
+  "max_drawdown_pct": -24.99,
+  "longest_recovery_days": 95,
+  "days_under_water_at_end": 789,
+  "avg_exposure_pct": 9.1,
+  "fees_usd": 253.41,
+  "days": 1260,
+  "by_regime": {
+   "BULLISH": {
+    "trades": 69,
+    "pnl_usd": 2306.08,
+    "wins": 26,
+    "win_rate_pct": 37.7
+   },
+   "NEUTRAL": {
+    "trades": 146,
+    "pnl_usd": 1006.55,
+    "wins": 54,
+    "win_rate_pct": 37.0
+   },
+   "HIGH VOLATILITY": {
+    "trades": 45,
+    "pnl_usd": 1092.09,
+    "wins": 23,
+    "win_rate_pct": 51.1
+   },
+   "BEARISH": {
+    "trades": 49,
+    "pnl_usd": 75.88,
+    "wins": 17,
+    "win_rate_pct": 34.7
+   },
+   "CAPITULATION": {
+    "trades": 2,
+    "pnl_usd": -6.41,
+    "wins": 1,
+    "win_rate_pct": 50.0
+   }
+  },
+  "by_cap_bucket": {
+   "Liquidez baja (<5 M$/día)": {
+    "trades": 39,
+    "pnl_usd": 1068.63,
+    "wins": 20,
+    "win_rate_pct": 51.3
+   },
+   "Liquidez media (5-50 M$/día)": {
+    "trades": 180,
+    "pnl_usd": 1876.23,
+    "wins": 63,
+    "win_rate_pct": 35.0
+   },
+   "Liquidez alta (>50 M$/día)": {
+    "trades": 92,
+    "pnl_usd": 1529.33,
+    "wins": 38,
+    "win_rate_pct": 41.3
+   }
+  },
+  "by_phase": {
+   "BREAKOUT": {
+    "trades": 233,
+    "pnl_usd": 2906.91,
+    "wins": 91,
+    "win_rate_pct": 39.1
+   },
+   "MOMENTUM": {
+    "trades": 42,
+    "pnl_usd": 380.82,
+    "wins": 15,
+    "win_rate_pct": 35.7
+   },
+   "PRE-EXPLOSION": {
+    "trades": 18,
+    "pnl_usd": 487.74,
+    "wins": 7,
+    "win_rate_pct": 38.9
+   },
+   "ACCUMULATION": {
+    "trades": 18,
+    "pnl_usd": 698.72,
+    "wins": 8,
+    "win_rate_pct": 44.4
+   }
+  },
+  "by_exit": {
+   "Stop": {
+    "trades": 121,
+    "pnl_usd": -7985.05,
+    "wins": 4,
+    "win_rate_pct": 3.3
+   },
+   "TP3": {
+    "trades": 45,
+    "pnl_usd": 9597.51,
+    "wins": 45,
+    "win_rate_pct": 100.0
+   },
+   "Exit Intelligence: cerrar": {
+    "trades": 112,
+    "pnl_usd": 1492.72,
+    "wins": 43,
+    "win_rate_pct": 38.4
+   },
+   "Stop a la entrada tras TP1": {
+    "trades": 25,
+    "pnl_usd": 909.5,
+    "wins": 25,
+    "win_rate_pct": 100.0
+   },
+   "Stop el mismo día de la entrada": {
+    "trades": 3,
+    "pnl_usd": -207.51,
+    "wins": 0,
+    "win_rate_pct": 0.0
+   },
+   "Fin del periodo (cierre a mercado)": {
+    "trades": 5,
+    "pnl_usd": 667.02,
+    "wins": 4,
+    "win_rate_pct": 80.0
+   }
+  },
+  "btc_buy_hold_pct": 359.16,
+  "btc_max_drawdown_pct": -76.63,
+  "drawdown_pauses": 1,
+  "ambiguous_bars": 0,
+  "orders_cancelled": 45,
+  "orders_rejected_by_limits": {
+   "Tamaño": 648,
+   "Máximo": 11795,
+   "Correlación": 46,
+   "Protección": 102
+  }
+ },
+ "base_oos": {
+  "capital_initial": 10000.0,
+  "capital_final": 8139.46,
+  "total_return_pct": -18.61,
+  "cagr_pct": -6.92,
+  "trades": 290,
+  "win_rate_pct": 30.7,
+  "profit_factor": 0.72,
+  "expectancy_usd": -6.42,
+  "avg_R": -0.113,
+  "sharpe": -0.79,
+  "sortino": -1.08,
+  "max_drawdown_pct": -20.29,
+  "longest_recovery_days": 148,
+  "days_under_water_at_end": 900,
+  "avg_exposure_pct": 9.8,
+  "fees_usd": 144.87,
+  "days": 1048,
+  "by_regime": {
+   "BULLISH": {
+    "trades": 51,
+    "pnl_usd": -876.69,
+    "wins": 16,
+    "win_rate_pct": 31.4
+   },
+   "NEUTRAL": {
+    "trades": 195,
+    "pnl_usd": -962.56,
+    "wins": 58,
+    "win_rate_pct": 29.7
+   },
+   "HIGH VOLATILITY": {
+    "trades": 9,
+    "pnl_usd": -5.5,
+    "wins": 3,
+    "win_rate_pct": 33.3
+   },
+   "BEARISH": {
+    "trades": 35,
+    "pnl_usd": -15.87,
+    "wins": 12,
+    "win_rate_pct": 34.3
+   }
+  },
+  "by_cap_bucket": {
+   "Liquidez media (5-50 M$/día)": {
+    "trades": 175,
+    "pnl_usd": -1099.9,
+    "wins": 55,
+    "win_rate_pct": 31.4
+   },
+   "Liquidez alta (>50 M$/día)": {
+    "trades": 63,
+    "pnl_usd": -653.73,
+    "wins": 14,
+    "win_rate_pct": 22.2
+   },
+   "Liquidez baja (<5 M$/día)": {
+    "trades": 52,
+    "pnl_usd": -106.99,
+    "wins": 20,
+    "win_rate_pct": 38.5
+   }
+  },
+  "by_phase": {
+   "BREAKOUT": {
+    "trades": 183,
+    "pnl_usd": -477.44,
+    "wins": 60,
+    "win_rate_pct": 32.8
+   },
+   "MOMENTUM": {
+    "trades": 58,
+    "pnl_usd": -1351.84,
+    "wins": 10,
+    "win_rate_pct": 17.2
+   },
+   "ACCUMULATION": {
+    "trades": 39,
+    "pnl_usd": 122.96,
+    "wins": 18,
+    "win_rate_pct": 46.2
+   },
+   "PRE-EXPLOSION": {
+    "trades": 10,
+    "pnl_usd": -154.3,
+    "wins": 1,
+    "win_rate_pct": 10.0
+   }
+  },
+  "by_exit": {
+   "Stop": {
+    "trades": 104,
+    "pnl_usd": -4404.91,
+    "wins": 2,
+    "win_rate_pct": 1.9
+   },
+   "Stop el mismo día de la entrada": {
+    "trades": 8,
+    "pnl_usd": -351.12,
+    "wins": 0,
+    "win_rate_pct": 0.0
+   },
+   "Exit Intelligence: cerrar": {
+    "trades": 130,
+    "pnl_usd": 1.29,
+    "wins": 42,
+    "win_rate_pct": 32.3
+   },
+   "TP3": {
+    "trades": 20,
+    "pnl_usd": 2297.1,
+    "wins": 20,
+    "win_rate_pct": 100.0
+   },
+   "Stop a la entrada tras TP1": {
+    "trades": 23,
+    "pnl_usd": 588.52,
+    "wins": 23,
+    "win_rate_pct": 100.0
+   },
+   "Fin del periodo (cierre a mercado)": {
+    "trades": 5,
+    "pnl_usd": 8.5,
+    "wins": 2,
+    "win_rate_pct": 40.0
+   }
+  },
+  "btc_buy_hold_pct": 45.2,
+  "btc_max_drawdown_pct": -52.97,
+  "drawdown_pauses": 1,
+  "ambiguous_bars": 2,
+  "orders_cancelled": 78,
+  "orders_rejected_by_limits": {
+   "Tamaño": 101,
+   "Máximo": 10240,
+   "Correlación": 3,
+   "Protección": 7
+  }
+ },
+ "calibration": {
+  "best": {
+   "min_score_offset": 0,
+   "use_exit_intelligence": false,
+   "order_expiry_days": 2,
+   "limits": {
+    "risk_per_trade_pct": 0.75
+   }
+  },
+  "is": {
+   "capital_initial": 10000.0,
+   "capital_final": 15290.55,
+   "total_return_pct": 52.91,
+   "cagr_pct": 13.1,
+   "trades": 190,
+   "win_rate_pct": 48.4,
+   "profit_factor": 1.72,
+   "expectancy_usd": 27.85,
+   "avg_R": 0.482,
+   "sharpe": 1.36,
+   "sortino": 1.99,
+   "max_drawdown_pct": -10.64,
+   "longest_recovery_days": 443,
+   "days_under_water_at_end": 319,
+   "avg_exposure_pct": 10.3,
+   "fees_usd": 155.83,
+   "days": 1260,
+   "by_regime": {
+    "BULLISH": {
+     "trades": 43,
+     "pnl_usd": 2371.38,
+     "wins": 21,
+     "win_rate_pct": 48.8
+    },
+    "NEUTRAL": {
+     "trades": 81,
+     "pnl_usd": 794.25,
+     "wins": 32,
+     "win_rate_pct": 39.5
+    },
+    "HIGH VOLATILITY": {
+     "trades": 30,
+     "pnl_usd": 1408.75,
+     "wins": 21,
+     "win_rate_pct": 70.0
+    },
+    "BEARISH": {
+     "trades": 34,
+     "pnl_usd": 667.58,
+     "wins": 17,
+     "win_rate_pct": 50.0
+    },
+    "CAPITULATION": {
+     "trades": 2,
+     "pnl_usd": 48.62,
+     "wins": 1,
+     "win_rate_pct": 50.0
+    }
+   },
+   "by_cap_bucket": {
+    "Liquidez baja (<5 M$/día)": {
+     "trades": 25,
+     "pnl_usd": 1932.9,
+     "wins": 15,
+     "win_rate_pct": 60.0
+    },
+    "Liquidez media (5-50 M$/día)": {
+     "trades": 110,
+     "pnl_usd": 2395.96,
+     "wins": 52,
+     "win_rate_pct": 47.3
+    },
+    "Liquidez alta (>50 M$/día)": {
+     "trades": 55,
+     "pnl_usd": 961.72,
+     "wins": 25,
+     "win_rate_pct": 45.5
+    }
+   },
+   "by_phase": {
+    "BREAKOUT": {
+     "trades": 145,
+     "pnl_usd": 3576.4,
+     "wins": 72,
+     "win_rate_pct": 49.7
+    },
+    "MOMENTUM": {
+     "trades": 25,
+     "pnl_usd": 632.6,
+     "wins": 10,
+     "win_rate_pct": 40.0
+    },
+    "ACCUMULATION": {
+     "trades": 9,
+     "pnl_usd": 509.51,
+     "wins": 5,
+     "win_rate_pct": 55.6
+    },
+    "PRE-EXPLOSION": {
+     "trades": 11,
+     "pnl_usd": 572.07,
+     "wins": 5,
+     "win_rate_pct": 45.5
+    }
+   },
+   "by_exit": {
+    "Stop": {
+     "trades": 96,
+     "pnl_usd": -7236.52,
+     "wins": 0,
+     "win_rate_pct": 0.0
+    },
+    "Stop a la entrada tras TP1": {
+     "trades": 36,
+     "pnl_usd": 1770.38,
+     "wins": 36,
+     "win_rate_pct": 100.0
+    },
+    "TP3": {
+     "trades": 49,
+     "pnl_usd": 10388.82,
+     "wins": 49,
+     "win_rate_pct": 100.0
+    },
+    "Stop (hueco en la apertura)": {
+     "trades": 1,
+     "pnl_usd": 11.38,
+     "wins": 1,
+     "win_rate_pct": 100.0
+    },
+    "Stop el mismo día de la entrada": {
+     "trades": 2,
+     "pnl_usd": -143.1,
+     "wins": 0,
+     "win_rate_pct": 0.0
+    },
+    "Fin del periodo (cierre a mercado)": {
+     "trades": 6,
+     "pnl_usd": 499.62,
+     "wins": 6,
+     "win_rate_pct": 100.0
+    }
+   },
+   "btc_buy_hold_pct": 359.16,
+   "btc_max_drawdown_pct": -76.63,
+   "drawdown_pauses": 0,
+   "ambiguous_bars": 0,
+   "orders_cancelled": 35,
+   "orders_rejected_by_limits": {
+    "Máximo": 12791,
+    "Tamaño": 100,
+    "Correlación": 1
+   }
+  },
+  "oos": {
+   "capital_initial": 10000.0,
+   "capital_final": 8118.02,
+   "total_return_pct": -18.82,
+   "cagr_pct": -7.01,
+   "trades": 171,
+   "win_rate_pct": 28.1,
+   "profit_factor": 0.61,
+   "expectancy_usd": -11.01,
+   "avg_R": -0.298,
+   "sharpe": -0.96,
+   "sortino": -1.27,
+   "max_drawdown_pct": -23.04,
+   "longest_recovery_days": 262,
+   "days_under_water_at_end": 708,
+   "avg_exposure_pct": 8.8,
+   "fees_usd": 70.93,
+   "days": 1048,
+   "by_regime": {
+    "BULLISH": {
+     "trades": 29,
+     "pnl_usd": -508.86,
+     "wins": 9,
+     "win_rate_pct": 31.0
+    },
+    "NEUTRAL": {
+     "trades": 111,
+     "pnl_usd": -1508.63,
+     "wins": 27,
+     "win_rate_pct": 24.3
+    },
+    "HIGH VOLATILITY": {
+     "trades": 5,
+     "pnl_usd": -17.18,
+     "wins": 1,
+     "win_rate_pct": 20.0
+    },
+    "BEARISH": {
+     "trades": 26,
+     "pnl_usd": 152.65,
+     "wins": 11,
+     "win_rate_pct": 42.3
+    }
+   },
+   "by_cap_bucket": {
+    "Liquidez media (5-50 M$/día)": {
+     "trades": 109,
+     "pnl_usd": -1454.26,
+     "wins": 27,
+     "win_rate_pct": 24.8
+    },
+    "Liquidez alta (>50 M$/día)": {
+     "trades": 32,
+     "pnl_usd": -306.4,
+     "wins": 9,
+     "win_rate_pct": 28.1
+    },
+    "Liquidez baja (<5 M$/día)": {
+     "trades": 30,
+     "pnl_usd": -121.36,
+     "wins": 12,
+     "win_rate_pct": 40.0
+    }
+   },
+   "by_phase": {
+    "BREAKOUT": {
+     "trades": 117,
+     "pnl_usd": -1220.78,
+     "wins": 34,
+     "win_rate_pct": 29.1
+    },
+    "MOMENTUM": {
+     "trades": 31,
+     "pnl_usd": -394.61,
+     "wins": 6,
+     "win_rate_pct": 19.4
+    },
+    "ACCUMULATION": {
+     "trades": 20,
+     "pnl_usd": -131.12,
+     "wins": 8,
+     "win_rate_pct": 40.0
+    },
+    "PRE-EXPLOSION": {
+     "trades": 3,
+     "pnl_usd": -135.51,
+     "wins": 0,
+     "win_rate_pct": 0.0
+    }
+   },
+   "by_exit": {
+    "Stop": {
+     "trades": 116,
+     "pnl_usd": -4644.95,
+     "wins": 0,
+     "win_rate_pct": 0.0
+    },
+    "TP3": {
+     "trades": 12,
+     "pnl_usd": 1674.81,
+     "wins": 12,
+     "win_rate_pct": 100.0
+    },
+    "Stop a la entrada tras TP1": {
+     "trades": 33,
+     "pnl_usd": 1278.48,
+     "wins": 33,
+     "win_rate_pct": 100.0
+    },
+    "Stop el mismo día de la entrada": {
+     "trades": 4,
+     "pnl_usd": -194.01,
+     "wins": 0,
+     "win_rate_pct": 0.0
+    },
+    "Retirada del mercado (último cierre −10 %)": {
+     "trades": 3,
+     "pnl_usd": 29.01,
+     "wins": 2,
+     "win_rate_pct": 66.7
+    },
+    "Fin del periodo (cierre a mercado)": {
+     "trades": 3,
+     "pnl_usd": -25.36,
+     "wins": 1,
+     "win_rate_pct": 33.3
+    }
+   },
+   "btc_buy_hold_pct": 45.2,
+   "btc_max_drawdown_pct": -52.97,
+   "drawdown_pauses": 1,
+   "ambiguous_bars": 2,
+   "orders_cancelled": 59,
+   "orders_rejected_by_limits": {
+    "Máximo": 10787,
+    "Protección": 15
+   }
+  },
+  "grid": [
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 36.3,
+    "trades": 327,
+    "profit_factor": 1.36,
+    "sharpe": 0.94,
+    "max_drawdown_pct": -18.51
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 21.24,
+    "trades": 335,
+    "profit_factor": 1.29,
+    "sharpe": 0.73,
+    "max_drawdown_pct": -15.9
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 40.67,
+    "trades": 331,
+    "profit_factor": 1.41,
+    "sharpe": 1.05,
+    "max_drawdown_pct": -17.49
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 23.29,
+    "trades": 327,
+    "profit_factor": 1.32,
+    "sharpe": 0.81,
+    "max_drawdown_pct": -14.75
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 54.69,
+    "trades": 209,
+    "profit_factor": 1.62,
+    "sharpe": 1.17,
+    "max_drawdown_pct": -13.74
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 33.9,
+    "trades": 206,
+    "profit_factor": 1.5,
+    "sharpe": 0.98,
+    "max_drawdown_pct": -12.23
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 46.83,
+    "trades": 202,
+    "profit_factor": 1.56,
+    "sharpe": 1.06,
+    "max_drawdown_pct": -12.04
+   },
+   {
+    "cfg": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 21.8,
+    "trades": 199,
+    "profit_factor": 1.36,
+    "sharpe": 0.73,
+    "max_drawdown_pct": -11.71
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 37.51,
+    "trades": 321,
+    "profit_factor": 1.37,
+    "sharpe": 0.98,
+    "max_drawdown_pct": -17.86
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 30.4,
+    "trades": 323,
+    "profit_factor": 1.4,
+    "sharpe": 1.0,
+    "max_drawdown_pct": -15.97
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 37.59,
+    "trades": 325,
+    "profit_factor": 1.4,
+    "sharpe": 1.04,
+    "max_drawdown_pct": -19.38
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 24.31,
+    "trades": 324,
+    "profit_factor": 1.34,
+    "sharpe": 0.86,
+    "max_drawdown_pct": -16.82
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 43.59,
+    "trades": 201,
+    "profit_factor": 1.49,
+    "sharpe": 1.04,
+    "max_drawdown_pct": -13.6
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 49.89,
+    "trades": 201,
+    "profit_factor": 1.65,
+    "sharpe": 1.31,
+    "max_drawdown_pct": -10.12
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 44.08,
+    "trades": 199,
+    "profit_factor": 1.5,
+    "sharpe": 1.05,
+    "max_drawdown_pct": -13.2
+   },
+   {
+    "cfg": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 42.96,
+    "trades": 190,
+    "profit_factor": 1.64,
+    "sharpe": 1.2,
+    "max_drawdown_pct": -9.16
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 50.35,
+    "trades": 314,
+    "profit_factor": 1.51,
+    "sharpe": 1.23,
+    "max_drawdown_pct": -18.92
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 34.88,
+    "trades": 315,
+    "profit_factor": 1.48,
+    "sharpe": 1.13,
+    "max_drawdown_pct": -16.34
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 49.8,
+    "trades": 314,
+    "profit_factor": 1.46,
+    "sharpe": 1.14,
+    "max_drawdown_pct": -23.61
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 30.75,
+    "trades": 316,
+    "profit_factor": 1.42,
+    "sharpe": 1.02,
+    "max_drawdown_pct": -17.06
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 48.05,
+    "trades": 182,
+    "profit_factor": 1.57,
+    "sharpe": 1.11,
+    "max_drawdown_pct": -12.82
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 52.91,
+    "trades": 190,
+    "profit_factor": 1.72,
+    "sharpe": 1.36,
+    "max_drawdown_pct": -10.64
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 54.53,
+    "trades": 191,
+    "profit_factor": 1.65,
+    "sharpe": 1.3,
+    "max_drawdown_pct": -14.15
+   },
+   {
+    "cfg": {
+     "min_score_offset": 0,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 46.4,
+    "trades": 185,
+    "profit_factor": 1.68,
+    "sharpe": 1.28,
+    "max_drawdown_pct": -10.35
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 37.64,
+    "trades": 267,
+    "profit_factor": 1.46,
+    "sharpe": 1.05,
+    "max_drawdown_pct": -19.99
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 39.91,
+    "trades": 269,
+    "profit_factor": 1.61,
+    "sharpe": 1.24,
+    "max_drawdown_pct": -15.59
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 46.21,
+    "trades": 281,
+    "profit_factor": 1.5,
+    "sharpe": 1.16,
+    "max_drawdown_pct": -23.04
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 32.48,
+    "trades": 277,
+    "profit_factor": 1.49,
+    "sharpe": 1.12,
+    "max_drawdown_pct": -18.24
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 43.86,
+    "trades": 172,
+    "profit_factor": 1.61,
+    "sharpe": 1.13,
+    "max_drawdown_pct": -16.07
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 38.93,
+    "trades": 172,
+    "profit_factor": 1.68,
+    "sharpe": 1.19,
+    "max_drawdown_pct": -13.43
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 47.94,
+    "trades": 173,
+    "profit_factor": 1.68,
+    "sharpe": 1.24,
+    "max_drawdown_pct": -16.61
+   },
+   {
+    "cfg": {
+     "min_score_offset": 5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 35.31,
+    "trades": 175,
+    "profit_factor": 1.65,
+    "sharpe": 1.16,
+    "max_drawdown_pct": -13.91
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 37.22,
+    "trades": 252,
+    "profit_factor": 1.35,
+    "sharpe": 0.91,
+    "max_drawdown_pct": -28.19
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 35.34,
+    "trades": 256,
+    "profit_factor": 1.51,
+    "sharpe": 1.15,
+    "max_drawdown_pct": -19.92
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 35.92,
+    "trades": 242,
+    "profit_factor": 1.38,
+    "sharpe": 0.92,
+    "max_drawdown_pct": -24.87
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 26.08,
+    "trades": 248,
+    "profit_factor": 1.4,
+    "sharpe": 0.93,
+    "max_drawdown_pct": -18.83
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 48.3,
+    "trades": 165,
+    "profit_factor": 1.68,
+    "sharpe": 1.29,
+    "max_drawdown_pct": -18.46
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 33.68,
+    "trades": 163,
+    "profit_factor": 1.6,
+    "sharpe": 1.17,
+    "max_drawdown_pct": -15.85
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "total_return_pct": 49.96,
+    "trades": 163,
+    "profit_factor": 1.69,
+    "sharpe": 1.29,
+    "max_drawdown_pct": -16.71
+   },
+   {
+    "cfg": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "total_return_pct": 32.69,
+    "trades": 162,
+    "profit_factor": 1.65,
+    "sharpe": 1.16,
+    "max_drawdown_pct": -15.18
+   }
+  ]
+ },
+ "walk_forward": {
+  "years": [
+   {
+    "year": "2022",
+    "chosen": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "train_sharpe": 2.92,
+    "test": {
+     "total_return_pct": -15.84,
+     "cagr_pct": -15.89,
+     "trades": 45,
+     "win_rate_pct": 17.8,
+     "profit_factor": 0.13,
+     "expectancy_usd": -35.21,
+     "avg_R": -0.69,
+     "sharpe": -2.59,
+     "sortino": -3.0,
+     "max_drawdown_pct": -16.78,
+     "longest_recovery_days": 2,
+     "avg_exposure_pct": 5.2,
+     "fees_usd": 23.76,
+     "btc_buy_hold_pct": -65.34,
+     "btc_max_drawdown_pct": -66.93
+    }
+   },
+   {
+    "year": "2023",
+    "chosen": {
+     "min_score_offset": -5,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 0.75
+     }
+    },
+    "train_sharpe": 1.49,
+    "test": {
+     "total_return_pct": 11.26,
+     "cagr_pct": 11.3,
+     "trades": 73,
+     "win_rate_pct": 42.5,
+     "profit_factor": 1.43,
+     "expectancy_usd": 15.42,
+     "avg_R": 0.349,
+     "sharpe": 1.07,
+     "sortino": 1.68,
+     "max_drawdown_pct": -9.64,
+     "longest_recovery_days": 6,
+     "avg_exposure_pct": 15.4,
+     "fees_usd": 62.48,
+     "btc_buy_hold_pct": 154.46,
+     "btc_max_drawdown_pct": -20.0
+    }
+   },
+   {
+    "year": "2024",
+    "chosen": {
+     "min_score_offset": -10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "train_sharpe": 0.12,
+    "test": {
+     "total_return_pct": -4.72,
+     "cagr_pct": -4.72,
+     "trades": 73,
+     "win_rate_pct": 32.9,
+     "profit_factor": 0.83,
+     "expectancy_usd": -6.46,
+     "avg_R": -0.093,
+     "sharpe": -0.37,
+     "sortino": -0.5,
+     "max_drawdown_pct": -14.89,
+     "longest_recovery_days": 71,
+     "avg_exposure_pct": 14.0,
+     "fees_usd": 41.12,
+     "btc_buy_hold_pct": 111.81,
+     "btc_max_drawdown_pct": -26.15
+    }
+   },
+   {
+    "year": "2025",
+    "chosen": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": false,
+     "order_expiry_days": 4,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "train_sharpe": 1.26,
+    "test": {
+     "total_return_pct": -14.97,
+     "cagr_pct": -15.01,
+     "trades": 55,
+     "win_rate_pct": 29.1,
+     "profit_factor": 0.28,
+     "expectancy_usd": -27.21,
+     "avg_R": -0.466,
+     "sharpe": -2.12,
+     "sortino": -2.73,
+     "max_drawdown_pct": -14.97,
+     "longest_recovery_days": 0,
+     "avg_exposure_pct": 7.5,
+     "fees_usd": 29.11,
+     "btc_buy_hold_pct": -7.34,
+     "btc_max_drawdown_pct": -32.02
+    }
+   },
+   {
+    "year": "2026",
+    "chosen": {
+     "min_score_offset": 10,
+     "use_exit_intelligence": true,
+     "order_expiry_days": 2,
+     "limits": {
+      "risk_per_trade_pct": 1.0
+     }
+    },
+    "train_sharpe": -0.31,
+    "test": {
+     "total_return_pct": -6.87,
+     "cagr_pct": -7.87,
+     "trades": 40,
+     "win_rate_pct": 32.5,
+     "profit_factor": 0.56,
+     "expectancy_usd": -17.17,
+     "avg_R": -0.222,
+     "sharpe": -1.0,
+     "sortino": -1.38,
+     "max_drawdown_pct": -8.37,
+     "longest_recovery_days": 0,
+     "avg_exposure_pct": 6.9,
+     "fees_usd": 34.06,
+     "btc_buy_hold_pct": -27.79,
+     "btc_max_drawdown_pct": -39.53
+    }
+   }
+  ],
+  "chained_return_pct": -29.35
+ },
+ "sensitivity": {
+  "Costos x2 (comisión 0,2 %, deslizamiento 0,2 %)": {
+   "total_return_pct": 9.17,
+   "cagr_pct": 1.4,
+   "trades": 595,
+   "win_rate_pct": 35.0,
+   "profit_factor": 1.05,
+   "expectancy_usd": 1.54,
+   "avg_R": 0.01,
+   "sharpe": 0.19,
+   "sortino": 0.27,
+   "max_drawdown_pct": -33.95,
+   "longest_recovery_days": 119,
+   "avg_exposure_pct": 9.5,
+   "fees_usd": 905.93,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Deslizamiento 0,3 %": {
+   "total_return_pct": 11.19,
+   "cagr_pct": 1.69,
+   "trades": 593,
+   "win_rate_pct": 34.9,
+   "profit_factor": 1.06,
+   "expectancy_usd": 1.89,
+   "avg_R": 0.009,
+   "sharpe": 0.22,
+   "sortino": 0.32,
+   "max_drawdown_pct": -32.76,
+   "longest_recovery_days": 119,
+   "avg_exposure_pct": 9.4,
+   "fees_usd": 448.94,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Sin costos (referencia, irreal)": {
+   "total_return_pct": 26.4,
+   "cagr_pct": 3.77,
+   "trades": 606,
+   "win_rate_pct": 35.8,
+   "profit_factor": 1.13,
+   "expectancy_usd": 4.36,
+   "avg_R": 0.065,
+   "sharpe": 0.45,
+   "sortino": 0.65,
+   "max_drawdown_pct": -26.48,
+   "longest_recovery_days": 95,
+   "avg_exposure_pct": 9.0,
+   "fees_usd": 0.0,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Máximo 3 posiciones": {
+   "total_return_pct": 15.02,
+   "cagr_pct": 2.24,
+   "trades": 331,
+   "win_rate_pct": 37.2,
+   "profit_factor": 1.14,
+   "expectancy_usd": 4.54,
+   "avg_R": 0.039,
+   "sharpe": 0.39,
+   "sortino": 0.57,
+   "max_drawdown_pct": -17.83,
+   "longest_recovery_days": 126,
+   "avg_exposure_pct": 5.4,
+   "fees_usd": 244.68,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Máximo 10 posiciones": {
+   "total_return_pct": 17.94,
+   "cagr_pct": 2.64,
+   "trades": 894,
+   "win_rate_pct": 36.1,
+   "profit_factor": 1.06,
+   "expectancy_usd": 2.01,
+   "avg_R": 0.025,
+   "sharpe": 0.25,
+   "sortino": 0.34,
+   "max_drawdown_pct": -34.63,
+   "longest_recovery_days": 139,
+   "avg_exposure_pct": 14.8,
+   "fees_usd": 739.33,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Sin objetivos parciales (solo stop/trailing/salida)": {
+   "total_return_pct": 33.21,
+   "cagr_pct": 4.64,
+   "trades": 497,
+   "win_rate_pct": 31.4,
+   "profit_factor": 1.2,
+   "expectancy_usd": 6.68,
+   "avg_R": 0.074,
+   "sharpe": 0.46,
+   "sortino": 0.7,
+   "max_drawdown_pct": -28.22,
+   "longest_recovery_days": 112,
+   "avg_exposure_pct": 10.3,
+   "fees_usd": 375.13,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Sin Exit Intelligence": {
+   "total_return_pct": 25.07,
+   "cagr_pct": 3.6,
+   "trades": 356,
+   "win_rate_pct": 41.6,
+   "profit_factor": 1.15,
+   "expectancy_usd": 7.04,
+   "avg_R": 0.168,
+   "sharpe": 0.42,
+   "sortino": 0.6,
+   "max_drawdown_pct": -25.9,
+   "longest_recovery_days": 96,
+   "avg_exposure_pct": 10.5,
+   "fees_usd": 310.63,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Puntaje mínimo +10": {
+   "total_return_pct": 34.09,
+   "cagr_pct": 4.75,
+   "trades": 439,
+   "win_rate_pct": 35.8,
+   "profit_factor": 1.18,
+   "expectancy_usd": 7.76,
+   "avg_R": 0.042,
+   "sharpe": 0.53,
+   "sortino": 0.78,
+   "max_drawdown_pct": -27.48,
+   "longest_recovery_days": 92,
+   "avg_exposure_pct": 8.6,
+   "fees_usd": 450.61,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Puntaje mínimo −10": {
+   "total_return_pct": 22.19,
+   "cagr_pct": 3.22,
+   "trades": 636,
+   "win_rate_pct": 36.6,
+   "profit_factor": 1.12,
+   "expectancy_usd": 3.49,
+   "avg_R": 0.05,
+   "sharpe": 0.39,
+   "sortino": 0.55,
+   "max_drawdown_pct": -22.28,
+   "longest_recovery_days": 137,
+   "avg_exposure_pct": 9.8,
+   "fees_usd": 442.92,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Riesgo por operación 2 %": {
+   "total_return_pct": 62.96,
+   "cagr_pct": 8.03,
+   "trades": 571,
+   "win_rate_pct": 35.9,
+   "profit_factor": 1.12,
+   "expectancy_usd": 11.03,
+   "avg_R": 0.043,
+   "sharpe": 0.49,
+   "sortino": 0.72,
+   "max_drawdown_pct": -42.38,
+   "longest_recovery_days": 138,
+   "avg_exposure_pct": 20.1,
+   "fees_usd": 1240.02,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  },
+  "Órdenes válidas 1 día": {
+   "total_return_pct": 26.84,
+   "cagr_pct": 3.83,
+   "trades": 576,
+   "win_rate_pct": 36.6,
+   "profit_factor": 1.15,
+   "expectancy_usd": 4.66,
+   "avg_R": 0.05,
+   "sharpe": 0.46,
+   "sortino": 0.66,
+   "max_drawdown_pct": -26.53,
+   "longest_recovery_days": 127,
+   "avg_exposure_pct": 8.7,
+   "fees_usd": 416.83,
+   "btc_buy_hold_pct": 596.6,
+   "btc_max_drawdown_pct": -76.63
+  }
+ },
+ "score_validation": {
+  "is": {
+   "quintiles": [
+    {
+     "quintile": 1,
+     "score_min": 0.1,
+     "score_max": 14.9,
+     "n": 6953,
+     "fwd20_mean_pct": 1.98,
+     "fwd20_median_pct": -1.08,
+     "excess_mean_pct": 0.1,
+     "hit_rate_pct": 40.8
+    },
+    {
+     "quintile": 2,
+     "score_min": 14.9,
+     "score_max": 24.8,
+     "n": 6953,
+     "fwd20_mean_pct": -2.32,
+     "fwd20_median_pct": -5.65,
+     "excess_mean_pct": -0.48,
+     "hit_rate_pct": 40.3
+    },
+    {
+     "quintile": 3,
+     "score_min": 24.8,
+     "score_max": 37.3,
+     "n": 6954,
+     "fwd20_mean_pct": 5.44,
+     "fwd20_median_pct": -4.57,
+     "excess_mean_pct": 0.2,
+     "hit_rate_pct": 36.5
+    },
+    {
+     "quintile": 4,
+     "score_min": 37.3,
+     "score_max": 44.9,
+     "n": 6953,
+     "fwd20_mean_pct": 7.55,
+     "fwd20_median_pct": -2.18,
+     "excess_mean_pct": -0.98,
+     "hit_rate_pct": 36.2
+    },
+    {
+     "quintile": 5,
+     "score_min": 44.9,
+     "score_max": 90.7,
+     "n": 6954,
+     "fwd20_mean_pct": 8.97,
+     "fwd20_median_pct": -2.16,
+     "excess_mean_pct": 1.17,
+     "hit_rate_pct": 36.5
+    }
+   ],
+   "by_phase": {
+    "REJECTED": {
+     "n": 24412,
+     "excess_mean_pct": -0.45,
+     "hit_rate_pct": 39.2
+    },
+    "OVEREXTENDED": {
+     "n": 2891,
+     "excess_mean_pct": 3.22,
+     "hit_rate_pct": 31.4
+    },
+    "ACCUMULATION": {
+     "n": 1222,
+     "excess_mean_pct": 1.55,
+     "hit_rate_pct": 37.5
+    },
+    "MOMENTUM": {
+     "n": 4406,
+     "excess_mean_pct": 0.17,
+     "hit_rate_pct": 36.4
+    },
+    "BREAKOUT": {
+     "n": 1299,
+     "excess_mean_pct": -0.27,
+     "hit_rate_pct": 36.4
+    },
+    "PRE-EXPLOSION": {
+     "n": 269,
+     "excess_mean_pct": 0.38,
+     "hit_rate_pct": 37.2
+    },
+    "DISTRIBUTION": {
+     "n": 268,
+     "excess_mean_pct": -2.47,
+     "hit_rate_pct": 41.4
+    }
+   },
+   "rank_ic": {
+    "score": -0.091,
+    "structure": -0.0674,
+    "volume": -0.0651,
+    "trend": -0.1181,
+    "momentum": -0.0551,
+    "relative_strength": -0.0841,
+    "liquidity": -0.0646,
+    "breakout": 0.0622
+   },
+   "samples": 34767
+  },
+  "oos": {
+   "quintiles": [
+    {
+     "quintile": 1,
+     "score_min": 0.4,
+     "score_max": 12.7,
+     "n": 6102,
+     "fwd20_mean_pct": -1.66,
+     "fwd20_median_pct": -4.46,
+     "excess_mean_pct": 0.06,
+     "hit_rate_pct": 42.0
+    },
+    {
+     "quintile": 2,
+     "score_min": 12.7,
+     "score_max": 20.3,
+     "n": 6103,
+     "fwd20_mean_pct": -2.93,
+     "fwd20_median_pct": -5.46,
+     "excess_mean_pct": 0.22,
+     "hit_rate_pct": 43.1
+    },
+    {
+     "quintile": 3,
+     "score_min": 20.3,
+     "score_max": 32.4,
+     "n": 6102,
+     "fwd20_mean_pct": -3.01,
+     "fwd20_median_pct": -6.72,
+     "excess_mean_pct": 0.12,
+     "hit_rate_pct": 41.2
+    },
+    {
+     "quintile": 4,
+     "score_min": 32.4,
+     "score_max": 40.0,
+     "n": 6103,
+     "fwd20_mean_pct": -3.69,
+     "fwd20_median_pct": -7.84,
+     "excess_mean_pct": -0.89,
+     "hit_rate_pct": 38.3
+    },
+    {
+     "quintile": 5,
+     "score_min": 40.0,
+     "score_max": 88.9,
+     "n": 6103,
+     "fwd20_mean_pct": 0.51,
+     "fwd20_median_pct": -5.98,
+     "excess_mean_pct": 0.48,
+     "hit_rate_pct": 38.7
+    }
+   ],
+   "by_phase": {
+    "ACCUMULATION": {
+     "n": 986,
+     "excess_mean_pct": 0.34,
+     "hit_rate_pct": 38.9
+    },
+    "REJECTED": {
+     "n": 23431,
+     "excess_mean_pct": 0.1,
+     "hit_rate_pct": 41.5
+    },
+    "BREAKOUT": {
+     "n": 989,
+     "excess_mean_pct": 2.5,
+     "hit_rate_pct": 40.4
+    },
+    "OVEREXTENDED": {
+     "n": 1564,
+     "excess_mean_pct": -4.65,
+     "hit_rate_pct": 32.3
+    },
+    "MOMENTUM": {
+     "n": 3119,
+     "excess_mean_pct": 0.75,
+     "hit_rate_pct": 39.3
+    },
+    "DISTRIBUTION": {
+     "n": 221,
+     "excess_mean_pct": 1.11,
+     "hit_rate_pct": 45.7
+    },
+    "PRE-EXPLOSION": {
+     "n": 203,
+     "excess_mean_pct": -2.28,
+     "hit_rate_pct": 35.0
+    }
+   },
+   "rank_ic": {
+    "score": -0.0604,
+    "structure": -0.0197,
+    "volume": -0.0788,
+    "trend": -0.0759,
+    "momentum": -0.0598,
+    "relative_strength": -0.0637,
+    "liquidity": 0.0343,
+    "breakout": 0.0003
+   },
+   "samples": 30513
+  }
+ },
+ "base_trades": 599
+}

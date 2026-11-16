@@ -1,0 +1,170 @@
+{
+ "monedas_brutas": 664,
+ "velas": 786255,
+ "duplicadas": 0,
+ "fuera_de_medianoche_utc": 0,
+ "incoherencias_ohlc": 0,
+ "volumen_cero": 2,
+ "activos_panel": 669,
+ "dias": 2510,
+ "desde": "2020-01-01",
+ "hasta": "2026-11-14",
+ "velas_faltantes_internas_huecos_le_7d": 20,
+ "retornos_diarios_mayores_100pct": 148,
+ "retornos_menores_80pct": 6,
+ "estado": {
+  "TRADING": 468,
+  "BREAK": 191,
+  "SPLIT": 7,
+  "DELISTED": 3
+ },
+ "series_partidas": 14,
+ "supervivencia_top50": {
+  "2020": {
+   "top50": 50,
+   "retiradas_despues": 11,
+   "ejemplos": [
+    "EOS",
+    "MATIC",
+    "ERD",
+    "XMR",
+    "OMG",
+    "NANO",
+    "LEND",
+    "BTT"
+   ]
+  },
+  "2021": {
+   "top50": 50,
+   "retiradas_despues": 14,
+   "ejemplos": [
+    "MATIC",
+    "EOS",
+    "SXP",
+    "LUNA~old1",
+    "ATA",
+    "DATA",
+    "BAKE",
+    "BTT"
+   ]
+  },
+  "2022": {
+   "top50": 50,
+   "retiradas_despues": 9,
+   "ejemplos": [
+    "UNFI",
+    "WAVES",
+    "MATIC",
+    "FTM",
+    "FLM",
+    "ANC",
+    "LIT",
+    "GAL"
+   ]
+  },
+  "2023": {
+   "top50": 50,
+   "retiradas_despues": 10,
+   "ejemplos": [
+    "MATIC",
+    "LINA",
+    "RNDR",
+    "FTM",
+    "WAVES",
+    "TOMO",
+    "EOS",
+    "KEY"
+   ]
+  },
+  "2024": {
+   "top50": 50,
+   "retiradas_despues": 4,
+   "ejemplos": [
+    "HIGH",
+    "RNDR",
+    "FTM",
+    "MATIC"
+   ]
+  },
+  "2025": {
+   "top50": 50,
+   "retiradas_despues": 2,
+   "ejemplos": [
+    "FUN",
+    "TON"
+   ]
+  },
+  "2026": {
+   "top50": 50,
+   "retiradas_despues": 1,
+   "ejemplos": [
+    "TON"
+   ]
+  }
+ },
+ "funding": {
+  "perpetuos": 281,
+  "con_huecos": 5,
+  "manifiesto_zips": 24753,
+  "ejemplo": {
+   "1000BONKUSDT": {
+    "desde": "2023-11-22",
+    "registros": 6445,
+    "huecos_mayores_9h": 0,
+    "intervalo_mediano_h": 4.0
+   },
+   "1000FLOKIUSDT": {
+    "desde": "2023-05-06",
+    "registros": 3823,
+    "huecos_mayores_9h": 0,
+    "intervalo_mediano_h": 8.0
+   },
+   "1000LUNCUSDT": {
+    "desde": "2022-09-09",
+    "registros": 4540,
+    "huecos_mayores_9h": 0,
+    "intervalo_mediano_h": 8.0
+   },
+   "1000PEPEUSDT": {
+    "desde": "2023-05-05",
+    "registros": 3826,
+    "huecos_mayores_9h": 0,
+    "intervalo_mediano_h": 8.0
+   },
+   "1000SATSUSDT": {
+    "desde": "2023-12-12",
+    "registros": 6325,
+    "huecos_mayores_9h": 0,
+    "intervalo_mediano_h": 4.0
+   }
+  },
+  "BTCUSDT": {
+   "desde": "2020-01-01",
+   "registros": 7488,
+   "huecos_mayores_9h": 0,
+   "intervalo_mediano_h": 8.0
+  },
+  "ETHUSDT": {
+   "desde": "2020-01-01",
+   "registros": 7488,
+   "huecos_mayores_9h": 0,
+   "intervalo_mediano_h": 8.0
+  }
+ },
+ "comparacion_coinbase": {
+  "BTC": {
+   "dias_comparados": 2510,
+   "dif_mediana_pct": 0.0418,
+   "dif_p99_pct": 0.3228,
+   "dif_max_pct": 1.1756,
+   "fecha_dif_max": "2020-03-12"
+  },
+  "ETH": {
+   "dias_comparados": 2510,
+   "dif_mediana_pct": 0.0401,
+   "dif_p99_pct": 0.3301,
+   "dif_max_pct": 2.2484,
+   "fecha_dif_max": "2020-03-12"
+  }
+ }
+}
