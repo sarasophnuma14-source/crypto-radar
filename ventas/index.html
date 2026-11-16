@@ -50,7 +50,21 @@ body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset
 .btn.ghost{border-color:var(--line-2);color:var(--fg);background:transparent}
 .btn.ghost:hover{border-color:var(--fg)}
 .btn.small{padding:9px 16px;font-size:.88rem}
-@media (max-width:760px){.links{display:none}.nav-in .btn{margin-left:auto}}
+.btn:active{transform:translateY(0) scale(.97)}
+/* Botón ENTRAR: acceso al login de la app 2.1, a la derecha del encabezado */
+.nav-cta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.btn.enter{border-color:var(--fg);color:var(--fg);background:transparent;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.btn.enter svg{transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.btn.enter:hover{background:var(--fg);color:var(--bg)}
+.btn.enter:hover svg{transform:translateX(2px)}
+.btn.enter:active{background:#C9D6D8;border-color:#C9D6D8;color:var(--bg)}
+.btn.enter:focus-visible{outline:2px solid var(--amber);outline-offset:3px;border-radius:999px}
+@media (max-width:980px){.links{gap:14px;font-size:.86rem}.nav-in{gap:14px}}
+@media (max-width:760px){.links{display:none}.nav-cta{margin-left:auto}}
+.brand{white-space:nowrap}
+@media (max-width:480px){.nav-in{gap:10px;padding-left:14px}.brand{font-size:.98rem}.nav-cta .opt{display:none}.btn.small{padding:9px 13px}}
+@media (max-width:420px){.btn.enter{letter-spacing:.05em}.btn.enter svg{display:none}.nav-cta{gap:6px}.brand{gap:8px}}
+@media (max-width:359px){.brand-txt{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}}
 
 /* Héroe */
 .hero{position:relative;padding-block:72px 40px;overflow:hidden}
@@ -192,12 +206,15 @@ footer .row{display:flex;gap:22px;flex-wrap:wrap}
   <div class="wrap"><div class="nav-in">
     <a class="brand" href="#inicio" aria-label="Crypto Radar, inicio">
       <svg width="26" height="26" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12.5" fill="none" stroke="#E9F1F2" stroke-width="2"/><circle cx="14" cy="14" r="6.5" fill="none" stroke="#E9F1F2" stroke-width="1.5" opacity=".45"/><path d="M14 14 L24.5 7" stroke="#F0AE45" stroke-width="2.5" stroke-linecap="round"/><circle cx="19" cy="18" r="2.2" fill="#F0AE45"/></svg>
-      Crypto Radar
+      <span class="brand-txt">Crypto Radar</span>
     </a>
     <nav class="links" aria-label="Secciones">
       <a href="#motores">Cómo funciona</a><a href="#resultados">Resultados</a><a href="#planes">Planes</a><a href="#preguntas">Preguntas</a>
     </nav>
-    <a class="btn amber small" href="#lista">Unirme a la lista</a>
+    <div class="nav-cta">
+      <a class="btn amber small" href="#lista"><span>Unirme<span class="opt"> a la lista</span></span></a>
+      <a class="btn enter small" href="https://crypto-radar-2-1.onrender.com/entrar" aria-label="Entrar a Crypto Radar (iniciar sesión)">Entrar<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h9M8.5 4.5 12 8l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    </div>
   </div></div>
 </header>
 

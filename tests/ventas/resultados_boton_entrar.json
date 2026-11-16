@@ -1,0 +1,222 @@
+[
+ {
+  "prueba": "escritorio: visible",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "escritorio: texto ENTRAR",
+  "ok": true,
+  "detalle": "ENTRAR"
+ },
+ {
+  "prueba": "escritorio: href exacto",
+  "ok": true,
+  "detalle": "https://crypto-radar-2-1.onrender.com/entrar"
+ },
+ {
+  "prueba": "escritorio: sin credenciales/consulta en URL",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "escritorio: arriba a la derecha",
+  "ok": true,
+  "detalle": "top 25 margen der 11"
+ },
+ {
+  "prueba": "escritorio: objetivo táctil >=36px alto",
+  "ok": true,
+  "detalle": "37px"
+ },
+ {
+  "prueba": "escritorio: sin scroll horizontal",
+  "ok": true,
+  "detalle": "1440/1440"
+ },
+ {
+  "prueba": "escritorio: sin errores JS",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "escritorio: visible tras desplazarse (sticky)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "hover cambia fondo",
+  "ok": true,
+  "detalle": "rgb(233, 241, 242)"
+ },
+ {
+  "prueba": "alcanzable con teclado (Tab)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "anillo de foco visible",
+  "ok": true,
+  "detalle": "solid rgb(240, 174, 69)"
+ },
+ {
+  "prueba": "anclas internas existen",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "clic abre el login 2.1",
+  "ok": true,
+  "detalle": "https://crypto-radar-2-1.onrender.com/entrar"
+ },
+ {
+  "prueba": "tablet: visible",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "tablet: texto ENTRAR",
+  "ok": true,
+  "detalle": "ENTRAR"
+ },
+ {
+  "prueba": "tablet: href exacto",
+  "ok": true,
+  "detalle": "https://crypto-radar-2-1.onrender.com/entrar"
+ },
+ {
+  "prueba": "tablet: sin credenciales/consulta en URL",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "tablet: arriba a la derecha",
+  "ok": true,
+  "detalle": "top 29 margen der 7"
+ },
+ {
+  "prueba": "tablet: objetivo táctil >=36px alto",
+  "ok": true,
+  "detalle": "37px"
+ },
+ {
+  "prueba": "tablet: sin scroll horizontal",
+  "ok": true,
+  "detalle": "768/768"
+ },
+ {
+  "prueba": "tablet: sin errores JS",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "tablet: visible tras desplazarse (sticky)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_iphone: visible",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_iphone: texto ENTRAR",
+  "ok": true,
+  "detalle": "ENTRAR"
+ },
+ {
+  "prueba": "movil_iphone: href exacto",
+  "ok": true,
+  "detalle": "https://crypto-radar-2-1.onrender.com/entrar"
+ },
+ {
+  "prueba": "movil_iphone: sin credenciales/consulta en URL",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_iphone: arriba a la derecha",
+  "ok": true,
+  "detalle": "top 25 margen der 11"
+ },
+ {
+  "prueba": "movil_iphone: objetivo táctil >=36px alto",
+  "ok": true,
+  "detalle": "37px"
+ },
+ {
+  "prueba": "movil_iphone: sin scroll horizontal",
+  "ok": true,
+  "detalle": "390/390"
+ },
+ {
+  "prueba": "movil_iphone: sin errores JS",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_iphone: visible tras desplazarse (sticky)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_320: visible",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_320: texto ENTRAR",
+  "ok": true,
+  "detalle": "ENTRAR"
+ },
+ {
+  "prueba": "movil_320: href exacto",
+  "ok": true,
+  "detalle": "https://crypto-radar-2-1.onrender.com/entrar"
+ },
+ {
+  "prueba": "movil_320: sin credenciales/consulta en URL",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_320: arriba a la derecha",
+  "ok": true,
+  "detalle": "top 25 margen der 11"
+ },
+ {
+  "prueba": "movil_320: objetivo táctil >=36px alto",
+  "ok": true,
+  "detalle": "37px"
+ },
+ {
+  "prueba": "movil_320: sin scroll horizontal",
+  "ok": true,
+  "detalle": "320/320"
+ },
+ {
+  "prueba": "movil_320: sin errores JS",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "movil_320: visible tras desplazarse (sticky)",
+  "ok": true,
+  "detalle": ""
+ },
+ {
+  "prueba": "contraste reposo #E9F1F2 sobre #07141A >= 4.5",
+  "ok": true,
+  "detalle": "16.3:1"
+ },
+ {
+  "prueba": "contraste hover #07141A sobre #E9F1F2 >= 4.5",
+  "ok": true,
+  "detalle": "16.3:1"
+ },
+ {
+  "prueba": "contraste active #07141A sobre #C9D6D8 >= 4.5",
+  "ok": true,
+  "detalle": "12.5:1"
+ }
+]
