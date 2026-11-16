@@ -1,5 +1,11 @@
 # Análisis de costos y rentabilidad · Crypto Radar 2.1
 
+> **Actualización del 16-nov-2026.** Los números de este documento suponían una mezcla Pro/Élite. Los reemplaza `UNIT_ECONOMICS.md` (solo Pro a 15/149). Correcciones principales:
+> - ARPU de US$13,97 (antes US$17,99);
+> - licencia comercial de CoinGecko de US$35 al mes (antes «no verificada»);
+> - riesgo de transferencia de Neon por el sondeo de 30 s, corregido en la PR #12;
+> - margen del 69 % al 77 % sin IVA.
+
 Fecha: 16 de noviembre de 2026. Todas las cifras están en dólares estadounidenses.
 
 Cada número lleva una de estas etiquetas:

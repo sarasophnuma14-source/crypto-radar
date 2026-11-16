@@ -1,5 +1,7 @@
 # Estrategia de pricing · Crypto Radar
 
+> **Actualización del 16-nov-2026.** Decisión preliminar del propietario: lanzar solo Pro a US$15/149 y diferir Élite hasta tener 2 o más diferenciadores reales (`MODELO_NEGOCIO_VALIDADO.md` §4). Los números vigentes están en `UNIT_ECONOMICS.md`; los criterios para cobrar, en `DECISION_COMERCIAL_GO_NO_GO.md`.
+
 Fecha: 16 de noviembre de 2026.
 
 **Estado: propuesta. No hay tarifas aprobadas ni pagos activos.** Los precios no se han probado con experimentos de mercado.

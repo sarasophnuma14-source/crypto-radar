@@ -1,5 +1,7 @@
 # Matriz de funcionalidades por plan
 
+> **Actualización del 16-nov-2026.** Decisión preliminar del propietario: lanzar solo Pro a US$15/149 y diferir Élite hasta tener 2 o más diferenciadores reales (`MODELO_NEGOCIO_VALIDADO.md` §4). Los números vigentes están en `UNIT_ECONOMICS.md`; los criterios para cobrar, en `DECISION_COMERCIAL_GO_NO_GO.md`.
+
 Fecha: 16 de noviembre de 2026. Fuente: `radar/auth.py` (`PLANS`), `radar/webapi.py` y `web/app.js` en `release-2.1` (2f6df27).
 
 Columnas "Hoy": lo que el código entrega de verdad. Columna "Propuesta": lo que se sugiere, marcado con "requiere desarrollo" cuando no existe.
