@@ -1,0 +1,108 @@
+{
+ "seleccion": {
+  "F1": {
+   "elegida": "F1_tsmom_L30_btc",
+   "pasa_validacion": false,
+   "estabilidad_C11": 0.714,
+   "C11": true,
+   "pbo": {
+    "pbo": 0.3035,
+    "lambda_mediana": 0.288,
+    "combinaciones": 12870,
+    "S": 16,
+    "configs": 7
+   },
+   "C8": true
+  },
+  "F2": {
+   "elegida": "F2_xsmom_L28_vol",
+   "pasa_validacion": false,
+   "estabilidad_C11": 0.0,
+   "C11": false,
+   "pbo": {
+    "pbo": 0.7618,
+    "lambda_mediana": -0.693,
+    "combinaciones": 12870,
+    "S": 16,
+    "configs": 6
+   },
+   "C8": false
+  },
+  "F3": {
+   "elegida": "F3_donchian_btc_banda",
+   "pasa_validacion": true,
+   "estabilidad_C11": 1.0,
+   "C11": true,
+   "pbo": {
+    "pbo": 0.2583,
+    "lambda_mediana": 13.816,
+    "combinaciones": 12870,
+    "S": 16,
+    "configs": 4
+   },
+   "C8": true
+  },
+  "F4": {
+   "elegida": "F4_reversion_k7_btc",
+   "pasa_validacion": false,
+   "estabilidad_C11": 0.0,
+   "C11": false,
+   "pbo": {
+    "pbo": 0.7562,
+    "lambda_mediana": -1.099,
+    "combinaciones": 12870,
+    "S": 16,
+    "configs": 4
+   },
+   "C8": false
+  },
+  "F5": {
+   "elegida": "F5_voltarget_ew10",
+   "pasa_validacion": true,
+   "estabilidad_C11": 1.0,
+   "C11": true,
+   "pbo": {
+    "pbo": 0.5587,
+    "lambda_mediana": 0.0,
+    "combinaciones": 12870,
+    "S": 16,
+    "configs": 4
+   },
+   "C8": false
+  },
+  "F6": {
+   "elegida": "F6_carry_btceth_thr0",
+   "pasa_validacion": true,
+   "estabilidad_C11": 0.667,
+   "C11": true,
+   "pbo": {
+    "pbo": 0.0,
+    "lambda_mediana": 13.816,
+    "combinaciones": 12870,
+    "S": 16,
+    "configs": 6
+   },
+   "C8": true
+  },
+  "F7": {
+   "elegida": "F7_adaptativo_a",
+   "pasa_validacion": false,
+   "estabilidad_C11": 0.5,
+   "C11": true,
+   "pbo": null,
+   "C8": null
+  },
+  "F8": {
+   "elegida": "F8_conjunto_igual",
+   "pasa_validacion": true,
+   "estabilidad_C11": 1.0,
+   "C11": true,
+   "pbo": null,
+   "C8": null
+  }
+ },
+ "var_sr_desarrollo": 0.005538395626831248,
+ "n_trials": 58,
+ "code_sha256": "4b44b4e77852205632084a2a516be4d671cc21067c530cb665305f1db8b1c3a9",
+ "generado": "2026-11-16T01:07:41Z"
+}
