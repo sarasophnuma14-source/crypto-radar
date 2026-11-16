@@ -1,6 +1,6 @@
 # Requisitos de lanzamiento comercial · Crypto Radar 2.1
 
-Fecha: 16 de noviembre de 2026.
+Fecha: 16 de noviembre de 2026. Actualizado el mismo día con los PR #12 y #14. **EN PR no es CERRADO:** un requisito solo se cierra desplegado y verificado.
 
 Son las condiciones de la **compuerta A** de `DECISION_COMERCIAL_GO_NO_GO.md`. Ninguno se da por cerrado sin evidencia ejecutada.
 
@@ -18,10 +18,10 @@ Son las condiciones de la **compuerta A** de `DECISION_COMERCIAL_GO_NO_GO.md`. N
 | ID | Requisito | Estado | Evidencia hoy | Responsable | Criterio de cierre |
 |---|---|---|---|---|---|
 | R-01 | Licencia comercial de CoinGecko | BLOQUEANTE | La app usa la API sin clave (MEDIDO). Demo/keyless: uso comercial «Not included». Basic US$35 al mes lo incluye (PÚBLICO, 16-nov-2026) | PATRON (contrato) + equipo (clave en el código) | Plan contratado; la app usa la clave desde una variable de entorno; las llamadas de 7 días caben en el límite del plan |
-| R-02 | Atribución de CoinGecko en la UI: «Data provided by CoinGecko» con enlace | BLOQUEANTE | No existe en la UI (MEDIDO: solo hay una mención en el texto de memecoins, sin enlace) | Equipo | Visible donde se muestran sus datos; prueba automática |
-| R-03 | Atribución de alternative.me junto al índice Fear & Greed | BLOQUEANTE | No existe en la UI (MEDIDO) | Equipo | Visible junto al dato; prueba automática |
+| R-02 | Atribución de CoinGecko en la UI: «Data provided by CoinGecko» con enlace | EN PR (#12, commit 289f150) | Pie del panel y texto de memecoins con enlace; prueba `AtribucionYLanding` | Equipo | Visible donde se muestran sus datos; prueba automática |
+| R-03 | Atribución de alternative.me junto al índice Fear & Greed | EN PR (#12, commit 289f150) | Enlace junto al dato de sentimiento y en el pie; prueba `AtribucionYLanding` | Equipo | Visible junto al dato; prueba automática |
 | R-04 | Uso comercial de la API pública de Binance | BLOQUEANTE | Sin respuesta oficial pública (un hilo del foro sin respuesta del equipo) | PATRON (consulta escrita) | Confirmación escrita archivada, o cambio a un proveedor con licencia y costo cotizado |
-| R-05 | Uso comercial de la API pública de Bybit | BLOQUEANTE | No verificado | PATRON | ídem R-04 |
+| R-05 | Uso comercial de las API públicas de Bybit y OKX (respaldo de velas en `radar/data.py`) | BLOQUEANTE | No verificado | PATRON | ídem R-04 |
 
 ## 2. Pagos
 
@@ -54,7 +54,7 @@ Los pagos siguen **desactivados**. Nada de esta sección autoriza activarlos.
 | R-18 | TOTP del administrador inscrito; `CRYPTO_RADAR_ADMIN_ENROLL_TOKEN` eliminado de Render | BLOQUEANTE | Registro de las 02:34Z: el código está «vigente» | PATRON | Registro de arranque sin «vigente»; la variable no existe |
 | R-19 | Rotación de la contraseña `radar_app` de Neon y del token de Telegram | BLOQUEANTE | Sin confirmar (auditoría, C-4) | PATRON | Fecha de rotación anotada; la app arranca con las nuevas credenciales |
 | R-20 | *Health check* de Render en `/healthz`, con la readiness real | EN PR | PR #12: 503 en 3 s con la base caída (probado en local) | PATRON (autorizar el despliegue; configurar la ruta) | Render muestra el *health check* activo; prueba con la base caída en *staging* |
-| R-21 | Una sola instancia programa escaneos (bloqueo de líder) | EN PR | PR #12, `radar/leader.py`; probado en PostgreSQL 16 | PATRON (autorizar) | Registro «líder» en una sola instancia |
+| R-21 | Una sola instancia programa escaneos (bloqueo de líder) | EN PR | PR #12, `radar/leader.py` con comprobación en la base antes de cada trabajo; probado con dos procesos reales en PostgreSQL 16 (caída, sesión terminada y recuperación). Los registros de Render del 16-nov muestran dos escaneos solapados durante un despliegue (02:25 y 02:27) | PATRON (autorizar) | Registro «líder» en una sola instancia |
 | R-22 | Lectura parcial de `latest.json` (transferencia de Neon) | EN PR | PR #12, commit `a48500e`; pruebas `LecturaParcial` | PATRON (autorizar) | La transferencia diaria en Neon baja tras el despliegue (`UNIT_ECONOMICS.md` §5) |
 | R-23 | Plan de Neon apto para servicio continuo (no Free) | BLOQUEANTE | Plan sin verificar; el Free se agota hacia el día 16 (estimado) | PATRON | Consola de Neon: plan Launch o superior; consumo del mes anotado |
 | R-24 | Copias de seguridad automáticas y una restauración probada | BLOQUEANTE | Solo manuales (auditoría, A-3) | Equipo + PATRON | Tarea programada; copia cifrada fuera de Neon; restauración en base vacía verificada |
@@ -65,19 +65,19 @@ Los pagos siguen **desactivados**. Nada de esta sección autoriza activarlos.
 
 | ID | Requisito | Estado | Evidencia hoy | Responsable | Criterio de cierre |
 |---|---|---|---|---|---|
-| R-27 | Landing honesta publicada | EN PR | PR #11, 63 comprobaciones | PATRON (revisar y autorizar) | Publicada; la landing antigua de la 2.1 (`web/landing.html`) reemplazada o retirada |
+| R-27 | Landing honesta publicada | EN PR | PR #11 (73 comprobaciones). La raíz pública de la 2.1 (`web/landing.html`, que hoy promete cupos de fundador, prueba de 7 días y pagos) se reemplaza en el PR #12 | PATRON (revisar y autorizar) | Publicadas las dos; prueba en vivo sin «fundador», «USDT» ni «prueba» |
 | R-28 | Señales marcadas como no validadas | EN PR | PR #12: barra permanente y detalle | PATRON (autorizar) | Visible en todas las vistas con señales |
 | R-29 | Backtest de Élite retirado o mostrado con los resultados negativos | PENDIENTE | Auditoría, C-2 | Equipo, tras decisión | Ninguna cifra retrospectiva positiva sin el resultado NO EDGE al lado |
 | R-30 | Élite oculto de la venta hasta tener 2 diferenciadores | PENDIENTE | `MODELO_NEGOCIO_VALIDADO.md` §4 | Equipo, tras autorización | El *checkout* y la página de precios solo ofrecen Pro |
-| R-31 | Instrumentación de uso del piloto | PENDIENTE | `PLAN_PILOTO_90_DIAS.md` §1 | Equipo, tras autorización | Eventos `visit`, `export_csv` y `tab:*` registrados una vez por usuario y día; informe para el administrador |
+| R-31 | Instrumentación de uso del piloto | EN PR (#14, apagada) | `radar/piloto.py`; 18 + 3 pruebas | PATRON (autorizar; encender solo tras G-16) | Eventos `visit`, `export_csv` y `tab:*` registrados una vez por usuario y día; informe para el administrador |
 
 ## 6. Resumen
 
 | Estado | Cantidad | IDs |
 |---|---|---|
-| BLOQUEANTE | 15 | R-01 a R-05, R-09, R-12 a R-16, R-18, R-19, R-23, R-24 |
-| EN PR | 6 | R-17, R-20, R-21, R-22, R-27, R-28 |
-| PENDIENTE | 10 | R-06 a R-08, R-10, R-11, R-25, R-26, R-29 a R-31 |
+| BLOQUEANTE | 13 | R-01, R-04, R-05, R-09, R-12 a R-16, R-18, R-19, R-23, R-24 |
+| EN PR | 9 | R-02, R-03, R-17, R-20, R-21, R-22, R-27, R-28, R-31 |
+| PENDIENTE | 9 | R-06 a R-08, R-10, R-11, R-25, R-26, R-29, R-30 |
 | CERRADO | 0 | — |
 
 **Camino más corto** (SUPUESTO de orden, sin fechas porque dependen de terceros):

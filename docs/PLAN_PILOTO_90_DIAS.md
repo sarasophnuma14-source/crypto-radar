@@ -52,6 +52,10 @@ El piloto **no puede abrir** mientras `GO_NO_GO_PILOTO.md` siga en NO-GO. Bloque
 
 La política de privacidad (G-16) debe mencionar este registro de uso.
 
+**Estado (16-nov-2026):** implementada en el PR #14 (`radar/piloto.py`), **apagada**. Se enciende con `CRYPTO_RADAR_PILOT_METRICS=1`, y las encuestas además con `CRYPTO_RADAR_PILOT_SURVEYS=1`, solo tras G-16 y con autorización.
+
+Definición operativa: «activo» en una ventana de retención significa **al menos un día con `visit`** dentro de la ventana. Las cohortes son semanales (semana ISO del primer inicio de sesión).
+
 ## 2. Tamaño y reclutamiento
 
 **Meta:** 50 a 100 usuarios aprobados, para llegar a **30 o más activados**, el mínimo para que las tasas signifiquen algo.

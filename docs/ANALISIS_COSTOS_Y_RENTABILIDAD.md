@@ -43,6 +43,8 @@ Con 0,25 CU encendido todo el mes salen unas 182 CU-h. El plan Free incluye 100 
 
 ## 2. Costos variables por cobro
 
+> **SUSTITUIDO el 16-nov-2026.** Estas cifras usaban una mezcla Pro/Élite que ya no es la oferta. Se conservan como historial; las vigentes están en `UNIT_ECONOMICS.md`.
+
 Comisiones de Wompi: 2,65 % + COP 700 + IVA del 19 % sobre la comisión (PÚBLICO, [enter.co, 3-oct-2026](https://www.enter.co/fintech/wompi-baja-la-tarifa-del-qr-al-1-y-amplia-los-pagos-desde-el-celular/)). Para la parte fija en pesos se toma COP 4.000 por dólar (SUPUESTO).
 
 Comisiones de NOWPayments: 1 % sin conversión o 1,5 % con conversión (PÚBLICO, [base de conocimiento de NOWPayments](https://nowpayments.io/help/about-nowpayments/about/what-are-your-fees), consultada el 16-nov-2026), más la red. Para la red se toman US$0,50 (SUPUESTO).
@@ -66,6 +68,8 @@ Requieren un **contador**. No se asume ninguna exención.
 
 ## 3. Ingreso medio por usuario (ARPU)
 
+> **SUSTITUIDO el 16-nov-2026.** Estas cifras usaban una mezcla Pro/Élite que ya no es la oferta. Se conservan como historial; las vigentes están en `UNIT_ECONOMICS.md`.
+
 Mezcla base (SUPUESTO): 70 % Pro y 30 % Élite; 60 % mensual y 40 % anual. Con ella, **ARPU = US$17,99/mes**.
 
 | Pro / Élite | 20 % anual | 40 % anual | 60 % anual |
@@ -75,6 +79,8 @@ Mezcla base (SUPUESTO): 70 % Pro y 30 % Élite; 60 % mensual y 40 % anual. Con e
 | 90 / 10 | 15,85 | 15,31 | 14,76 |
 
 ## 4. Escenarios por número de usuarios de pago
+
+> **SUSTITUIDO el 16-nov-2026.** Estas cifras usaban una mezcla Pro/Élite que ya no es la oferta. Se conservan como historial; las vigentes están en `UNIT_ECONOMICS.md`.
 
 La infraestructura por escenario es un SUPUESTO de arquitectura (ver `PLAN_ESCALABILIDAD.md`, pendiente). Las pruebas de carga de 100 usuarios fueron locales y **no demuestran capacidad en Render**.
 
@@ -98,6 +104,8 @@ Soporte: 15 minutos por usuario al mes a US$10/h (SUPUESTO).
 El margen bruto no incluye IVA, renta, abogado, contador, dominio, marca, sueldo del responsable ni adquisición de clientes.
 
 ## 5. Punto de equilibrio, churn, LTV y CAC
+
+> **SUSTITUIDO el 16-nov-2026.** Estas cifras usaban una mezcla Pro/Élite que ya no es la oferta. Se conservan como historial; las vigentes están en `UNIT_ECONOMICS.md`.
 
 Contribución por usuario: ARPU menos comisiones menos soporte, es decir, **US$14,84/mes** (SUPUESTO).
 

@@ -11,7 +11,7 @@ Fecha: 16 de noviembre de 2026.
 | Plan | Mensual | Precio de referencia | Anual | Equivalente al mes | Ahorro frente a 12 meses | % |
 |---|---|---|---|---|---|---|
 | Pro | US$15 | US$19 | US$149 | US$12,42 | US$31 | 17,2 % |
-| Élite | US$29 | US$39 | US$299 | US$24,92 | US$49 | 14,1 % |
+| Élite (SUSTITUIDO: aplazado sin precio, ver `MODELO_NEGOCIO_VALIDADO.md` §4) | ~~US$29~~ | ~~US$39~~ | ~~US$299~~ | — | — | — |
 
 Cálculos verificados en `tests/ventas/prueba_landing_honesta.js`.
 

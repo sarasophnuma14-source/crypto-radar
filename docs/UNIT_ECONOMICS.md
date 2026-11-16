@@ -61,14 +61,30 @@ Precios propuestos: US$15 al mes; US$149 al año, que equivalen a US$12,42 al me
 - **ARR = MRR × 12.** Es una tasa anualizada, **no dinero cobrado**. Supone que nadie cancela durante 12 meses.
 - **Caja:** el plan anual se cobra completo el primer día (US$149). Contablemente es ingreso diferido: si hay reembolso, se devuelve. El mensual se cobra mes a mes y deja de entrar cuando el cliente cancela.
 
-Ejemplo con 100 clientes nuevos en el mes 0 y 8 % de cancelación mensual (SUPUESTO):
+Ejemplo con 100 clientes nuevos en el mes 0 y 8 % de cancelación mensual constante (SUPUESTO):
 
 | Indicador | Valor |
 |---|---|
-| ARR en el mes 0 | US$16.760 |
-| Caja cobrada en 12 meses | unos US$13.090: 60 clientes mensuales × US$15 × 7,92 meses medios + 40 anuales × US$149 |
+| ARR en el mes 0 | US$16.760 (100 × US$13,97 × 12) |
+| Meses mensuales cobrados por cliente en 12 meses | Σ desde t = 0 hasta 11 de 0,92^t = (1 − 0,92^12) / 0,08 = **7,904** |
+| Caja cobrada en 12 meses | 60 × US$15 × 7,904 + 40 × US$149 = 7.113,75 + 5.960 = **unos US$13.074** |
 
-La diferencia es del 22 %. Nunca se debe presentar el ARR como dinero cobrado.
+Cómo se cuenta (corrección del 16-nov-2026):
+
+- El primer cobro (t = 0) se hace al contratar.
+- Al inicio de cada mes siguiente sigue pagando el 92 % de los que pagaron el mes anterior.
+- La versión anterior decía 7,92 meses y US$13.090: era un error de redondeo, ya corregido.
+- La cifra de 7,34 meses que se propuso no sale de esa fórmula.
+  - Con la misma suma, desde t = 0 hasta 11, el resultado es 7,904.
+  - Si el primer mes ya tuviera cancelación (suma desde t = 1 hasta 12), saldrían 7,27 meses y unos US$12.505.
+- `tests/test_economia.py` comprueba estas cuentas.
+
+La diferencia entre ARR y caja es del 22 %. Además:
+
+- **El ARR no es caja.** Es una tasa anualizada que supone que nadie cancela.
+- **El MRR no es efectivo cobrado.** Un plan anual aporta US$12,42 al MRR cada mes, pero se cobra entero (US$149) el primer día.
+- **El cobro anual crea una obligación de servicio** durante 12 meses (ingreso diferido) y puede tener reembolsos.
+- Nunca se debe presentar el ARR ni el MRR como dinero cobrado.
 
 ## 4. Comisiones de cobro
 
@@ -164,6 +180,15 @@ Bases (SUPUESTO):
 «Con IVA incluido» supone que todos los clientes son colombianos y que el precio de US$15 ya incluye el 19 % de IVA. Si se cobra encima del precio, se aplica la columna sin IVA. **Si el IVA aplica, y a qué clientes, lo decide el contador** (PENDIENTE). No se asume ninguna exención.
 
 No incluido: impuesto de renta, ICA, costos de negocio (F) ni adquisición de clientes.
+
+**Contribución no es utilidad neta.** La contribución de esta tabla solo resta comisiones, infraestructura, datos y soporte. La utilidad neta exige restar además:
+
+- costos de negocio (F, PENDIENTE);
+- impuestos (PENDIENTE, sin verificar);
+- adquisición de clientes;
+- tiempo del responsable.
+
+Hoy **no se puede calcular**, y este documento no la estima.
 
 ## 7. Contribución, equilibrio, LTV y CAC
 
