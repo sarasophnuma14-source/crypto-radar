@@ -52,6 +52,7 @@ ALTER ROLE radar_app SET idle_in_transaction_session_timeout = '60s';
   GRANT CONNECT ON DATABASE radar TO radar_backup;
   GRANT USAGE ON SCHEMA app TO radar_backup;
   ALTER DEFAULT PRIVILEGES FOR ROLE radar_app IN SCHEMA app GRANT SELECT ON TABLES TO radar_backup;
+  ALTER ROLE radar_backup SET search_path = app;   -- sin esto la copia no encuentra las tablas (hallado en Neon real)
   ```
 
   Después del primer arranque, cuando ya existen las tablas, ejecuta también
@@ -99,3 +100,29 @@ La base nueva **no** recibe usuarios, sesiones ni contraseñas de la 2.0.0. No s
   a una hora anterior, comprobar que tiene los datos y borrar la rama (`PLAN_BACKUP_RECUPERACION.md` §6).
 - Copia propia diaria, firmada con HMAC (`CRYPTO_RADAR_BACKUP_KEY`) y guardada **cifrada**, por ejemplo con
   `age` o `gpg`, en un almacenamiento con acceso restringido (`PLAN_BACKUP_RECUPERACION.md` §1).
+
+
+## 8. Estado REAL en Neon (2026-11-16, 01:45–01:56 UTC)
+
+Hecho con la CLI de Neon (`neon init`/`neon deploy`, sesión OAuth de la cuenta del propietario) y SQL por HTTPS:
+
+| Elemento | Valor |
+| --- | --- |
+| Proyecto | `MyCryptoRadar` (`mute-sky-79699743`), organización `org-empty-fog-45336387`; proyecto nuevo, distinto del de la 2.0.0 |
+| Región / versión | AWS eu-central-1 (Frankfurt) / PostgreSQL 16.16 |
+| Rama / base | `production` (`br-dry-tree-b95aum41`) / `radar` (propietario `radar_owner`) |
+| Endpoint directo | `ep-polished-lake-b9lfqq5g` (la app usa el directo, sin `-pooler`) |
+| Roles | `radar_app` (sin superusuario, sin crear bases ni roles; dueño del esquema `app`; `search_path=app`, `statement_timeout=30s`, `idle_in_transaction_session_timeout=60s`) y `radar_backup` (solo lectura, `search_path=app`) |
+| Esquemas | `app` vacío, a la espera del primer arranque en Render; `public` sin permiso de creación para nadie más |
+| Contraseñas | Generadas en la sesión de trabajo, nunca mostradas ni en el repositorio. Se cargarán en Render como secreto; si se pierden, se rotan con `ALTER ROLE … PASSWORD` desde la consola de Neon |
+
+Pruebas reales (20/20) en una rama temporal `verificacion-2-1` copiada de `production` y **borrada al terminar**, para que el
+administrador de prueba no quede en la base real. Evidencia: `docs/evidencia_piloto/lanzamiento/neon_real_verificacion.json`.
+Migraciones desde cero (11 tablas en `app`, 0 en `public`, 17 índices, 11 PK, 2 únicas), `platform_meta` 2.1/nueva, 1 administrador,
+reconexión tras cortar las 4 conexiones de la app (0/10 peticiones fallidas), persistencia tras reiniciar, copia con `radar_backup`
+idéntica al origen y firmada, verificación, restauración en una base aparte, y denegaciones (`radar_backup` no escribe; `radar_app`
+no crea bases ni tablas en `public`). Registros sin secretos.
+
+Limitación de la prueba: este entorno no puede abrir el puerto 5432, así que el protocolo de PostgreSQL viajó por el WebSocket
+seguro de Neon (puerto 443, `tests/piloto/puente_ws_neon.py`) con `sslmode=disable` en el tramo local. En Render la conexión es
+directa con `sslmode=require` y debe comprobarse en el primer arranque (§5).
