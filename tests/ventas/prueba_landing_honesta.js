@@ -14,12 +14,15 @@ const prohibido=[[/cupos?/i,'cupos'],[/fundador/i,'fundador'],[/d[ií]as de prue
  [/(?<!no )aceptamos tarjetas|paga desde cualquier pa[ií]s|tarjeta de cualquier pa[ií]s/i,'medio de pago activo'],
  [/\+\s?\d+[.,]\d+\s?%/,'retorno positivo destacado'],[/garantizamos|ganancias aseguradas|sin riesgo/i,'promesa'],
  [/backtest de cualquier token/i,'función inexistente'],[/soporte por chat/i,'función inexistente'],[/historial p[uú]blico/i,'función inexistente'],
- [/68[.,]200/,'precio fijo de BTC'],[/<form|<input/i,'formulario que recoge datos']];
+ [/68[.,]200/,'precio fijo de BTC'],[/checkout|pagar ahora|comprar ahora|suscr[ií]bete ahora/i,'checkout o compra'],
+ [/US\$\s?(19|29|39|299)\b/,'precio de Élite o de referencia'],[/precio previsto|precio de referencia|antes US\$/i,'precio de referencia'],
+ [/\bplazas? limitadas|[uú]ltimos? cupos|solo por hoy|oferta termina/i,'urgencia falsa'],[/(?<!(sin|no hay|ninguna) )ventaja (estad[ií]stica )?(demostrada|probada|comprobada)/i,'ventaja afirmada'],[/<form|<input/i,'formulario que recoge datos']];
 for(const [re,n] of prohibido) ok('no contiene: '+n,!re.test(n.startsWith('formulario')?html:text),(text.match(re)||html.match(re)||[''])[0]);
 // 2. Contenido obligatorio
 const obligatorio=['ANTICÍPATE AL MERCADO. ANALIZA CON INTELIGENCIA.',
  'Una plataforma de monitoreo y análisis de criptomonedas que integra automatización, datos de mercado y herramientas cuantitativas para ayudarte a interpretar oportunidades potenciales.',
- 'Los modelos de análisis se encuentran en evaluación. Hasta la fecha no se ha demostrado una ventaja estadística consistente fuera de muestra. La información proporcionada tiene fines informativos y no garantiza resultados financieros.',
+ 'Crypto Radar es una plataforma de análisis y monitoreo de criptomonedas. Sus modelos se encuentran en evaluación y no existe una ventaja estadística consistente demostrada. La información no garantiza resultados financieros.',
+ 'No se puede contratar','Élite','Aplazado','17,2 %','US$12,42',
  'Propuesta pendiente de aprobación','Los pagos están desactivados','Early Entry','Explosive Momentum','Exit Intelligence','Escáner de mercado','Seguimiento de activos','Herramientas analíticas'];
 for(const s of obligatorio) ok('contiene: '+s.slice(0,48),text.includes(s));
 
@@ -43,12 +46,13 @@ for(const s of obligatorio) ok('contiene: '+s.slice(0,48),text.includes(s));
   if(n==='escritorio'){
    await p.screenshot({path:`${OUT}/escritorio_completa.png`,fullPage:true});
    // precios mensuales y anuales
-   const leer=()=>p.$$eval('.plan',ps=>ps.map(x=>x.querySelector('[data-amt]').textContent+' | '+x.querySelector('[data-sub]').textContent));
-   const mes=await leer(); ok('mensual Pro US$15 / ref 19',mes[0].startsWith('US$15 |')&&mes[0].includes('US$19'),mes[0]); ok('mensual Élite US$29 / ref 39',mes[1].startsWith('US$29 |')&&mes[1].includes('US$39'),mes[1]);
+   const leer=()=>p.$$eval('.plan[data-month]',ps=>ps.map(x=>x.querySelector('[data-amt]').textContent+' | '+x.querySelector('[data-sub]').textContent));
+   ok('una sola tarjeta con precio (solo Pro)',(await p.$$('.plan[data-month]')).length===1&&(await p.$$('[data-amt]')).length===1);
+   ok('Élite sin precio ni botón',await p.$eval('.deferred',d=>!d.querySelector('[data-amt],a,button')&&/Aplazado/.test(d.textContent)));
+   const mes=await leer(); ok('mensual Pro US$15, propuesta no contratable',mes[0].startsWith('US$15 |')&&mes[0].includes('No se puede contratar'),mes[0]);
    await p.click('.billing button[data-period="year"]'); await p.waitForTimeout(150);
    const an=await leer();
-   ok('anual Pro 149, 12,42/mes, ahorro 31 (17 %)',an[0].startsWith('US$149 |')&&an[0].includes('US$12,42')&&an[0].includes('US$31')&&an[0].includes('17 %'),an[0]);
-   ok('anual Élite 299, 24,92/mes, ahorro 49 (14 %)',an[1].startsWith('US$299 |')&&an[1].includes('US$24,92')&&an[1].includes('US$49')&&an[1].includes('14 %'),an[1]);
+   ok('anual Pro 149, 12,42/mes, 17,2 %',an[0].startsWith('US$149 |')&&an[0].includes('US$12,42')&&an[0].includes('17,2 %')&&an[0].includes('no se puede contratar'),an[0]);
    ok('selector anuncia estado (aria-pressed)',await p.getAttribute('.billing button[data-period="year"]','aria-pressed')==='true');
    await p.locator('#planes').screenshot({path:`${OUT}/escritorio_planes_anual.png`});
    await p.click('.billing button[data-period="month"]');

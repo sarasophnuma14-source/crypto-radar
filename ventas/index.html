@@ -142,6 +142,8 @@ section{scroll-margin-top:84px}
 .sub b{color:var(--green);font-weight:600}
 .plan ul{flex:1}
 .plan li.soon{color:var(--dim)}
+.deferred p{color:var(--muted);margin-top:12px;font-size:.95rem}
+.badge.muted{color:var(--dim);border-color:var(--line)}
 .plan li.soon::after{content:" · en desarrollo";font:500 .7rem var(--mono);color:var(--warn)}
 .plan .btn{margin-top:22px;width:100%}
 .terms{margin-top:28px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px;font-size:.88rem;color:var(--muted)}
@@ -316,7 +318,7 @@ footer a{color:var(--muted)}
       <div class="reveal">
         <span class="eyebrow">Transparencia</span>
         <h2 style="margin:14px 0 26px">Lo que sabemos, y lo que todavía no.</h2>
-        <p class="quote">Los modelos de análisis se encuentran en evaluación. Hasta la fecha no se ha demostrado una ventaja estadística consistente fuera de muestra. La información proporcionada tiene fines informativos y no garantiza resultados financieros.</p>
+        <p class="quote">Crypto Radar es una plataforma de análisis y monitoreo de criptomonedas. Sus modelos se encuentran en evaluación y no existe una ventaja estadística consistente demostrada. La información no garantiza resultados financieros.</p>
       </div>
       <div class="ledger reveal" aria-label="Estado de la evaluación">
         <div><span>Motor principal de puntaje</span><span class="no">No validado fuera de muestra</span></div>
@@ -332,21 +334,21 @@ footer a{color:var(--muted)}
     <div class="wrap">
       <div class="sec-head reveal">
         <span class="eyebrow">Planes</span>
-        <h2>Propuesta de precios de lanzamiento.</h2>
-        <p>Todavía no se puede contratar ningún plan. Publicamos la propuesta para recibir opiniones durante el piloto.</p>
+        <h2>Propuesta futura: un solo plan, Pro.</h2>
+        <p>Todavía no se puede contratar ningún plan. El piloto es cerrado y gratuito. Publicamos la propuesta para recibir opiniones durante el piloto.</p>
       </div>
       <p class="pending reveal" role="note"><svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="#F2B35B" stroke-width="1.6"/><path d="M10 6v5m0 3v.01" stroke="#F2B35B" stroke-width="1.8" stroke-linecap="round"/></svg><span><b>Propuesta pendiente de aprobación.</b> Los pagos están desactivados: no aceptamos tarjetas, criptomonedas ni suscripciones. Los precios pueden cambiar antes de abrir el servicio.</span></p>
 
       <div class="billing" role="group" aria-label="Periodo de facturación">
         <button type="button" data-period="month" aria-pressed="true">Mensual</button>
-        <button type="button" data-period="year" aria-pressed="false">Anual<span class="save">ahorra hasta 17 %</span></button>
+        <button type="button" data-period="year" aria-pressed="false">Anual<span class="save">17,2 % menos</span></button>
       </div>
 
       <div class="grid2">
-        <article class="card plan featured reveal" data-month="15" data-year="149" data-ref="19">
-          <div class="name"><h3>Pro</h3><span class="badge">Propuesta</span></div>
+        <article class="card plan featured reveal" data-month="15" data-year="149">
+          <div class="name"><h3>Pro</h3><span class="badge">Propuesta futura</span></div>
           <div class="price"><span class="amt num" data-amt>US$15</span><span class="per" data-per>al mes</span></div>
-          <p class="sub" data-sub>Precio previsto después del lanzamiento: US$19 al mes.</p>
+          <p class="sub" data-sub>Propuesta pendiente de aprobación. No se puede contratar.</p>
           <ul>
             <li>Panel completo con el ranking de las 20 mejores puntuaciones</li>
             <li>Los tres motores: Early Entry, Explosive Momentum y Exit Intelligence</li>
@@ -358,21 +360,15 @@ footer a{color:var(--muted)}
           </ul>
           <a class="btn primary" href="https://crypto-radar-2-1.onrender.com/entrar#solicitar">Solicitar acceso al piloto</a>
         </article>
-        <article class="card plan reveal" data-month="29" data-year="299" data-ref="39">
-          <div class="name"><h3>Élite</h3><span class="badge">Propuesta</span></div>
-          <div class="price"><span class="amt num" data-amt>US$29</span><span class="per" data-per>al mes</span></div>
-          <p class="sub" data-sub>Precio previsto después del lanzamiento: US$39 al mes.</p>
-          <ul>
-            <li>Todo lo de Pro</li>
-            <li>Resultados históricos de las pruebas del motor, incluidas las negativas</li>
-            <li class="soon">Más listas de seguimiento y alertas configurables por activo</li>
-          </ul>
-          <a class="btn ghost" href="https://crypto-radar-2-1.onrender.com/entrar#solicitar">Solicitar acceso al piloto</a>
+        <article class="card deferred reveal" aria-label="Plan Élite aplazado">
+          <div class="name"><h3>Élite</h3><span class="badge muted">Aplazado</span></div>
+          <p>No tiene precio ni fecha. Solo se ofrecerá cuando tenga al menos dos funciones propias que estén construidas, probadas y pedidas por las personas del piloto.</p>
+          <p>Hoy, todas las funciones disponibles están en Pro.</p>
         </article>
       </div>
 
       <div class="terms reveal">
-        <p><b>Anual</b>Pro US$149 al año (US$12,42 al mes, ahorras US$31, un 17 %). Élite US$299 al año (US$24,92 al mes, ahorras US$49, un 14 %). Comparado con 12 pagos mensuales de lanzamiento.</p>
+        <p><b>Anual</b>Pro US$149 al año: equivale a US$12,42 al mes, un 17,2 % menos que 12 pagos de US$15 (US$180).</p>
         <p><b>Renovación y cancelación</b>Se definirán antes de abrir los pagos y se mostrarán aquí y en el contrato. Hoy no hay nada que renovar ni cancelar.</p>
         <p><b>Reembolsos</b>La política se publicará antes de cobrar el primer pago. Ningún pago se procesa durante el piloto.</p>
       </div>
@@ -420,19 +416,19 @@ footer a{color:var(--muted)}
   document.body.classList.remove("no-js");
   // Selector mensual / anual: solo cambia lo que se muestra; no hay checkout.
   var fmt=function(n){return "US$"+String(n).replace(".",",")};
-  var plans=[].slice.call(document.querySelectorAll(".plan"));
+  var plans=[].slice.call(document.querySelectorAll(".plan[data-month]"));
   function show(period){
     [].forEach.call(document.querySelectorAll(".billing button"),function(b){b.setAttribute("aria-pressed",String(b.dataset.period===period))});
     plans.forEach(function(p){
-      var m=+p.dataset.month,y=+p.dataset.year,ref=+p.dataset.ref;
+      var m=+p.dataset.month,y=+p.dataset.year;
       var amt=p.querySelector("[data-amt]"),per=p.querySelector("[data-per]"),sub=p.querySelector("[data-sub]");
       if(period==="year"){
-        var eq=(Math.round(y/12*100)/100).toFixed(2),save=m*12-y,pct=Math.round(save/(m*12)*100);
+        var eq=(Math.round(y/12*100)/100).toFixed(2),pct=((1-y/(m*12))*100).toFixed(1).replace(".",",");
         amt.textContent=fmt(y); per.textContent="al año";
-        sub.innerHTML="Equivale a <b>"+fmt(eq)+" al mes</b>. Ahorras "+fmt(save)+" ("+pct+" %) frente a 12 pagos de "+fmt(m)+".";
+        sub.innerHTML="Equivale a <b>"+fmt(eq)+" al mes</b>, un "+pct+" % menos que 12 pagos de "+fmt(m)+". Propuesta: no se puede contratar.";
       }else{
         amt.textContent=fmt(m); per.textContent="al mes";
-        sub.textContent="Precio previsto después del lanzamiento: "+fmt(ref)+" al mes.";
+        sub.textContent="Propuesta pendiente de aprobación. No se puede contratar.";
       }
     });
   }
