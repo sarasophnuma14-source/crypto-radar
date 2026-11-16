@@ -74,19 +74,25 @@ def scheduler():
         try:
             if time.time() - last_meme >= MEME_EVERY_S and load_settings().get("meme_strategy", True) and not scanner.status["scanning"]:
                 last_meme = time.time()
-                memes.run()
-            if now() >= next_scan_time() and not scanner.status["scanning"] and leader.confirm():
-                print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
-                scanner.run_scan()
-                health.invalidate()
-                print(f"[{now():%Y-%m-%d %H:%M}] Escaneo terminado. {scanner.status['last_error'] or ''}", flush=True)
-                if scanner.status["last_error"]:
+                with leader.job() as ok:              # fencing: cada escritura confirma la generación del líder
+                    if ok:
+                        memes.run()
+            if now() >= next_scan_time() and not scanner.status["scanning"]:
+                with leader.job() as ok:
+                    if ok:
+                        print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
+                        scanner.run_scan()
+                        health.invalidate()
+                        print(f"[{now():%Y-%m-%d %H:%M}] Escaneo terminado. {scanner.status['last_error'] or ''}", flush=True)
+                if ok and scanner.status["last_error"]:
                     # reintento en 20 min si falló (p. ej. sin internet al despertar el Mac)
                     time.sleep(20 * 60)
                     continue
             if time.time() - last_watch >= WATCH_EVERY_S and not scanner.status["scanning"]:
                 last_watch = time.time()
-                scanner.price_watch()
+                with leader.job() as ok:
+                    if ok:
+                        scanner.price_watch()
         except Exception:
             traceback.print_exc()
         time.sleep(30)
@@ -343,7 +349,15 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/scan":
             if scanner.status["scanning"]:
                 return self._send(200, {"ok": False, "msg": "Ya hay un escaneo en curso"})
-            threading.Thread(target=scanner.run_scan, daemon=True).start()
+            if not leader.is_leader():
+                # el escaneo manual también escribe resultados: solo en la instancia líder y con su generación
+                return self._send(409, {"ok": False, "msg": "Otra instancia está a cargo del escaneo; inténtalo en unos segundos"})
+
+            def _manual():
+                with leader.job() as ok:
+                    if ok:
+                        scanner.run_scan()
+            threading.Thread(target=_manual, daemon=True).start()
             return self._send(200, {"ok": True})
         if p == "/api/settings":
             if str(b.get("telegram_bot_token", "")).startswith("•••"):
@@ -437,16 +451,17 @@ def paper_scheduler():
         if nxt <= n:
             nxt += dt.timedelta(days=1)
         time.sleep((nxt - n).total_seconds())
-        if not (leader.is_leader() and leader.confirm()):
-            print("paper trading: otra instancia es la líder; este paso lo procesa ella", flush=True)
-            continue
-        try:
-            from .paper_trading import storage as ps
-            if not ps.open_store(name).read_json("spec.json"):
-                engine.init(name)
-            engine.step_live(name, log=None); report.write(name)
-        except BaseException as e:                                         # SystemExit incluido: se registra y se sigue
-            print("paper trading:", e, flush=True)
+        with leader.job() as ok:                  # fencing por generación (radar/leader.py): sin cambiar el motor
+            if not ok:
+                print("paper trading: otra instancia es la líder; este paso lo procesa ella", flush=True)
+                continue
+            try:
+                from .paper_trading import storage as ps
+                if not ps.open_store(name).read_json("spec.json"):
+                    engine.init(name)
+                engine.step_live(name, log=None); report.write(name)
+            except BaseException as e:                                     # SystemExit incluido: se registra y se sigue
+                print("paper trading:", e, flush=True)
 
 
 ADMIN_ENV = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD")
@@ -580,6 +595,8 @@ def serve(port=None, host=None, schedule=True):
             raise SystemExit("Modo cuentas en Render sin DATABASE_URL: el disco es efímero y se perderían cuentas, "
                              "sesiones, pagos y límites de intentos en cada reinicio. Configura PostgreSQL (p. ej. Neon) "
                              "en DATABASE_URL.")
+        if db.endpoint_warning():                       # antes de init(): su candado de arranque es de sesión
+            print(db.endpoint_warning(), flush=True)
         try:
             db.init()                                   # crea, migra y comprueba el esquema completo
         except (db.SchemaError, db.PlatformError) as e:

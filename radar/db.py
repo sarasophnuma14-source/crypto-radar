@@ -5,6 +5,7 @@ Tablas: users, sessions, activity, positions, payments, telegram_links y kv (doc
 Todas las consultas usan parámetros (nunca se concatena texto del usuario en el SQL).
 """
 from __future__ import annotations
+import contextvars
 import json
 import os
 import sqlite3
@@ -52,6 +53,9 @@ SCHEMA = [
     """CREATE TABLE IF NOT EXISTS admin_enroll_tokens (
         token_hash TEXT PRIMARY KEY, source TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL,
         expires_at DOUBLE PRECISION NOT NULL, used_at DOUBLE PRECISION, used_by TEXT)""",
+    # generación del líder para el fencing de los trabajos de fondo (radar/leader.py); una sola fila
+    """CREATE TABLE IF NOT EXISTS leader_epoch (
+        id INTEGER PRIMARY KEY, generation BIGINT NOT NULL, holder TEXT, acquired_at DOUBLE PRECISION)""",
     # 2.1.0 empieza como plataforma NUEVA (docs/REGISTRO_USUARIOS_PILOTO.md §1): una marca única por base y un archivo
     # histórico de lo que hubiera de la 2.0.0, separado de la autenticación (ninguna consulta de acceso lo lee)
     """CREATE TABLE IF NOT EXISTS platform_meta (
@@ -342,8 +346,54 @@ def all_(q, params=()):
     return [dict(zip(cols, r)) for r in cur.fetchall()]
 
 
+class StaleLeader(RuntimeError):
+    """La generación del líder con la que se inició el trabajo ya no es la vigente: la escritura se rechaza."""
+
+
+# Generación del líder fijada por leader.job() para el hilo actual (None fuera de un trabajo de fondo).
+FENCE = contextvars.ContextVar("crypto_radar_fence", default=None)
+FENCE_HOOK = None                     # solo pruebas: se llama entre la comprobación y la escritura
+STALE_SEEN = set()                    # generaciones rechazadas (el escáner captura excepciones: leader.job() las mira aquí)
+
+
+def _fenced_upsert(name, v, gen):
+    """Comprueba la generación y escribe en la MISMA transacción (FOR SHARE bloquea el incremento del nuevo líder)."""
+    for attempt in range(2):
+        c = conn()
+        try:
+            with c.transaction():
+                c.execute("SET LOCAL lock_timeout = '10s'")
+                row = c.execute("SELECT generation FROM leader_epoch WHERE id = 1 FOR SHARE").fetchone()
+                if row is None or int(row[0]) != int(gen):
+                    STALE_SEEN.add(int(gen))
+                    raise StaleLeader(f"generación {gen} vencida (vigente: {row[0] if row else '—'})")
+                if FENCE_HOOK:
+                    FENCE_HOOK(c)
+                c.execute("INSERT INTO kv(name, value, updated_at) VALUES (%s, %s, %s) ON CONFLICT (name) DO UPDATE SET "
+                          "value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", (name, v, time.time()))
+            return
+        except StaleLeader:
+            raise
+        except Exception:
+            # conexión caída antes o durante la transacción: PostgreSQL la revierte entera. Se reintenta una vez en
+            # una conexión nueva, y la generación se vuelve a comprobar, así que el reintento nunca escribe con una vencida.
+            dead = getattr(c, "broken", False) or getattr(c, "closed", False)
+            if attempt == 0 and dead:
+                try:
+                    c.close()
+                except Exception:
+                    pass
+                _local.c = None
+                continue
+            raise
+
+
 def upsert_kv(name, value):
     v = json.dumps(value, ensure_ascii=False, default=str)
+    gen = FENCE.get()
+    if IS_PG and gen is not None:
+        init()
+        return _fenced_upsert(name, v, gen)
     if IS_PG:
         execute("INSERT INTO kv(name, value, updated_at) VALUES (?, ?, ?) ON CONFLICT (name) DO UPDATE SET "
                 "value = EXCLUDED.value, updated_at = EXCLUDED.updated_at", (name, v, time.time()))
@@ -386,6 +436,17 @@ def get_kv_fields(name, keys):
                 pass
         out[k] = v
     return out
+
+
+def endpoint_warning(url=None):
+    """Aviso si DATABASE_URL apunta al pooler de Neon (docs/ARQUITECTURA_CONEXIONES_NEON.md). No cambia la URL."""
+    from urllib.parse import urlsplit
+    host = urlsplit(url if url is not None else URL).hostname or ""
+    if "-pooler." in host:
+        return ("AVISO: DATABASE_URL usa el pooler de Neon (PgBouncer, modo transacción). Esta app usa estado de sesión "
+                "(SET al conectar y candado consultivo del arranque): usa el endpoint directo. El candado del líder ya "
+                "usa el directo automáticamente.")
+    return None
 
 
 def backend():

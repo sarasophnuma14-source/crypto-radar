@@ -53,6 +53,9 @@ def ready(store, uses_db=False, sched=False, **kw):
 
 
 class Salud(unittest.TestCase):
+    def setUp(self):
+        health._reset_probe()          # una comprobación colgada de otra prueba no debe contar para esta
+
     def test_liveness_no_toca_dependencias(self):
         with mock.patch("radar.db.one", side_effect=AssertionError("no debe consultar la base")):
             self.assertEqual(health.liveness("x"), (200, {"ok": True, "version": "x"}))
@@ -174,12 +177,39 @@ class Lider(unittest.TestCase):
         b.close()
 
     def test_trabajo_de_fondo_respeta_al_lider(self):
+        """Todo trabajo de fondo que escribe resultados corre dentro de `with leader.job()` (fencing por generación)."""
+        import ast
         src = (ROOT / "radar" / "server.py").read_text("utf-8")
         self.assertIn("if not leader.is_leader():", src[src.index("def scheduler"):src.index("def _f(")])
-        sched = src[src.index("def scheduler"):src.index("def _f(")]
-        self.assertIn("leader.confirm()", sched[sched.index("next_scan_time()"):])     # fencing antes del escaneo
-        self.assertIn("if not (leader.is_leader() and leader.confirm()):",
-                      src[src.index("def paper_scheduler"):src.index("ADMIN_ENV =")])
+        tree = ast.parse(src)
+
+        def calls_inside_job(fn_name):
+            fn = next(n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name == fn_name)
+            inside, outside = set(), set()
+
+            def visit(node, guarded):
+                if isinstance(node, ast.With) and any(
+                        isinstance(i.context_expr, ast.Call) and ast.unparse(i.context_expr.func) == "leader.job"
+                        for i in node.items):
+                    guarded = True
+                if isinstance(node, ast.Call):
+                    (inside if guarded else outside).add(ast.unparse(node.func))
+                for ch in ast.iter_child_nodes(node):
+                    visit(ch, guarded)
+            visit(fn, False)
+            return inside, outside
+
+        ins, outs = calls_inside_job("scheduler")
+        for f in ("memes.run", "scanner.run_scan", "scanner.price_watch"):
+            self.assertIn(f, ins, f"{f} debe ejecutarse dentro de leader.job()")
+            self.assertNotIn(f, outs, f"{f} no puede ejecutarse fuera de leader.job()")
+        ins, outs = calls_inside_job("paper_scheduler")
+        for f in ("engine.step_live", "engine.init", "report.write"):
+            self.assertIn(f, ins)
+            self.assertNotIn(f, outs)
+        ins, outs = calls_inside_job("_manual")
+        self.assertIn("scanner.run_scan", ins)
+        self.assertNotIn("scanner.run_scan", outs)
         tg = (ROOT / "radar" / "telegram_bot.py").read_text("utf-8")
         self.assertIn("if not leader.is_leader():", tg[tg.index("def poll_forever"):])
 
@@ -312,6 +342,269 @@ class LiderMultiproceso(unittest.TestCase):
         finally:
             os.environ.pop("DATABASE_URL", None)
             leader._state.update(conn=None, leader=False, since=None)
+
+
+class ConexionesNeon(unittest.TestCase):
+    """Auditoría correctiva H4 (docs/ARQUITECTURA_CONEXIONES_NEON.md)."""
+
+    def test_el_lider_nunca_usa_el_pooler(self):
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("CRYPTO_RADAR_LEADER_DATABASE_URL", None)
+            pooled = "postgresql://u:p@ep-abc-123-pooler.us-east-2.aws.neon.tech/db?sslmode=require"
+            self.assertEqual(leader.leader_url(pooled),
+                             "postgresql://u:p@ep-abc-123.us-east-2.aws.neon.tech/db?sslmode=require")
+            direct = "postgresql://u:p@ep-abc-123.us-east-2.aws.neon.tech/db?sslmode=require"
+            self.assertEqual(leader.leader_url(direct), direct)
+            os.environ["CRYPTO_RADAR_LEADER_DATABASE_URL"] = "postgresql://l:p@ep-lider-pooler.neon.tech/db"
+            self.assertEqual(leader.leader_url(pooled), "postgresql://l:p@ep-lider.neon.tech/db",
+                             "la URL propia del líder también se corrige al directo")
+            os.environ.pop("CRYPTO_RADAR_LEADER_DATABASE_URL")
+
+    def test_salud_reutiliza_una_sola_conexion(self):
+        """Cada comprobación de /healthz usaba un hilo nuevo y, por tanto, una conexión nueva a la base."""
+        from radar import db
+        health._reset_probe()
+        seen = []
+        with mock.patch.object(db, "one", lambda q, p=(): seen.append(threading.current_thread().name) or {"ok": 1}):
+            for _ in range(5):
+                self.assertEqual(health._check_db()[0], True)
+        self.assertEqual(set(seen), {"salud-db"}, "siempre el mismo hilo (misma conexión por hilo de db.py)")
+        before = threading.active_count()
+        gate = threading.Event()
+        with mock.patch.object(health, "DB_TIMEOUT_S", 0.2), \
+                mock.patch.object(db, "one", lambda q, p=(): gate.wait(5) and {"ok": 1}):
+            self.assertEqual(health._check_db(), (False, None))      # colgada
+            self.assertEqual(health._check_db(), (False, None))      # no abre otra mientras sigue colgada
+            self.assertLessEqual(threading.active_count(), before)
+            gate.set()
+            time.sleep(0.3)
+        self.assertEqual(health._check_db()[0], True, "se recupera cuando la base vuelve")
+        gate2 = threading.Event()
+        with mock.patch.object(health, "DB_TIMEOUT_S", 0.2), mock.patch.object(health, "PROBE_ABANDON_S", 0.5), \
+                mock.patch.object(db, "one", lambda q, p=(): gate2.wait(5) and {"ok": 1}):
+            self.assertEqual(health._check_db(), (False, None))
+            time.sleep(0.6)
+            gate2.set()                                         # el hilo colgado se abandonó; el nuevo responde
+            self.assertEqual(health._check_db()[0], True)
+
+    def test_aviso_de_arranque_con_pooler_sin_mostrar_la_url(self):
+        from radar import db
+        w = db.endpoint_warning("postgresql://u:Secreta99@ep-x-pooler.neon.tech/db")
+        self.assertIn("pooler", w)
+        self.assertNotIn("Secreta99", w)
+        self.assertIsNone(db.endpoint_warning("postgresql://u:p@ep-x.neon.tech/db"))
+        src = (ROOT / "radar" / "server.py").read_text("utf-8")
+        self.assertLess(src.index("db.endpoint_warning()"), src.index("db.init()  "), "el aviso sale antes de init()")
+
+
+@unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "sin TEST_DATABASE_URL")
+class FencingGeneracion(unittest.TestCase):
+    """Auditoría correctiva H3: fencing transaccional por generación (radar/leader.py, radar/db.py).
+
+    Un disparador registra en fence_log cada escritura CONFIRMADA de kv «fence_test» junto con la generación vigente en
+    leader_epoch DENTRO de la misma transacción. Invariantes que se comprueban en cada prueba:
+    - toda escritura confirmada lleva la generación vigente al confirmarse (nadie escribe con una vencida);
+    - en orden de confirmación, la generación nunca baja (una instancia antigua nunca sobrescribe a una nueva).
+    Reinicio real de PostgreSQL: TEST_PG_RESTART_CMD (p. ej. «su postgres -c '/usr/lib/postgresql/16/bin/pg_ctl -D ... restart -m fast'»).
+    """
+    TRIGGER = """
+        CREATE OR REPLACE FUNCTION fence_log_fn() RETURNS trigger AS $$
+        BEGIN
+          IF NEW.name = 'fence_test' THEN
+            INSERT INTO fence_log(worker, gen, phase, n, epoch)
+            SELECT NEW.value::jsonb->>'worker', (NEW.value::jsonb->>'gen')::bigint, (NEW.value::jsonb->>'phase')::int,
+                   (NEW.value::jsonb->>'n')::int, (SELECT generation FROM leader_epoch WHERE id = 1);
+          END IF;
+          RETURN NEW;
+        END $$ LANGUAGE plpgsql"""
+
+    def setUp(self):
+        self.url = os.environ["TEST_DATABASE_URL"]
+        self.connect()
+        for q in ("DROP TABLE IF EXISTS leader_jobs", "DROP TABLE IF EXISTS fence_log",
+                  "CREATE TABLE leader_jobs(worker TEXT NOT NULL, at TIMESTAMPTZ NOT NULL)",
+                  "CREATE TABLE fence_log(seq BIGSERIAL PRIMARY KEY, worker TEXT, gen BIGINT, phase INT, n INT, "
+                  "epoch BIGINT, at TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp())",
+                  "CREATE TABLE IF NOT EXISTS kv (name TEXT PRIMARY KEY, value TEXT NOT NULL, updated_at DOUBLE PRECISION NOT NULL)",
+                  "CREATE TABLE IF NOT EXISTS leader_epoch (id INTEGER PRIMARY KEY, generation BIGINT NOT NULL, holder TEXT, "
+                  "acquired_at DOUBLE PRECISION)",
+                  "DELETE FROM kv WHERE name = 'fence_test'", self.TRIGGER,
+                  "DROP TRIGGER IF EXISTS fence_log_t ON kv",
+                  "CREATE TRIGGER fence_log_t AFTER INSERT OR UPDATE ON kv FOR EACH ROW EXECUTE FUNCTION fence_log_fn()"):
+            self.db.execute(q)
+        self.procs, self.logs, self.files = {}, {}, []
+
+    def connect(self):
+        import psycopg
+        for _ in range(60):
+            try:
+                self.db = psycopg.connect(self.url, autocommit=True)
+                return
+            except psycopg.OperationalError:
+                time.sleep(0.5)
+        raise RuntimeError("PostgreSQL no vuelve")
+
+    def q(self, sql, params=()):
+        import psycopg
+        for attempt in range(3):
+            try:
+                cur = self.db.execute(sql, params)
+                return cur.fetchall() if cur.description else []
+            except psycopg.OperationalError:
+                if attempt == 2:
+                    raise
+                self.connect()
+
+    def tearDown(self):
+        for p in self.procs.values():
+            if p.poll() is None:
+                p.kill()
+            p.wait(10)
+        for f in self.files:
+            f.close()
+        for q in ("DROP TRIGGER IF EXISTS fence_log_t ON kv", "DROP TABLE IF EXISTS fence_log",
+                  "DROP TABLE IF EXISTS leader_jobs", "DELETE FROM kv WHERE name = 'fence_test'"):
+            self.q(q)
+        self.db.close()
+
+    def spawn(self, name, mode="rapido", lento_s="3"):
+        import subprocess
+        log = Path(tempfile.mkdtemp(prefix="cr-fence-")) / f"{name}.log"
+        env = dict(os.environ, DATABASE_URL=self.url, CRYPTO_RADAR_LEADER_RETRY_S="0.5", LENTO_S=lento_s,
+                   CRYPTO_RADAR_HOME=str(log.parent))
+        f = open(log, "w")
+        p = subprocess.Popen([sys.executable, str(ROOT / "tests" / "lider_worker.py"), name, mode], env=env,
+                             stdout=f, stderr=subprocess.STDOUT, text=True)
+        self.procs[name], self.logs[name] = p, log
+        self.files.append(f)
+        t0 = time.time()
+        while "listo" not in log.read_text() and time.time() - t0 < 15:
+            time.sleep(0.1)
+        return p
+
+    def out(self, name):
+        return self.logs[name].read_text()
+
+    def fence_log(self):
+        return self.q("SELECT seq, worker, gen, phase, n, epoch FROM fence_log ORDER BY seq")
+
+    def wait_log(self, cond, timeout=20):
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            rows = self.fence_log()
+            if cond(rows):
+                return rows
+            time.sleep(0.1)
+        self.fail(f"condición no alcanzada; registro: {self.fence_log()[-10:]}")
+
+    def holder_pid(self):
+        r = self.q("SELECT pid FROM pg_locks WHERE locktype = 'advisory' AND granted "
+                   "AND ((classid::bigint << 32) | objid::bigint) = %s", (leader.LOCK_ID,))
+        return r[0][0] if r else None
+
+    def assert_invariants(self, rows):
+        self.assertTrue(rows, "no hubo escrituras")
+        bad = [r for r in rows if r[2] != r[5]]
+        self.assertFalse(bad, f"escrituras confirmadas con generación distinta de la vigente: {bad}")
+        gens = [r[2] for r in rows]
+        self.assertEqual(gens, sorted(gens), "una generación antigua escribió después de una nueva")
+
+    def run_scenario(self, name):
+        import subprocess
+        env = dict(os.environ, DATABASE_URL=self.url, CRYPTO_RADAR_HOME=tempfile.mkdtemp(prefix="cr-fence-"))
+        r = subprocess.run([sys.executable, str(ROOT / "tests" / "fence_escenarios.py"), name], env=env,
+                           capture_output=True, text=True, timeout=90)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return json.loads(r.stdout.strip().splitlines()[-1])
+
+    # 1 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def test_1_dos_procesos_compitiendo(self):
+        self.spawn("a"); self.spawn("b")
+        time.sleep(4)
+        rows = self.fence_log()
+        self.assertGreater(len(rows), 5)
+        self.assertEqual(len({r[1] for r in rows}), 1, "solo escribe una instancia")
+        self.assertEqual(len({r[2] for r in rows}), 1, "sin relevos, una sola generación")
+        self.assert_invariants(rows)
+
+    # 2 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def test_2_perdida_del_candado_durante_un_escaneo(self):
+        self.spawn("a", "lento", "3")
+        rows = self.wait_log(lambda rs: any(r[1] == "a" and r[3] == 1 for r in rs))
+        n_cut = [r for r in rows if r[1] == "a" and r[3] == 1][-1][4]
+        self.spawn("b", "lento", "3")
+        self.db.execute("SELECT pg_terminate_backend(%s)", (self.holder_pid(),))     # a pierde el candado a mitad
+        rows = self.wait_log(lambda rs: any(r[2] > rows[-1][2] for r in rs))           # alguien escribe con generación nueva
+        time.sleep(4)                                                                  # a despierta e intenta la fase 2
+        rows = self.fence_log()
+        self.assertFalse([r for r in rows if r[1] == "a" and r[3] == 2 and r[4] == n_cut],
+                         "el escaneo interrumpido no puede escribir su fase 2")
+        self.assertIn(f"rechazada gen={rows[0][2]} fase=2 n={n_cut}", self.out("a"))
+        self.assert_invariants(rows)
+
+    # 3 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def test_3_recuperacion_del_nuevo_lider(self):
+        self.spawn("a")
+        rows = self.wait_log(lambda rs: any(r[1] == "a" for r in rs))
+        self.spawn("b")
+        self.procs["a"].kill(); self.procs["a"].wait(10)                             # SIGKILL: sin cerrar nada
+        g_a = max(r[2] for r in self.fence_log() if r[1] == "a")
+        rows = self.wait_log(lambda rs: sum(1 for r in rs if r[1] == "b") >= 5)
+        self.assertTrue(all(r[2] > g_a for r in rows if r[1] == "b"), "el nuevo líder escribe con generación mayor")
+        self.assertEqual(json.loads(self.q("SELECT value FROM kv WHERE name = 'fence_test'")[0][0])["worker"], "b")
+        self.assert_invariants(rows)
+
+    # 4 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def test_4_escritura_tardia_del_lider_antiguo(self):
+        r = self.run_scenario("escritura_tardia")
+        self.assertTrue(r["job_ok"])
+        self.assertEqual((r["fase1"], r["nuevo"], r["tardia"]), ("ok", "ok", "rechazada"))
+        self.assertEqual(r["kv"], {"worker": "nuevo", "gen": r["new"], "phase": 1}, "se conserva el resultado nuevo")
+        self.assertFalse(r["sigue_lider"], "tras el rechazo, la instancia antigua deja de ser líder")
+        self.assert_invariants(self.fence_log())
+
+    # 5 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def test_5_sobrescritura_con_generacion_vencida(self):
+        r = self.run_scenario("generacion_vencida")
+        self.assertEqual((r["vigente"], r["anterior"], r["futura"]), ("ok", "rechazada", "rechazada"))
+        self.assertEqual(r["before"], r["after"], "el valor no cambia")
+        rows = self.fence_log()
+        self.assertEqual(len(rows), 1)
+        self.assert_invariants(rows)
+
+    # 6 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    @unittest.skipUnless(os.environ.get("TEST_PG_RESTART_CMD"), "sin TEST_PG_RESTART_CMD (reinicio real de PostgreSQL)")
+    def test_6_reinicio_de_postgresql(self):
+        import subprocess
+        self.spawn("a", "lento", "1"); self.spawn("b", "lento", "1")
+        rows = self.wait_log(lambda rs: len(rs) >= 3)
+        g_before = max(r[2] for r in rows)
+        seq_before = rows[-1][0]
+        subprocess.run(os.environ["TEST_PG_RESTART_CMD"], shell=True, check=True, timeout=60,
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        self.connect()
+        rows = self.wait_log(lambda rs: sum(1 for r in rs if r[0] > seq_before) >= 3, timeout=40)
+        after = [r for r in rows if r[0] > seq_before]
+        self.assertTrue(all(r[2] > g_before for r in after), "tras el reinicio solo escribe una generación nueva")
+        self.assert_invariants(rows)
+        for p in self.procs.values():
+            self.assertIsNone(p.poll(), "las instancias sobreviven al reinicio de la base")
+
+    # 7 ────────────────────────────────────────────────────────────────────────────────────────────────────────────
+    def test_7_caida_de_conexion_durante_la_transaccion(self):
+        r = self.run_scenario("caida_conexion")
+        self.assertEqual((r["v1"], r["v2"]), ("ok", "ok"))
+        self.assertEqual((r["intentos"], r["pids_distintos"]), (2, 2), "un reintento en una conexión nueva")
+        self.assertEqual(r["kv"]["phase"], 2)
+        rows = self.fence_log()
+        self.assertEqual([x[3] for x in rows], [1, 2], "la transacción cortada no dejó nada; el reintento escribió una vez")
+        self.assert_invariants(rows)
+        self.db.execute("DELETE FROM fence_log")
+        r = self.run_scenario("caida_conexion_relevo")
+        self.assertEqual((r["v1"], r["v2"]), ("ok", "rechazada"), "si otro tomó el relevo, el reintento se rechaza")
+        self.assertEqual(r["kv"]["phase"], 1)
+        self.assertEqual(r["epoch"], r["gen"] + 1)
+        self.assertEqual([x[3] for x in self.fence_log()], [1])
 
 
 class AtribucionYLanding(unittest.TestCase):

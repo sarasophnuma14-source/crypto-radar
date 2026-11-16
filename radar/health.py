@@ -48,13 +48,22 @@ def invalidate():
         _cache.update(t=0.0, v=None)
 
 
-def _check_db():
-    """SELECT 1 con tiempo límite. Devuelve (ok, ms). Se ejecuta en un hilo aparte para no bloquear la petición si
-    la conexión se queda colgada."""
-    from . import db
-    box = {}
+_probe = {"q": None, "lock": threading.Lock(), "busy": False, "since": 0.0}
+PROBE_ABANDON_S = 30.0      # una comprobación colgada más de esto se abandona y se abre un hilo (y una conexión) nuevo
 
-    def run():
+
+def _reset_probe():
+    """Abandona el hilo actual de la comprobación (si está colgado, termina solo cuando su consulta vuelva)."""
+    with _probe["lock"]:
+        _probe.update(q=None, busy=False, since=0.0)
+
+
+def _probe_worker(q):
+    """Hilo único y persistente de la comprobación: reutiliza SU conexión (db.py guarda una por hilo). Antes se creaba
+    un hilo por comprobación, y cada uno abría y tiraba una conexión TLS nueva a Neon (auditoría correctiva H4)."""
+    from . import db
+    while True:
+        box, done = q.get()
         t0 = time.time()
         try:
             r = db.one("SELECT 1 AS ok")
@@ -63,11 +72,33 @@ def _check_db():
             print(f"[salud] base de datos: {type(e).__name__}", flush=True)
             box["ok"] = False
         box["ms"] = round((time.time() - t0) * 1000)
+        with _probe["lock"]:
+            mine = _probe["q"] is q
+            if mine:                                     # un hilo abandonado no toca el estado del nuevo
+                _probe["busy"] = False
+        done.set()
+        if not mine:
+            return                                       # abandonado: termina y su conexión se cierra con él
 
-    th = threading.Thread(target=run, daemon=True)
-    th.start()
-    th.join(DB_TIMEOUT_S)
-    if th.is_alive():
+
+def _check_db():
+    """SELECT 1 con tiempo límite. Devuelve (ok, ms). Corre en un hilo aparte (siempre el mismo) para no bloquear la
+    petición si la conexión se queda colgada; si la comprobación anterior sigue colgada, responde «sin respuesta» sin
+    abrir otra conexión."""
+    import queue
+    with _probe["lock"]:
+        if _probe["busy"] and time.time() - _probe["since"] > PROBE_ABANDON_S:
+            _probe.update(q=None, busy=False)
+        if _probe["q"] is None:
+            _probe["q"] = queue.Queue()
+            threading.Thread(target=_probe_worker, args=(_probe["q"],), daemon=True, name="salud-db").start()
+        if _probe["busy"]:
+            return False, None
+        _probe.update(busy=True, since=time.time())
+        q = _probe["q"]
+    box, done = {}, threading.Event()
+    q.put((box, done))
+    if not done.wait(DB_TIMEOUT_S):
         return False, None
     return box.get("ok", False), box.get("ms")
 
