@@ -1,0 +1,18 @@
+Ensayo LOCAL (PostgreSQL 16.15 desechable, 127.0.0.1:55432), NO es Neon. 2026-11-16T00:48Z.
+Base nueva radar21 creada con el SQL de docs/CONFIGURACION_NEON_2_1.md §3 (roles radar_app y radar_backup).
+
+1. Arranque real (`main.py serve`) con DATABASE_URL del rol radar_app:
+   Modo cuentas activo · base de datos postgresql · esquema verificado
+   Plataforma 2.1 · inicialización: nueva · archivado de 2.0.0: {} · piloto cerrado
+   Administrador: jefe21 · creado
+   /healthz -> {"ok": true, ...}
+2. Tablas creadas: 11 en el esquema app, 0 en public.
+   platform_meta: platform=2.1, initialized=nueva, legacy_archived={}
+   users: 1 en total, 1 administrador; legacy_archive: 0.
+3. `backup create` con el rol de solo lectura radar_backup: "Comparación con el origen: idéntica", firmada con HMAC.
+   `backup verify`: "Copia íntegra y restaurable ... Firma HMAC verificada."
+4. radar_backup intenta INSERT en app.platform_meta -> ERROR: permission denied for table platform_meta
+5. radar_app intenta CREATE DATABASE -> ERROR: permission denied to create database
+6. Hallazgo: en un servidor con varias bases, radar_app puede conectarse (CONNECT) a otras bases que no revoquen
+   CONNECT a PUBLIC. En Neon la 2.1 va en un PROYECTO distinto (otro cómputo, otros roles), así que sus roles no
+   existen en el proyecto de la 2.0.0. No crees la base 2.1 dentro del proyecto de la 2.0.0.
