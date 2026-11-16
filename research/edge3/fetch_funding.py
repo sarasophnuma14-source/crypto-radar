@@ -35,7 +35,10 @@ def one(perp, kind):
     for m in MONTHS:
         name = f"{perp}-1d-{m}.zip" if kind == "klines" else f"{perp}-fundingRate-{m}.zip"
         url = f"{BASE}/{kind}/{perp}/{sub}{name}"
-        b = get(url)
+        try:
+            b = get(url)
+        except RuntimeError:
+            man[name] = "ERROR_DESCARGA"; continue
         if b is None:
             continue
         man[name] = hashlib.sha256(b).hexdigest()
@@ -50,7 +53,7 @@ def one(perp, kind):
 
 
 def main(path):
-    syms = [s.strip() for s in open(path) if s.strip()]
+    syms = [s.strip() for s in open(path) if s.strip() and s.strip().isascii() and s.strip().isalnum()]
     perps = {ln.strip() for ln in open("/tmp/perps.txt")} if Path("/tmp/perps.txt").exists() else set()
     pairs = {}
     for s in syms:
@@ -62,7 +65,7 @@ def main(path):
     OUT.mkdir(parents=True, exist_ok=True)
     res = {"funding": {}, "klines": {}, "map": pairs, "manifest": {}}
     jobs = [(p, k) for p in sorted(set(pairs.values())) for k in ("fundingRate", "klines")]
-    with cf.ThreadPoolExecutor(24) as ex:
+    with cf.ThreadPoolExecutor(48) as ex:
         for perp, kind, rows, man in ex.map(lambda a: one(*a), jobs):
             res["funding" if kind == "fundingRate" else "klines"][perp] = rows
             res["manifest"].update(man)
