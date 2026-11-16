@@ -696,6 +696,14 @@ async function boot(){
   show(TITLES[start] ? start : "dash");
   refresh(); setInterval(refresh, 20000);
   if (PILOT.survey) renderSurvey(PILOT.survey);
+  if (PILOT.metrics) {
+    $("#pilotPrivacy")?.classList.remove("hidden");
+    const b = $("#pilotWithdraw");
+    if (b) b.onclick = async () => {
+      const r = await post("/api/piloto/encuesta/retirar", {});
+      $("#pilotWithdrawMsg").textContent = r?.ok ? `Listo: ${r.retiradas} respuesta(s) retirada(s).` : (r?.error || "No se pudo");
+    };
+  }
 }
 
 /* ---------- Encuesta del piloto (solo con CRYPTO_RADAR_PILOT_SURVEYS=1) ---------- */
@@ -745,13 +753,15 @@ async function loadPilotMetrics(){
   let r; try { r = await api("/api/admin/piloto"); } catch (e) { return; }
   if (!r || r.error) { box.querySelector("div").innerHTML = `<p class="note">${esc(r?.error || "No disponible")}</p>`; return; }
   const t = r.total, s = r.solicitudes;
-  const coh = Object.entries(r.cohortes).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${c.aprobados}</td><td>${pctCI(c.activacion)}</td><td>${pctCI(c.retencion_30d)}</td><td>${pctCI(c.retencion_60d)}</td></tr>`).join("");
+  const coh = Object.entries(r.cohortes).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${c.aprobados}</td><td>${c.elegibles}</td><td>${c.pendientes}</td><td>${c.activados}</td><td>${c.no_activados}</td><td>${pctCI(c.activacion)}</td><td>${pctCI(c.retencion_30d)}</td><td>${pctCI(c.retencion_60d)}</td></tr>`).join("");
+  const pi = t.intencion_de_pago;
   box.querySelector("div").innerHTML = `${r.avisos.map(a => `<p class="note amb">${esc(a)}</p>`).join("")}
     <p class="note">Generado ${new Date(r.generado_utc).toLocaleString()} · solicitudes ${s.total} · aprobadas ${s.aprobadas} · rechazadas ${s.rechazadas} · pendientes ${s.pendientes}</p>
     <table class="tbl"><tbody><tr><th>Activación</th><td>${pctCI(t.activacion)}</td></tr><tr><th>Retención 30 d</th><td>${pctCI(t.retencion_30d)}</td></tr>
     <tr><th>Retención 60 d</th><td>${pctCI(t.retencion_60d)}</td></tr><tr><th>Telegram vinculado</th><td>${pctCI(t.telegram_vinculado)}</td></tr>
-    <tr><th>Activos semanales (7 d)</th><td>${r.uso.activos_semanales_ultimos_7_dias}</td></tr><tr><th>Intención de pago</th><td>${pctCI(r.encuestas.dia30.intencion_de_pago)}</td></tr>
+    <tr><th>Activos semanales (7 d)</th><td>${r.uso.activos_semanales_ultimos_7_dias}</td></tr><tr><th>Intención de pago (sobre ${pi.elegibles_30d} elegibles a 30 d; usa B5)</th><td>${pctCI(pi.tasa_sobre_elegibles)}</td></tr>
+    <tr><th>Intención entre respondientes</th><td>${pctCI(pi.tasa_entre_respondientes)}</td></tr><tr><th>Participación (respondieron / no respondieron)</th><td>${pctCI(pi.participacion)} · ${pi.respondieron} / ${pi.no_respondieron}${pi.aviso ? ` <span class="amb">${esc(pi.aviso)}</span>` : ""}</td></tr>
     <tr><th>Muy decepcionado</th><td>${pctCI(r.encuestas.dia45.muy_decepcionado)}</td></tr><tr><th>Compuerta B</th><td>${esc(r.compuerta_b.lectura)}</td></tr></tbody></table>
-    <table class="tbl"><thead><tr><th>Cohorte</th><th>Aprob.</th><th>Activación</th><th>Ret. 30 d</th><th>Ret. 60 d</th></tr></thead><tbody>${coh || `<tr><td colspan="5" class="muted">Sin cohortes</td></tr>`}</tbody></table>`;
+    <table class="tbl"><thead><tr><th>Cohorte (semana de aprobación)</th><th>Aprob.</th><th>Elegibles</th><th>Pend.</th><th>Activados</th><th>No activ.</th><th>Activación</th><th>Ret. 30 d</th><th>Ret. 60 d</th></tr></thead><tbody>${coh || `<tr><td colspan="9" class="muted">Sin cohortes</td></tr>`}</tbody></table>`;
 }
 boot();

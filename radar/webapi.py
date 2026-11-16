@@ -257,6 +257,8 @@ def handle(h, method):
             return h._send(200, {"ok": True})
         if p == "/api/piloto/evento":
             return h._send(200, {"ok": True, "recorded": piloto.record_client_event(user, b)})
+        if p == "/api/piloto/encuesta/retirar":
+            return h._send(200, {"ok": True, "retiradas": piloto.withdraw(user)})
         if p == "/api/piloto/encuesta":
             try:
                 piloto.answer(user, str(b.get("survey") or ""), b.get("answers") or {}, bool(b.get("skipped")))

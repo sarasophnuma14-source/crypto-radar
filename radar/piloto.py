@@ -13,8 +13,21 @@ Reglas que cumple el código:
 - Sin herramientas externas: todo vive en la tabla activity de la propia base.
 - Fechas en UTC (epoch); la interfaz las presenta en la zona local del navegador.
 
-Las métricas se calculan por cohorte semanal (semana ISO del primer inicio de sesión) y cada tasa se publica con
-numerador, denominador, intervalo de Wilson al 95 % y los casos pendientes o sin datos.
+Las métricas se calculan por cohorte semanal (semana ISO de la APROBACIÓN) y cada tasa se publica con numerador,
+denominador, intervalo de Wilson al 95 % y los casos pendientes.
+
+Definiciones (auditoría correctiva H1/H2, 2026-11-16; docs/PLAN_PILOTO_90_DIAS.md §3):
+- Ventana de activación: los 7 días que siguen a la aprobación [approved_at, approved_at + 7 d).
+- Cada aprobado está en uno de tres estados: «activado», «no activado» (la ventana terminó sin activarse; incluye a
+  quien nunca inició sesión) o «pendiente» (la ventana sigue abierta y aún no se activó).
+- Activación = activados ÷ elegibles, con elegibles = aprobados − pendientes. Nadie sale del denominador salvo por un
+  motivo explícito que el informe cuenta aparte (cuenta eliminada a petición: «bajas_por_supresion»).
+- Intención de pago (B5) = respuestas «sí» ÷ ELEGIBLES a 30 días (activados con actividad en los días 22–30). La falta de
+  respuesta cuenta como «no sí»; el informe da también la tasa entre quienes respondieron y la participación.
+
+Privacidad (H7, docs/PRIVACIDAD_INSTRUMENTACION.md): el informe del administrador es solo agregado; el texto libre se
+guarda sin correos, teléfonos ni enlaces; el usuario puede retirar sus respuestas; purge() aplica la retención que fije
+el propietario (CRYPTO_RADAR_PILOT_RETENTION_DAYS; sin ese valor no se borra nada automáticamente).
 """
 from __future__ import annotations
 import datetime as dt
@@ -22,6 +35,7 @@ import hashlib
 import json
 import math
 import os
+import re
 import threading
 import time
 
@@ -112,18 +126,22 @@ def rate(k, n, pending=0, missing=0):
 
 
 # ------------------------------------------------------------------------------------------------ activación
-def activation(events, first_login):
+ACT_WINDOW_DAYS = 7
+
+
+def activation(events, approved_at):
     """Momento de activación según PLAN_PILOTO_90_DIAS.md §3, o None.
 
-    Activado: inicia sesión y, en sus primeros 7 días, vincula Telegram, registra una posición o visita la aplicación en
-    3 días distintos. events = [(at, action)] del usuario. Devuelve el instante en que se cumplió la condición."""
-    if first_login is None:
+    Activado: inicia sesión y, en los 7 días siguientes a su APROBACIÓN, vincula Telegram, registra una posición o visita
+    la aplicación en 3 días distintos. events = [(at, action)] del usuario. Devuelve el instante en que se cumplió."""
+    if approved_at is None or not any(a == "login" for _, a in events):
         return None
-    end = first_login + 7 * DAY
+    start = float(approved_at)
+    end = start + ACT_WINDOW_DAYS * DAY
     cands = []
     visit_days = []
     for at, action in sorted(events):
-        if not (first_login <= at < end):
+        if not (start <= at < end):
             continue
         if action in ("telegram_linked", "position_add"):
             cands.append(at)
@@ -134,6 +152,16 @@ def activation(events, first_login):
                 if len(visit_days) == 3:
                     cands.append(at)
     return min(cands) if cands else None
+
+
+def activation_state(events, approved_at, now):
+    """(«activado» | «no_activado» | «pendiente», instante de activación o None). Única definición para cohortes y total."""
+    act = activation(events, approved_at)
+    if act is not None:
+        return "activado", act
+    if now < float(approved_at) + ACT_WINDOW_DAYS * DAY:
+        return "pendiente", None
+    return "no_activado", None
 
 
 def retained(visit_days, act_day, lo, hi, today):
@@ -165,7 +193,7 @@ def _load():
     ids = {u["id"] for u in users}
     acts = db.all_("SELECT user_id, at, action FROM activity WHERE action IN "
                    "('login', 'visit', 'export_csv', 'telegram_linked', 'telegram_unlinked', 'position_add') "
-                   "OR action LIKE 'tab:%'", ())
+                   "OR action LIKE ?", ("tab:%",))       # patrón como parámetro: «%» literal rompe psycopg
     ev = {}
     for a in acts:
         if a["user_id"] in ids:
@@ -179,7 +207,7 @@ def report(now=None, data=None):
     """Informe agregado del piloto. Sin correos, nombres, IP ni notas: solo recuentos."""
     now = now or time.time()
     today = _day(now)
-    users, ev, surveys = data if data is not None else _load()
+    users, ev, surveys = (data[0], data[1], data[2]) if data is not None else _load()
     out = {"generado_utc": dt.datetime.fromtimestamp(now, dt.timezone.utc).isoformat(timespec="seconds"),
            "instrumentacion": {"metricas": enabled(), "encuestas": surveys_enabled()},
            "avisos": []}
@@ -198,13 +226,16 @@ def report(now=None, data=None):
         out["canal_de_adquisicion"][c] = out["canal_de_adquisicion"].get(c, 0) + 1
 
     cohorts, per_user = {}, []
+    responses = {}
+    for r in surveys:
+        responses[(r["user_id"], r["survey"])] = r
     for u in approved:
         e = ev.get(u["id"], [])
         logins = [at for at, a in e if a == "login"]
         first = min(logins) if logins else None
-        act = activation(e, first)
+        state, act = activation_state(e, u["approved_at"], now)
         vdays = sorted({_day(at) for at, a in e if a == "visit"})
-        rec = {"first": first, "act": act, "vdays": vdays,
+        rec = {"uid": u["id"], "first": first, "act": act, "state": state, "vdays": vdays,
                "tg": any(a == "telegram_linked" for _, a in e) or bool(u.get("telegram_chat_id")),
                "pos": sum(1 for _, a in e if a == "position_add"),
                "exp": sum(1 for _, a in e if a == "export_csv"),
@@ -213,29 +244,38 @@ def report(now=None, data=None):
             ad = _day(act)
             rec["r30"] = retained(vdays, ad, 22, 30, today)
             rec["r60"] = retained(vdays, ad, 52, 60, today)
+            rec["d30"] = responses.get((u["id"], "dia30"))
+            rec["d30_closes"] = act + (SURVEYS["dia30"]["day"] + WINDOW_DAYS) * DAY
         per_user.append(rec)
-        if first is None:
-            key = "sin inicio de sesión"
-        else:
-            y, w, _ = _day(first).isocalendar()
-            key = f"{y}-S{w:02d}"
-        cohorts.setdefault(key, []).append(rec)
+        cohorts.setdefault(cohort_key(u["approved_at"]), []).append(rec)
+    bajas = dict((data[3] if data is not None and len(data) > 3 else _bajas()) or {})
 
-    def block(recs):
-        started = [r for r in recs if r["first"] is not None]
-        act = [r for r in started if r["act"] is not None]
-        pending_act = sum(1 for r in started if r["act"] is None and now < r["first"] + 7 * DAY)
+    def block(recs, removed=0):
+        act = [r for r in recs if r["state"] == "activado"]
+        no = [r for r in recs if r["state"] == "no_activado"]
+        pend = [r for r in recs if r["state"] == "pendiente"]
         r30 = [r["r30"] for r in act if r.get("r30") is not None]
         r60 = [r["r60"] for r in act if r.get("r60") is not None]
-        return {"aprobados": len(recs), "con_inicio_de_sesion": len(started),
-                "activacion": rate(len(act), len(started) - pending_act, pending=pending_act,
-                                   missing=len(recs) - len(started)),
+        return {"aprobados": len(recs), "pendientes": len(pend), "elegibles": len(act) + len(no),
+                "activados": len(act), "no_activados": len(no),
+                "no_activados_sin_inicio_de_sesion": sum(1 for r in no if r["first"] is None),
+                "con_inicio_de_sesion": sum(1 for r in recs if r["first"] is not None),
+                "bajas_por_supresion": removed,
+                "activacion": rate(len(act), len(act) + len(no), pending=len(pend)),
                 "retencion_30d": rate(sum(r30), len(r30), pending=len(act) - len(r30)),
                 "retencion_60d": rate(sum(r60), len(r60), pending=len(act) - len(r60)),
-                "telegram_vinculado": rate(sum(1 for r in act if r["tg"]), len(act))}
+                "telegram_vinculado": rate(sum(1 for r in act if r["tg"]), len(act)),
+                "intencion_de_pago": payment_intent(act, now)}
 
-    out["cohortes"] = {k: block(v) for k, v in sorted(cohorts.items())}
-    out["total"] = block(per_user)
+    keys = sorted(set(cohorts) | set(bajas))
+    out["cohortes"] = {k: block(cohorts.get(k, []), int(bajas.get(k, 0))) for k in keys}
+    out["total"] = block(per_user, sum(int(v) for v in bajas.values()))
+    out["definiciones"] = {
+        "activacion": "activados ÷ elegibles; elegibles = aprobados − pendientes; ventana de 7 días desde la aprobación",
+        "cohorte": "semana ISO de la aprobación (UTC)",
+        "intencion_de_pago": "«sí, seguro» + «probablemente sí» ÷ elegibles a 30 días (activados con visita en los días "
+                             "22–30); quien no responde cuenta como «no sí». También se da la tasa entre respondientes.",
+        "bajas_por_supresion": "cuentas eliminadas a petición del usuario: salen del denominador y se cuentan aquí"}
 
     # uso
     dau = {}
@@ -259,7 +299,61 @@ def report(now=None, data=None):
                   "pestanas_usuario_dia": dict(sorted(tabs.items(), key=lambda x: -x[1]))}
     out["encuestas"] = survey_summary(surveys)
     out["compuerta_b"] = gate_b(out)
+    if not retention_days():
+        out["avisos"].append("Retención de datos del piloto sin definir (CRYPTO_RADAR_PILOT_RETENTION_DAYS): decisión "
+                             "del propietario ligada a la política de privacidad (G-16).")
     return out
+
+
+def cohort_key(approved_at):
+    y, w, _ = _day(float(approved_at)).isocalendar()
+    return f"{y}-S{w:02d}"
+
+
+YES = ("seguro_si", "probable_si")
+
+
+def payment_intent(activated, now):
+    """B5 con su denominador real (H2). activated = registros de usuarios activados del informe.
+
+    elegibles = activados con visita en los días 22–30 tras activarse (r30 True). De ellos:
+    - respondieron: contestaron «pagaria» en la encuesta del día 30;
+    - pendientes: no han respondido y su ventana de encuesta sigue abierta (no cuentan todavía en ningún lado);
+    - no respondieron: ventana cerrada sin respuesta válida (omitida, retirada o sin contestar).
+    La tasa principal divide por (elegibles − pendientes): la falta de respuesta nunca suma como «sí»."""
+    elig = [r for r in activated if r.get("r30") is True]
+    resp, pend, nonresp, yes = 0, 0, 0, 0
+    for r in elig:
+        row = r.get("d30")
+        a = json.loads(row["answers"] or "{}") if row and not row["skipped"] else {}
+        if a.get("pagaria") in INTENT:
+            resp += 1
+            yes += a["pagaria"] in YES
+        elif row is None and now < r["d30_closes"]:
+            pend += 1
+        else:
+            nonresp += 1
+    settled = len(elig) - pend
+    out = {"elegibles_30d": len(elig), "respondieron": resp, "no_respondieron": nonresp, "pendientes": pend,
+           "respuestas_si": yes,
+           "participacion": rate(resp, settled, pending=pend),
+           "tasa_sobre_elegibles": rate(yes, settled, pending=pend),
+           "tasa_entre_respondientes": rate(yes, resp),
+           "fuera_de_elegibles": sum(1 for r in activated if r.get("r30") is not True and r.get("d30")
+                                     and not r["d30"]["skipped"]
+                                     and json.loads(r["d30"]["answers"] or "{}").get("pagaria") in INTENT)}
+    p = out["participacion"]["tasa"]
+    out["aviso"] = ("participación inferior al 50 %: la tasa entre respondientes no representa a los elegibles"
+                    if p is not None and p < 0.5 else None)
+    return out
+
+
+def _bajas():
+    try:
+        from . import storage
+        return storage.read("piloto_bajas", {}) or {}
+    except Exception:
+        return {}
 
 
 # ------------------------------------------------------------------------------------------------ encuestas
@@ -317,9 +411,69 @@ def _validate(survey, answers):
             if not isinstance(v, list) or len(set(v)) != len(v) or any(x not in q["opciones"] for x in v):
                 raise ValueError(q["id"])
         else:
-            v = str(v)[:500]
+            v = redact(str(v))[:500]
         clean[q["id"]] = v
     return clean
+
+
+_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
+_URL = re.compile(r"(?:https?://|www\.)\S+", re.I)
+_PHONE = re.compile(r"\+?\d[\d\s().-]{6,}\d")
+_HANDLE = re.compile(r"(?<![\w@])@[A-Za-z0-9_]{3,}")
+
+
+def redact(text):
+    """Minimización del texto libre (H7): quita correos, enlaces, teléfonos y usuarios @ antes de guardarlo."""
+    t = _EMAIL.sub("[correo eliminado]", text)
+    t = _URL.sub("[enlace eliminado]", t)
+    t = _PHONE.sub("[número eliminado]", t)
+    return _HANDLE.sub("[usuario eliminado]", t)
+
+
+def retention_days():
+    try:
+        n = int(os.environ.get("CRYPTO_RADAR_PILOT_RETENTION_DAYS", "") or 0)
+    except ValueError:
+        return None
+    return n if n > 0 else None
+
+
+PILOT_EVENTS_SQL = "(action IN ('visit', 'export_csv') OR action LIKE ?)"   # + parámetro "tab:%"
+
+
+def purge(now=None, days=None):
+    """Borra respuestas y eventos del piloto más antiguos que la retención fijada por el propietario.
+
+    Sin CRYPTO_RADAR_PILOT_RETENTION_DAYS (ni days) no borra nada: el plazo es una decisión del propietario (G-16).
+    No toca login, telegram_linked ni position_add: son registros de seguridad y del producto, no del piloto."""
+    days = days or retention_days()
+    if not days:
+        return {"borrado": False, "motivo": "retención sin definir"}
+    cut = (now or time.time()) - days * DAY
+    n1 = db.execute("DELETE FROM survey_responses WHERE at < ?", (cut,)).rowcount
+    n2 = db.execute("DELETE FROM activity WHERE at < ? AND " + PILOT_EVENTS_SQL, (cut, "tab:%")).rowcount
+    return {"borrado": True, "dias": days, "respuestas": n1, "eventos": n2}
+
+
+def withdraw(user, now=None):
+    """El usuario retira sus respuestas: se vacía su contenido y queda solo la marca de «retirada» (skipped = 2), para
+    que la encuesta no se vuelva a ofrecer y para contarla como no respuesta (nunca como «sí»)."""
+    if not user or user.get("is_admin"):
+        return 0
+    return db.execute("UPDATE survey_responses SET answers = '{}', skipped = 2 WHERE user_id = ?",
+                      (user["id"],)).rowcount
+
+
+def forget_user(uid):
+    """Al eliminar una cuenta: borra sus respuestas y sus eventos del piloto, y suma una baja anónima a su cohorte para
+    que el informe muestre el motivo por el que sale del denominador."""
+    r = db.one("SELECT approved_at, is_admin FROM users WHERE id = ?", (uid,))
+    db.execute("DELETE FROM survey_responses WHERE user_id = ?", (uid,))
+    db.execute("DELETE FROM activity WHERE user_id = ? AND " + PILOT_EVENTS_SQL, (uid, "tab:%"))
+    if r and r.get("approved_at") and not r.get("is_admin"):
+        from . import storage
+        key = cohort_key(r["approved_at"])
+        storage.update("piloto_bajas", lambda d: {**(d or {}), key: int((d or {}).get(key, 0)) + 1}, {})
 
 
 def pending_survey(user, now=None):
@@ -330,8 +484,11 @@ def pending_survey(user, now=None):
     e = [(float(r["at"]), r["action"]) for r in db.all_(
         "SELECT at, action FROM activity WHERE user_id = ? AND action IN ('login', 'visit', 'telegram_linked', 'position_add')",
         (user["id"],))]
-    logins = [at for at, a in e if a == "login"]
-    act = activation(e, min(logins) if logins else None)
+    approved_at = user.get("approved_at")
+    if approved_at is None:
+        r = db.one("SELECT approved_at FROM users WHERE id = ?", (user["id"],))
+        approved_at = r and r.get("approved_at")
+    act = activation(e, approved_at)
     if act is None:
         return None
     done = {r["survey"] for r in db.all_("SELECT survey FROM survey_responses WHERE user_id = ?", (user["id"],))}
@@ -392,7 +549,8 @@ def survey_summary(rows):
             o["utilidad_media"] = round(sum(u) / len(u), 2) if u else None
         if sid == "dia30":
             pv = [a.get("pagaria") for a in ans if a.get("pagaria")]
-            o["intencion_de_pago"] = rate(sum(1 for x in pv if x in ("seguro_si", "probable_si")), len(pv))
+            # solo entre quienes respondieron; la tasa de B5 está en total.intencion_de_pago (H2)
+            o["intencion_entre_respondientes"] = rate(sum(1 for x in pv if x in YES), len(pv))
             o["periodo"] = {k: sum(1 for a in ans if a.get("periodo") == k) for k in ("mensual", "anual", "ninguno")}
             o["van_westendorp"] = van_westendorp([(a.get("vw_muy_barato"), a.get("vw_barato"), a.get("vw_caro"),
                                                    a.get("vw_muy_caro")) for a in ans])
@@ -416,6 +574,7 @@ def gate_b(rep):
     """Lectura automática de la compuerta B (DECISION_COMERCIAL_GO_NO_GO.md §2). No decide: informa."""
     t = rep["total"]
     n_act = t["activacion"]["numerador"]
+    pi = t["intencion_de_pago"]
 
     def zone(r, go, gray):
         v = r.get("tasa") if isinstance(r, dict) else None
@@ -426,7 +585,7 @@ def gate_b(rep):
     crit = {"B1_activacion": zone(t["activacion"], .50, .35), "B2_retencion_30d": zone(t["retencion_30d"], .35, .20),
             "B3_retencion_60d": zone(t["retencion_60d"], .25, .15),
             "B4_decepcion": zone(s["dia45"]["muy_decepcionado"], .40, .25),
-            "B5_intencion_de_pago": zone(s["dia30"]["intencion_de_pago"], .30, .15)}
+            "B5_intencion_de_pago": zone(t["intencion_de_pago"]["tasa_sobre_elegibles"], .30, .15)}
     if n_act < MIN_ACTIVATED:
         verdict = f"insuficiente: {n_act} activados (mínimo {MIN_ACTIVATED}); la regla es extender el piloto"
     elif crit["B2_retencion_30d"] == "NO-GO" or crit["B4_decepcion"] == "NO-GO":
@@ -437,4 +596,8 @@ def gate_b(rep):
     else:
         verdict = "zona gris"
     return {"criterios": crit, "lectura": verdict,
-            "nota": "B6 (lista de interés frente al punto de equilibrio) y B7 (Van Westendorp) se leen a mano con el informe."}
+            "b5_detalle": {"tasa_sobre_elegibles": pi["tasa_sobre_elegibles"]["tasa"],
+                           "tasa_entre_respondientes": pi["tasa_entre_respondientes"]["tasa"],
+                           "participacion": pi["participacion"]["tasa"], "aviso": pi["aviso"]},
+            "nota": "B5 usa la tasa sobre elegibles a 30 días (la falta de respuesta no cuenta como «sí»). "
+                    "B6 (lista de interés frente al punto de equilibrio) y B7 (Van Westendorp) se leen a mano con el informe."}

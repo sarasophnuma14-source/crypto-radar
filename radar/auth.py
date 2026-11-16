@@ -357,6 +357,8 @@ def admin_set_status(admin, uid, action, plan="free", days=0, ip=None):
         db.execute("UPDATE users SET disabled = 0 WHERE id = ?", (uid,))
     elif action == "delete":
         logout_all(uid)
+        from . import piloto
+        piloto.forget_user(uid)                 # respuestas y eventos del piloto; deja una baja anónima en su cohorte
         db.execute("DELETE FROM users WHERE id = ?", (uid,))
     else:
         raise AuthError("acción no válida")
