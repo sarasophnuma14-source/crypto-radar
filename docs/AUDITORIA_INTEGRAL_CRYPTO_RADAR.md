@@ -98,7 +98,7 @@ Investigación (aislada del producto): `research/edge3` (v3, holdout usado una v
 | "Backtest de cualquier token" | **No existe**. Élite solo ve resultados estáticos ya calculados | Vendido en Élite ✖ |
 | "Watchlist sin límite" | Hay watchlist en ajustes, **limitada a 50 activos en todos los planes** (`radar/auth.py:575`) | Vendido como exclusivo de Élite ✖ |
 | "Informe semanal y soporte por chat" | Hay resumen semanal por Telegram; **no hay soporte por chat** | Vendido en Élite ✖ |
-| "Diario de señales con resultados" / "historial público" | Diario privado dentro del panel; **no hay historial público** | "cada señal queda registrada … en un historial público" ✖ |
+| "Diario de señales con resultados" / "historial público" | Diario privado dentro del panel, exportable a CSV en todos los planes; **no hay historial público** | "cada señal queda registrada … en un historial público" ✖ |
 | Plan Libre | Ranking de 3 activos | "Top 5 con 24 h de retraso, boletín semanal" ✖ |
 | Pagos con tarjeta y USDT | Implementados, **apagados**, nunca probados en sandbox real | "aceptamos tarjetas de cualquier país. También USDT" ✖ |
 | Cupos de fundador, prueba de 7 días | **No existen** en el código | "100 cupos de fundador a US$12", "7 días de prueba" ✖ |
@@ -192,7 +192,7 @@ Esfuerzo: S (< 2 h), M (medio día), L (1 a 3 días), XL (más).
 | M-4 | Landing duplicada: `ventas/index.html` (main) y `web/landing.html` (2.1) divergen | diff de 214 líneas | Una sola fuente; la 2.1 redirige `/` a la landing o la sirve desde el mismo archivo | S |
 | M-5 | La lista de espera no guarda correos, pero ya existe un flujo de solicitud con consentimiento en `/entrar` | `ventas/index.html:426-431`, `radar/auth.py` (request) | CTA "Solicitar acceso" hacia `/entrar#solicitar`; sin recoger datos en la landing | S |
 | M-6 | Precio de BTC fijo en la landing ("≈ US$68.200") | `ventas/index.html:236` | Quitar o leer de `/api/public/status` con fecha | S |
-| M-7 | Texto incorrecto en el panel: "Se actualiza cada hora" cuando el escaneo es cada 4 h | `web/app.js:442` | Corregir el texto | S |
+| M-7 | ~~Texto "Se actualiza cada hora" incorrecto~~ **Retirado tras verificar**: está en la pestaña de memecoins, que sí se revisa cada hora (`MEME_EVERY_S`) | `web/app.js:442` | Ninguna | — |
 | M-8 | El código de la 2.1 vive en una cadena de 6 PR sin fusionar; `main` no refleja producción | §1.1 | Plan de integración (ya existe `docs/PLAN_INTEGRACION_GIT.md`), solo con autorización | M |
 | M-9 | Login móvil: el formulario queda muy abajo | Informe del hilo anterior; capturas en `boton-entrar/movil_login.png` | Reordenar en pantallas estrechas | S |
 
@@ -241,7 +241,7 @@ Ninguna señal cumple hoy los criterios para llamarse "validada estadísticament
 | P1-4 | Registro de entregas y reintentos de Telegram (M-1) | desde release-2.1 |
 | P1-5 | Copias automáticas diarias con verificación (A-3) | requiere decidir almacenamiento |
 | P1-6 | Documento de datos faltantes de privacidad (A-5) | docs |
-| P1-7 | Textos y móvil (M-6, M-7, M-9) | desde release-2.1 / main |
+| P1-7 | Textos y móvil (M-6, M-9) | desde release-2.1 / main |
 
 ### P2 · Experiencia y diferenciación comercial
 
