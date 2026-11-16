@@ -10,7 +10,7 @@ import os
 import json
 import re
 from urllib.parse import urlparse, parse_qs
-from . import auth, billing, db, storage, multiuser, telegram_bot, memes, scanner
+from . import auth, billing, db, storage, multiuser, telegram_bot, memes, scanner, piloto
 from .server import COOKIE, LEGAL_PAGES, PUBLIC_GET, PUBLIC_POST, _f, backtest_results, next_scan_time, now, __version__
 
 SYMBOL_RE = re.compile(r"^[A-Z0-9]{1,15}$")
@@ -103,8 +103,15 @@ def handle(h, method):
         if not user:
             return h._send(401, {"error": "inicia sesión"})
         feats = auth.features(user)
+        piloto.record_daily(user, "visit")             # apagado salvo CRYPTO_RADAR_PILOT_METRICS=1; una fila por día
         if p == "/api/me":
-            return h._send(200, {"user": auth.public(user), "csrf": sess["csrf"]})
+            return h._send(200, {"user": auth.public(user), "csrf": sess["csrf"],
+                                 "pilot": {"metrics": piloto.enabled() and not user["is_admin"],
+                                           "survey": piloto.pending_survey(user)}})
+        if p == "/api/admin/piloto":
+            if not auth.admin_ok(user):
+                return h._send(403, {"error": "solo administradores"})
+            return h._send(200, piloto.report())
         if p == "/api/state":
             rep = _filter_report(storage.read("latest.json", {}) or {}, feats)
             return h._send(200, {"report": rep, "status": {k: scanner.status.get(k) for k in ("scanning", "progress", "last_watch")},
@@ -247,6 +254,14 @@ def handle(h, method):
                 return h._send(400, {"error": "ruta no válida"})
             clean = {k: _f(b.get(k)) for k in ("price", "stop", "tp1", "tp2", "tp3", "qty")}
             multiuser.act(user["id"], parts[3], parts[4], clean)
+            return h._send(200, {"ok": True})
+        if p == "/api/piloto/evento":
+            return h._send(200, {"ok": True, "recorded": piloto.record_client_event(user, b)})
+        if p == "/api/piloto/encuesta":
+            try:
+                piloto.answer(user, str(b.get("survey") or ""), b.get("answers") or {}, bool(b.get("skipped")))
+            except (ValueError, TypeError) as e:
+                return h._send(400, {"error": f"encuesta: {e}"})
             return h._send(200, {"ok": True})
         if p == "/api/admin/user":
             auth.admin_set_status(user, b.get("id"), str(b.get("action")), str(b.get("plan") or "free"), b.get("days", 0), ip)

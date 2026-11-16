@@ -30,7 +30,7 @@ TABLES = {"users": "id", "activity": "id", "positions": "id", "payments": "id", 
           "admin_enroll_tokens": "token_hash",   # códigos ya usados: tras restaurar siguen sin valer
           # la marca de plataforma 2.1 viaja en la copia: sin ella, el primer arranque sobre la restaurada la tomaría
           # por una base heredada (y se negaría a arrancar al ver cuentas de 2.1, db.init_platform)
-          "platform_meta": "k", "legacy_archive": "id"}
+          "platform_meta": "k", "legacy_archive": "id", "survey_responses": "id"}
 SKIPPED = ("sessions", "rate_limits")
 
 

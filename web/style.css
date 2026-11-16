@@ -300,3 +300,12 @@ td.wrap-cell{white-space:normal;max-width:260px;color:var(--muted)}
 /* verificación en dos pasos */
 .mfa{margin-top:18px;border-top:1px solid var(--line, rgba(191,211,214,.12));padding-top:14px}
 .mfa code.secret{font-size:1.05rem;letter-spacing:.06em;word-break:break-all}
+
+/* encuesta y métricas del piloto (radar/piloto.py) */
+.survey{margin:16px 28px 0;max-width:1304px}
+@media (max-width:760px){.survey{margin:12px 14px 0}}
+.survey fieldset{border:0;padding:0;margin:0 0 10px}
+.survey legend{font-size:.85rem;margin-bottom:6px}
+.survey .chk{display:inline-flex;gap:6px;align-items:center;margin:0 14px 6px 0;font-size:.85rem}
+.survey .rank-in{width:56px}
+#pilotBox .tbl{margin-top:10px;width:100%}

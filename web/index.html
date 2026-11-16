@@ -48,6 +48,7 @@
 
     <div class="err hidden" id="errBar"></div>
     <div class="lockbar hidden" id="lockBar"></div>
+    <section class="card survey hidden" id="surveyBox" aria-live="polite"></section>
 
     <main class="views">
       <!-- 1. DASHBOARD -->
@@ -223,6 +224,7 @@
           </details>
           <div class="row"><button class="btn a" type="submit">Guardar cambios</button><span class="msg" id="setMsg"></span></div>
         </form>
+        <div class="card admin-only hidden" id="pilotBox"><h3 class="h3">Métricas del piloto</h3><div><p class="note">Cargando…</p></div></div>
         <div class="card admin-only hidden" id="adminBox"><h3 class="h3">Usuarios y solicitudes de acceso <span class="tag hidden" id="adminBadge">0</span></h3><div id="adminUsers"></div></div>
       </section>
 

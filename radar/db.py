@@ -54,6 +54,11 @@ SCHEMA = [
         expires_at DOUBLE PRECISION NOT NULL, used_at DOUBLE PRECISION, used_by TEXT)""",
     # 2.1.0 empieza como plataforma NUEVA (docs/REGISTRO_USUARIOS_PILOTO.md §1): una marca única por base y un archivo
     # histórico de lo que hubiera de la 2.0.0, separado de la autenticación (ninguna consulta de acceso lo lee)
+    # encuestas del piloto (radar/piloto.py); una fila por usuario y encuesta; vacía mientras estén apagadas
+    """CREATE TABLE IF NOT EXISTS survey_responses (
+        id TEXT PRIMARY KEY, user_id TEXT NOT NULL, survey TEXT NOT NULL, answers TEXT NOT NULL,
+        skipped INTEGER NOT NULL DEFAULT 0, at DOUBLE PRECISION NOT NULL)""",
+    "CREATE INDEX IF NOT EXISTS activity_action ON activity(action, at)",
     """CREATE TABLE IF NOT EXISTS platform_meta (
         k TEXT PRIMARY KEY, v TEXT NOT NULL, at DOUBLE PRECISION NOT NULL)""",
     """CREATE TABLE IF NOT EXISTS legacy_archive (
@@ -88,6 +93,7 @@ REQUIRED = {
                  "verified", "raw", "created_at", "updated_at"},
     "telegram_links": {"code", "user_id", "expires_at"},
     "kv": {"name", "value", "updated_at"},
+    "survey_responses": {"id", "user_id", "survey", "answers", "skipped", "at"},
     "rate_limits": {"k", "n", "expires_at"},
     "admin_enroll_tokens": {"token_hash", "source", "created_at", "expires_at", "used_at", "used_by"},
     "platform_meta": {"k", "v", "at"},
