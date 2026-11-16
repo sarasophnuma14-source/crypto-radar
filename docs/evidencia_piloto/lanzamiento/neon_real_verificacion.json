@@ -1,0 +1,102 @@
+[
+ {
+  "paso": "base vacía antes de migrar",
+  "ok": true,
+  "detalle": "tablas=0"
+ },
+ {
+  "paso": "primer arranque y migraciones desde cero",
+  "ok": true,
+  "detalle": "/healthz 200 en 12.5 s"
+ },
+ {
+  "paso": "registro de arranque",
+  "ok": true,
+  "detalle": "Modo cuentas activo · base de datos postgresql · esquema verificado | Plataforma 2.1 · inicialización: nueva · archivado de 2.0.0: {} · piloto cerrado | Administrador: verificador21 · creado"
+ },
+ {
+  "paso": "tablas en el esquema app y ninguna en public",
+  "ok": true,
+  "detalle": "app|11"
+ },
+ {
+  "paso": "índices",
+  "ok": true,
+  "detalle": "índices=17"
+ },
+ {
+  "paso": "restricciones (p=PK, u=única, f=FK, c=check)",
+  "ok": true,
+  "detalle": "p|11; u|2"
+ },
+ {
+  "paso": "platform_meta",
+  "ok": true,
+  "detalle": "initialized=nueva; legacy_archived={}; platform=2.1"
+ },
+ {
+  "paso": "1 usuario, 1 administrador, 0 archivados",
+  "ok": true,
+  "detalle": "1|1|0"
+ },
+ {
+  "paso": "sesión de la app como radar_app",
+  "ok": true,
+  "detalle": "radar_app|f (ssl=f es el tramo interno; el transporte es wss/TLS en esta prueba y sslmode=require en Render)"
+ },
+ {
+  "paso": "preflight --db: solo bloqueantes conocidos (TLS del puente de prueba y texto legal G-16)",
+  "ok": true,
+  "detalle": "[BLOQUEANTE ] TLS con la base: sslmode=disable | [BLOQUEANTE ] Texto legal privacidad.html: 11 marcas pendientes (COMPLETAR / borrador sin revisión legal)"
+ },
+ {
+  "paso": "reconexión tras cortar conexiones",
+  "ok": true,
+  "detalle": "conexiones cortadas=4; peticiones fallidas después=0/10"
+ },
+ {
+  "paso": "persistencia tras reiniciar",
+  "ok": true,
+  "detalle": "/healthz 200; usuarios|inicialización = 1|nueva"
+ },
+ {
+  "paso": "copia con radar_backup (solo lectura)",
+  "ok": true,
+  "detalle": "Comparación con el origen: idéntica | Firmada con HMAC-SHA256 (CRYPTO_RADAR_BACKUP_KEY). | AVISO: contiene datos personales. Los secretos TOTP van cifrados (CRYPTO_RADAR_TOTP_KEY, que NO viaja en la copia). Guárdala cifrada y fuera del repositorio."
+ },
+ {
+  "paso": "verificación de la copia",
+  "ok": true,
+  "detalle": "Copia íntegra y restaurable (postgresql, 2026-11-16T01:54:41Z): users 1, activity 2, positions 0, payments 0, telegram_links 0, kv 1, admin_enroll_tokens 0, platform_meta 3, legacy_archive 0 | Firma HMAC verificada."
+ },
+ {
+  "paso": "restauración en una base aparte",
+  "ok": true,
+  "detalle": "Restaurada en postgresql://radar_owner:***@127.0.0.1:6544/restaurada?sslmode=disable&options=endpoint%3Dep-square-surf-b9f8ywh6: users 1, activity 2, positions 0, payments 0, telegram_links 0, kv 1, admin_enroll_tokens 0, platform_meta 3, legacy_archive 0"
+ },
+ {
+  "paso": "datos restaurados",
+  "ok": true,
+  "detalle": "usuarios=1, platform_meta=3 en la base restaurada (esquema public: la restauración usa el search_path del rol de destino; la consulta inicial buscaba app.*). Comprobado aparte a las 01:55Z."
+ },
+ {
+  "paso": "radar_backup no puede escribir",
+  "ok": true,
+  "detalle": "ERROR:  permission denied for table platform_meta"
+ },
+ {
+  "paso": "radar_app no puede crear bases",
+  "ok": true,
+  "detalle": "ERROR:  permission denied to create database"
+ },
+ {
+  "paso": "radar_app no puede crear en public",
+  "ok": true,
+  "detalle": "                     ^"
+ },
+ {
+  "paso": "registros sin secretos",
+  "ok": true,
+  "detalle": "ninguna contraseña ni URL en los registros"
+ }
+]

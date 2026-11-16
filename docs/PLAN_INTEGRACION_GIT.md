@@ -14,7 +14,8 @@ Todos los PR están abiertos y sin fusionar. Ninguno tiene comprobaciones de CI 
 | 2 | #4 | `claude/auditoria-produccion` | `8476715` | #3 | Auditoría de producción, PostgreSQL y Neon, copias, preflight |
 | 3 | #5 | `claude/auditoria-final-piloto` | `fedb3a1` | #4 | Auditoría final del piloto |
 | 4 | #6 | `claude/estres-integral` | `f79b24c` | #5 | Estrés integral, límites por intentos fallidos, reconexión |
-| 5 | #7 | `claude/cierre-riesgos` | ver el PR | #6 | Este cierre de riesgos (R-02, R-08, R-09, R-10) |
+| 5 | #7 | `claude/cierre-riesgos` | `27f23e3` | #6 | Cierre de riesgos (R-02, R-08, R-09, R-10) |
+| 6 | #8 | `claude/preparacion-piloto` | `24a0683` | #7 | Preparación del piloto: plataforma nueva sin acceso heredado, un único administrador, arranque seguro |
 
 **Dependencias.** Cada rama contiene entera a la anterior: el apilado es lineal y #3 parte del `main` actual. Así que
 cada PR **depende** de todos los que están debajo. Ninguno se puede fusionar antes que el anterior sin arrastrar el
@@ -22,7 +23,7 @@ código de los de abajo.
 
 ## 2. Simulación ejecutada
 
-Script: `tests/piloto/integracion_local.sh`. Evidencia: `docs/evidencia_piloto/cierre/integracion_local.txt`.
+Script: `tests/piloto/integracion_local.sh`. Evidencia: `docs/evidencia_piloto/preparacion/integracion_local_preparacion.txt` (la de #7 está en `docs/evidencia_piloto/cierre/integracion_local.txt`).
 
 El script:
 1. Crea una rama local desde `origin/main`.
@@ -40,7 +41,8 @@ El script:
 | 2 · + #4 | 0 | Sí | 231 OK / 231 OK | 29 OK | 39 OK |
 | 3 · + #5 | 0 | Sí | 258 OK / 258 OK | 29 OK | 39 OK |
 | 4 · + #6 | 0 | Sí | 275 OK / 275 OK | 29 OK | 39 OK |
-| 5 · + #7 | 0 | Sí | **291 OK / 291 OK** | 29 OK | 39 OK |
+| 5 · + #7 | 0 | Sí | 291 OK / 291 OK | 29 OK | 39 OK |
+| 6 · + #8 | 0 | Sí | **309 OK / 309 OK** | 29 OK | 39 OK |
 
 Comprobaciones adicionales:
 - **Código protegido sin cambios.** `git diff origin/main HEAD -- research radar/quant radar/edge radar/paper_trading`
@@ -64,12 +66,12 @@ el apilado (§2).
      `main` dispararía un despliegue.
 2. Fusiona **#3 → `main`**. GitHub cambia solo la base de #4 a `main`. Comprueba que #4 muestre únicamente sus propios
    cambios.
-3. Fusiona **#4**, luego **#5**, luego **#6** y luego **#7**, siempre con *merge commit*. Tras cada uno, la base del
+3. Fusiona **#4**, luego **#5**, luego **#6**, luego **#7** y luego **#8**, siempre con *merge commit*. Tras cada uno, la base del
    siguiente pasa a `main`.
-4. Comprueba que `main` tenga exactamente el árbol de `claude/cierre-riesgos`:
-   `git diff origin/main origin/claude/cierre-riesgos` debe salir vacío. Ejecuta en `main`
+4. Comprueba que `main` tenga exactamente el árbol de `claude/preparacion-piloto`:
+   `git diff origin/main origin/claude/preparacion-piloto` debe salir vacío. Ejecuta en `main`
    `tests/piloto/integracion_local.sh` o, como mínimo, los tres archivos de pruebas.
-5. Ejecuta `python main.py preflight --db` con las variables reales. Debe dar 0 fallos: hoy falla el texto legal, R-01.
+5. Ejecuta `python main.py preflight --db` con las variables reales. Debe dar 0 bloqueantes: hoy bloquea el texto legal (G-16).
 6. Vuelve a activar el despliegue y despliega **una sola vez**, desde el `main` final.
 7. Después del despliegue:
    - alta del TOTP del administrador (`BOOTSTRAP_ADMIN.md` §3);
@@ -78,11 +80,11 @@ el apilado (§2).
    - prueba de 10 usuarios (`tests/piloto/prueba_render_10.py`).
 
 **Vuelta atrás.** En Render, «Rollback» al despliegue de la 2.0.0. En Git, `git revert -m 1` de los *merge commits*,
-en orden inverso. Ninguna migración borra columnas ni tablas, así que la 2.0.0 sigue funcionando sobre la base
-migrada: las columnas nuevas no le afectan. Esto se razonó sobre el código; no se ensayó.
+en orden inverso. Desde #8, el primer arranque de la 2.1 **archiva las cuentas de la 2.0.0** de la base que use. Por eso se recomienda
+una base nueva para la 2.1 (D-2) y, al volver atrás, restaurar las variables de la 2.0.0 (`PROCEDIMIENTO_ROLLBACK.md`).
 
-**Alternativa equivalente:** fusionar solo #7 contra `main`, cambiando antes su base a `main`. Incluye todo el apilado
-en un único *merge commit* y cierra a mano #3 a #6. Es más simple, pero pierde la revisión PR a PR.
+**Alternativa equivalente:** fusionar solo #8 contra `main`, cambiando antes su base a `main`. Incluye todo el apilado
+en un único *merge commit* y cierra a mano #3 a #7. Es más simple, pero pierde la revisión PR a PR.
 
 ## 4. Qué no se pudo comprobar
 

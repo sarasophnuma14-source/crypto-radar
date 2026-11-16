@@ -52,6 +52,13 @@ SCHEMA = [
     """CREATE TABLE IF NOT EXISTS admin_enroll_tokens (
         token_hash TEXT PRIMARY KEY, source TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL,
         expires_at DOUBLE PRECISION NOT NULL, used_at DOUBLE PRECISION, used_by TEXT)""",
+    # 2.1.0 empieza como plataforma NUEVA (docs/REGISTRO_USUARIOS_PILOTO.md §1): una marca única por base y un archivo
+    # histórico de lo que hubiera de la 2.0.0, separado de la autenticación (ninguna consulta de acceso lo lee)
+    """CREATE TABLE IF NOT EXISTS platform_meta (
+        k TEXT PRIMARY KEY, v TEXT NOT NULL, at DOUBLE PRECISION NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS legacy_archive (
+        id TEXT PRIMARY KEY, source_table TEXT NOT NULL, source_id TEXT, archived_at DOUBLE PRECISION NOT NULL,
+        data TEXT NOT NULL)""",
 ]
 
 
@@ -83,7 +90,27 @@ REQUIRED = {
     "kv": {"name", "value", "updated_at"},
     "rate_limits": {"k", "n", "expires_at"},
     "admin_enroll_tokens": {"token_hash", "source", "created_at", "expires_at", "used_at", "used_by"},
+    "platform_meta": {"k", "v", "at"},
+    "legacy_archive": {"id", "source_table", "source_id", "archived_at", "data"},
 }
+
+PLATFORM = "2.1"
+INIT_LOCK_ID = 7_212_100          # bloqueo consultivo de PostgreSQL para el arranque (número fijo de esta aplicación)
+# Tablas ligadas a cuentas: en una base heredada de la 2.0.0 se ARCHIVAN (no se heredan) al primer arranque de 2.1.
+# (tabla, clave, columnas de credenciales que NO se guardan ni en el archivo: no tienen valor legal ni contable)
+LEGACY_TABLES = (
+    ("users", "id", ("pw_hash", "totp_secret", "totp_last_step")),
+    ("sessions", "token_hash", ("token_hash", "csrf")),
+    ("telegram_links", "code", ("code",)),
+    ("positions", "id", ()),
+    ("payments", "id", ()),
+    ("activity", "id", ()),
+)
+EPHEMERAL_TABLES = ("rate_limits",)       # contadores de intentos: se vacían, no se archivan
+
+
+class PlatformError(RuntimeError):
+    pass
 
 
 class SchemaError(RuntimeError):
@@ -166,19 +193,112 @@ def verify_schema():
                           "; ".join(f"{t}: {', '.join(m)}" for t, m in missing.items()))
 
 
+def _count(c, table):
+    return c.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]     # nombres de tabla fijos, nunca del usuario
+
+
+def _signs_of_2_1(c):
+    """Huellas que la 2.0.0 nunca pudo dejar: si aparecen, la base es de 2.1 y NO se archiva nada."""
+    q = ("SELECT COUNT(*) FROM users WHERE approved_at IS NOT NULL OR consent_at IS NOT NULL OR totp_enabled = 1 "
+         "OR totp_secret IS NOT NULL OR status <> 'active'")
+    return {"usuarios_2_1": c.execute(q).fetchone()[0], "codigos_de_alta": _count(c, "admin_enroll_tokens")}
+
+
+def platform_status():
+    """Estado de la marca de plataforma, sin cambiar nada (para preflight y para las pruebas)."""
+    init()
+    rows = all_("SELECT k, v, at FROM platform_meta", ())
+    return {r["k"]: r["v"] for r in rows}
+
+
+def init_platform(c=None):
+    """Primer arranque de 2.1.0 sobre una base: la convierte en plataforma NUEVA, una sola vez (idempotente).
+
+    * Base vacía: solo deja la marca `platform = 2.1`.
+    * Base heredada de 2.0.0 (cuentas sin huellas de 2.1): en UNA transacción copia cada fila de las tablas de
+      cuentas a `legacy_archive` (sin contraseñas, semillas TOTP, tokens de sesión ni códigos de Telegram), las borra
+      de las tablas activas y deja la marca. Ninguna cuenta, sesión, token, plan o vínculo de 2.0.0 sigue valiendo.
+    * Base de 2.1 sin marca (p. ej. una prueba anterior a este cambio): NO toca nada y se niega a arrancar, salvo que
+      el responsable confirme `CRYPTO_RADAR_PLATFORM_ADOPT=1` (marca la base como 2.1 tal como está).
+    Con varias instancias arrancando a la vez, un bloqueo de PostgreSQL (o BEGIN IMMEDIATE en SQLite) hace que solo
+    una ejecute la conversión; las demás encuentran la marca.
+    """
+    c = c or conn()
+    if c.execute("SELECT v FROM platform_meta WHERE k = 'platform'").fetchone():
+        return {"result": "verificada"}
+    ph = "%s" if IS_PG else "?"
+    if IS_PG:
+        c.execute("BEGIN")
+        c.execute("LOCK TABLE platform_meta IN EXCLUSIVE MODE")
+    else:
+        c.execute("BEGIN IMMEDIATE")
+    try:
+        if c.execute("SELECT v FROM platform_meta WHERE k = 'platform'").fetchone():
+            c.execute("ROLLBACK")
+            return {"result": "verificada"}
+        counts = {t: _count(c, t) for t, _, _ in LEGACY_TABLES}
+        now = time.time()
+        if not any(counts.values()):
+            result, archived = "nueva", {}
+        else:
+            signs = _signs_of_2_1(c)
+            if any(signs.values()):
+                if os.environ.get("CRYPTO_RADAR_PLATFORM_ADOPT") != "1":
+                    raise PlatformError(
+                        "La base tiene cuentas de 2.1 pero no la marca de plataforma (" +
+                        ", ".join(f"{k}: {v}" for k, v in signs.items()) + "). No se archiva nada. Si es correcto, "
+                        "define CRYPTO_RADAR_PLATFORM_ADOPT=1 una vez para marcarla como 2.1 tal como está.")
+                result, archived = "adoptada", {}
+            else:
+                result, archived = "archivada_2_0", {}
+                for table, key, drop in LEGACY_TABLES:
+                    cur = c.execute(f"SELECT * FROM {table}")
+                    cols = [d[0] for d in cur.description]
+                    rows = cur.fetchall()
+                    for i, r in enumerate(rows):
+                        rec = {k: v for k, v in zip(cols, r) if k not in drop}
+                        src = None if key in drop else str(rec.get(key))
+                        c.execute(f"INSERT INTO legacy_archive(id, source_table, source_id, archived_at, data) "
+                                  f"VALUES ({ph}, {ph}, {ph}, {ph}, {ph})",
+                                  (f"2.0/{table}/{src if src is not None else i}", table, src, now,
+                                   json.dumps(rec, ensure_ascii=False, default=str, sort_keys=True)))
+                    c.execute(f"DELETE FROM {table}")
+                    archived[table] = len(rows)
+                for t in EPHEMERAL_TABLES:
+                    c.execute(f"DELETE FROM {t}")
+        meta = {"platform": PLATFORM, "initialized": result, "legacy_archived": json.dumps(archived, sort_keys=True)}
+        for k, v in meta.items():
+            c.execute(f"INSERT INTO platform_meta(k, v, at) VALUES ({ph}, {ph}, {ph})", (k, v, now))
+        c.execute("COMMIT")
+    except BaseException:
+        c.execute("ROLLBACK")
+        raise
+    return {"result": result, "archived": archived}
+
+
 def init():
     global _ready
     with _init_lock:
         if _ready:
             return
         c = conn()
-        for stmt in SCHEMA:
-            s = stmt if IS_PG else stmt.replace("DOUBLE PRECISION", "REAL").replace("BIGINT", "INTEGER")
-            c.execute(s)
-        if not IS_PG:
-            c.commit()
-        migrate()
-        verify_schema()
+        # Varias instancias arrancando a la vez (primer despliegue, despliegue sin corte de Render): en PostgreSQL,
+        # «CREATE TABLE IF NOT EXISTS» simultáneos chocan en el catálogo (pg_type_typname_nsp_index). Un bloqueo
+        # consultivo serializa la creación, la migración y la inicialización de la plataforma.
+        if IS_PG:
+            c.execute("SELECT pg_advisory_lock(%s)", (INIT_LOCK_ID,))
+        try:
+            for stmt in SCHEMA:
+                s = stmt if IS_PG else stmt.replace("DOUBLE PRECISION", "REAL").replace("BIGINT", "INTEGER")
+                c.execute(s)
+            if not IS_PG:
+                c.commit()
+            migrate()
+            verify_schema()
+            init_platform(c)
+        finally:
+            if IS_PG:
+                c.execute("SELECT pg_advisory_unlock(%s)", (INIT_LOCK_ID,))
         _ready = True
 
 

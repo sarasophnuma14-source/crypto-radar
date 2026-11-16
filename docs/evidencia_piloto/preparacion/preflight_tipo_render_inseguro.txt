@@ -1,0 +1,21 @@
+[APROBADO   ] Modo cuentas: CRYPTO_RADAR_ACCOUNTS=1
+[BLOQUEANTE ] TLS con la base: sslmode=(sin definir)
+[ADVERTENCIA] Conexión Neon: endpoint -pooler: sin probar con esta app; usa el endpoint directo o pruébalo antes en una rama de Neon
+[APROBADO   ] Administrador: usuario y contraseña definidos (no se muestran)
+[BLOQUEANTE ] Variables de recuperación: CRYPTO_RADAR_ADMIN_RESET sigue definida; quítala después de usarla
+[APROBADO   ] TOTP del administrador: obligatorio
+[APROBADO   ] Clave de cifrado TOTP: definida (no se muestra)
+[BLOQUEANTE ] Claves independientes: CRYPTO_RADAR_TOTP_KEY y CRYPTO_RADAR_BACKUP_KEY son la misma clave
+[APROBADO   ] Clave de copias: definida (no se muestra)
+[APROBADO   ] Piloto: cerrado: registro con aprobación, sin cobros reales
+[ADVERTENCIA] Telegram: TELEGRAM_BOT_TOKEN no definido: sin avisos por Telegram (el panel funciona igual)
+[BLOQUEANTE ] Arranque: CRYPTO_RADAR_PAYMENTS=live durante el piloto cerrado: los cobros reales están prohibidos
+[BLOQUEANTE ] Arranque: CRYPTO_RADAR_TOTP_KEY y CRYPTO_RADAR_BACKUP_KEY son iguales: deben ser claves independientes
+[BLOQUEANTE ] Arranque: DATABASE_URL sin sslmode=require (o verify-full): la conexión con la base debe ir cifrada
+[BLOQUEANTE ] Pagos: CRYPTO_RADAR_PAYMENTS=live activa cobros reales; no está autorizado en esta fase
+[BLOQUEANTE ] Texto legal privacidad.html: 11 marcas pendientes (COMPLETAR / borrador sin revisión legal)
+[APROBADO   ] Texto legal aviso-de-riesgo.html: completo
+[APROBADO   ] render.yaml: todas las variables secretas son sync: false
+
+8 bloqueantes, 2 advertencias. NO listo para producción.
+rc=1

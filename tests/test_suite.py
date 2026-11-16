@@ -789,6 +789,11 @@ class T12_Escaner(unittest.TestCase):
 class T13_SaaS(unittest.TestCase):
     def setUp(self):
         from radar import auth as _a; _a.reset_rate_limits()   # los límites por IP son reales; cada prueba parte limpia
+        # Las pruebas que cambian CRYPTO_RADAR_ADMIN_USER hacen que el arranque retire al administrador anterior
+        # (un único administrador). Cada prueba vuelve a partir del administrador de la clase.
+        adm = getattr(type(self), "admin", None)
+        if adm:
+            db.execute("UPDATE users SET is_admin = 1, status = 'active', disabled = 0 WHERE id = ?", (adm["id"],))
 
     @classmethod
     def setUpClass(cls):
@@ -796,6 +801,9 @@ class T13_SaaS(unittest.TestCase):
         from http.server import ThreadingHTTPServer
         server.ACCOUNTS = True
         db.init()
+        # una clase anterior pudo cambiar el administrador del entorno (y retirar a «admin»): se recupera aquí
+        db.execute("UPDATE users SET is_admin = 1, status = 'active', disabled = 0 WHERE email = 'admin' AND "
+                   "approved_by = 'entorno'", ())
         auth.ensure_admin()
         cls.admin = db.one("SELECT * FROM users WHERE email = 'admin'", ())
         cls.httpd = ThreadingHTTPServer(("127.0.0.1", 0), server.Handler)
@@ -987,6 +995,7 @@ class T13_SaaS(unittest.TestCase):
     def admin_client(self):
         op = self.client()
         st, r, _ = self.call(op, "/api/auth/login", {"username": "admin", "password": "clave larga del jefe 2026"})
+        assert st == 200, (st, r)
         return op, r["csrf"]
 
     def test_admin_api_approve_create_reset(self):
@@ -1230,7 +1239,7 @@ class T16_Interfaz(unittest.TestCase):
 class T18_SeguridadFinal(T13_SaaS):
     """Hereda el servidor y los ayudantes de T13; solo ejecuta sus propias pruebas."""
     def setUp(self):
-        auth.reset_rate_limits()
+        super().setUp()
         self._env = {k: os.environ.get(k) for k in ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD",
                                                     "CRYPTO_RADAR_ADMIN_RESET", "CRYPTO_RADAR_ADMIN_TAKEOVER")}
 
@@ -1260,7 +1269,7 @@ class T18_SeguridadFinal(T13_SaaS):
         self.assertTrue(any(a["user_id"] == uid for a in self.acts("admin_bootstrap_conflict")))
         # cuarentena explícita: la cuenta del intruso se aparta y el admin nace con la clave del entorno
         os.environ["CRYPTO_RADAR_ADMIN_TAKEOVER"] = "1"
-        self.assertEqual(auth.ensure_admin(), {"user": name, "result": "cuarentena"})
+        self.assertEqual(auth.ensure_admin(), {"user": name, "result": "cuarentena", "retirados": 1})   # el anterior
         old = db.one("SELECT * FROM users WHERE id = ?", (uid,))
         self.assertEqual((old["is_admin"], old["status"], old["disabled"]), (0, "rejected", 1))
         self.assertNotEqual(old["email"], name)
@@ -1384,7 +1393,8 @@ class T18_SeguridadFinal(T13_SaaS):
         env.pop("DATABASE_URL", None)
         return subprocess.run([sys.executable, "-c", code, str(ROOT)], capture_output=True, text=True, env=env, timeout=60)
 
-    def test_migration_from_old_schema_keeps_users(self):
+    def test_migration_from_old_schema_archives_users(self):
+        """Decisión 2.1.0: plataforma nueva. Las cuentas de la 2.0.0 se archivan (sin contraseña) y no se heredan."""
         code = r"""
 import os, sys, sqlite3
 sys.path.insert(0, sys.argv[1])
@@ -1396,8 +1406,10 @@ c.execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES ('u1', 'viej
 from radar import db
 db.init(); db._ready = False; db.init()          # dos arranques seguidos: idempotente
 assert db.REQUIRED["users"] <= db.columns("users")
-r = db.one("SELECT email, status FROM users WHERE id = 'u1'", ())
-assert r == {"email": "viejo@example.com", "status": "active"}, r
+assert db.one("SELECT email FROM users WHERE id = 'u1'", ()) is None
+arc = db.all_("SELECT source_table, source_id, data FROM legacy_archive", ())
+assert len(arc) == 1 and arc[0]["source_id"] == "u1" and "pw_hash" not in arc[0]["data"], arc
+assert db.platform_status()["initialized"] == "archivada_2_0"
 print("MIG_OK")
 """
         r = self._py(code); self.assertIn("MIG_OK", r.stdout, r.stderr[-1500:])
@@ -1818,14 +1830,16 @@ os.environ["CRYPTO_RADAR_HOME"] = tempfile.mkdtemp()
 sys.path.insert(0, sys.argv[1])
 from radar import db, auth, storage, multiuser
 assert db.IS_PG
-for t in ("users", "sessions", "activity", "positions", "payments", "telegram_links", "kv", "rate_limits"):
+for t in ("users", "sessions", "activity", "positions", "payments", "telegram_links", "kv", "rate_limits",
+          "admin_enroll_tokens", "platform_meta", "legacy_archive"):
     db.conn().execute(f"DROP TABLE IF EXISTS {t}")
-# esquema antiguo (antes de 2.1): la migración añade columnas sin perder usuarios
+# esquema antiguo (2.0.0): la migración añade columnas y ARCHIVA las cuentas heredadas (plataforma nueva)
 db.conn().execute("CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, pw_hash TEXT NOT NULL, created_at DOUBLE PRECISION NOT NULL, plan TEXT NOT NULL DEFAULT 'free', plan_until DOUBLE PRECISION, is_admin INTEGER NOT NULL DEFAULT 0, telegram_chat_id TEXT, settings TEXT NOT NULL DEFAULT '{}', disabled INTEGER NOT NULL DEFAULT 0, failed_logins INTEGER NOT NULL DEFAULT 0, locked_until DOUBLE PRECISION)")
 db.conn().execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES ('old1', 'viejo@example.com', 'x', 1)")
 db._ready = False; db.init(); db._ready = False; db.init()
 assert db.REQUIRED["users"] <= db.columns("users")
-assert db.one("SELECT status FROM users WHERE id = 'old1'", ())["status"] == "active"
+assert db.one("SELECT status FROM users WHERE id = 'old1'", ()) is None
+assert db.one("SELECT source_id FROM legacy_archive WHERE source_table = 'users'", ())["source_id"] == "old1"
 # apropiación del nombre del administrador: nunca se promueve
 squat = auth.request_access("pgadmin", "clave del intruso 99", consent=auth.POLICY_VERSION, ip="10.0.0.9")
 os.environ["CRYPTO_RADAR_ADMIN_USER"] = "pgadmin"; os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"] = "clave larga del jefe 2026"
@@ -2073,6 +2087,10 @@ class T22_ModoPagos(unittest.TestCase):
 
     def test_live_requires_production_key(self):
         self.mode("live")
+        self.assertEqual(billing.payments_mode(), "off")              # piloto cerrado (por defecto): live = off
+        self.assertEqual(billing.wompi_api(), "https://sandbox.wompi.co/v1")
+        os.environ["CRYPTO_RADAR_PILOT"] = "abierto"
+        self.addCleanup(os.environ.pop, "CRYPTO_RADAR_PILOT", None)
         self.assertFalse(billing.wompi_enabled())                     # clave de prueba en modo live: desactivado
         self.assertEqual(billing.wompi_api(), "https://production.wompi.co/v1")
         self.assertEqual(billing.nowp_api(), "https://api.nowpayments.io/v1")
@@ -3107,6 +3125,302 @@ class T29_CierreRiesgos(T13_SaaS):
 for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
     if _n not in T29_CierreRiesgos.__dict__:
         setattr(T29_CierreRiesgos, _n, None)
+
+# ================================================================== 30. Plataforma nueva y un único administrador
+def _fresh_py(code, extra=None, timeout=120):
+    """Proceso aparte con una base SQLite vacía y propia (no comparte el estado de las demás pruebas)."""
+    home = tempfile.mkdtemp(prefix="cr-t30-")
+    env = {k: v for k, v in os.environ.items() if k != "DATABASE_URL"}
+    env.update({"CRYPTO_RADAR_HOME": home, "CRYPTO_RADAR_ACCOUNTS": "1"}); env.update(extra or {})
+    env = {k: v for k, v in env.items() if v is not None}
+    return subprocess.run([sys.executable, "-c", code, str(ROOT)], capture_output=True, text=True, env=env, timeout=timeout)
+
+
+class T30_PlataformaNueva(unittest.TestCase):
+    """Decisión del responsable: 2.1.0 empieza desde cero; nada de 2.0.0 sirve para entrar (REGISTRO_USUARIOS_PILOTO.md)."""
+
+    def test_end_to_end_with_real_server(self):
+        env = {k: v for k, v in os.environ.items() if k not in ("PG_ADMIN_URL", "TEST_DATABASE_URL")}
+        r = subprocess.run([sys.executable, str(ROOT / "tests" / "piloto" / "plataforma_nueva.py")], capture_output=True,
+                           text=True, env=env, timeout=600)
+        self.assertEqual(r.returncode, 0, r.stdout[-3000:] + r.stderr[-2000:])
+        self.assertIn("de 20 pasos OK", r.stdout)
+        self.assertNotIn("[FALLO]", r.stdout)
+
+    def test_cutover_is_atomic(self):
+        """Si algo falla a mitad del archivado, no se pierde ni se archiva nada y no queda la marca."""
+        r = _fresh_py(r"""
+import sys, sqlite3
+sys.path.insert(0, sys.argv[1])
+from radar.config import DATA_DIR
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+c = sqlite3.connect(str(DATA_DIR / "app.db"))
+c.execute("CREATE TABLE users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, pw_hash TEXT NOT NULL, created_at REAL NOT NULL, plan TEXT NOT NULL DEFAULT 'free', plan_until REAL, is_admin INTEGER NOT NULL DEFAULT 0, telegram_chat_id TEXT, settings TEXT NOT NULL DEFAULT '{}', disabled INTEGER NOT NULL DEFAULT 0, failed_logins INTEGER NOT NULL DEFAULT 0, locked_until REAL)")
+c.execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES ('u1', 'viejo', 'x', 1)"); c.commit(); c.close()
+from radar import db
+db.LEGACY_TABLES = db.LEGACY_TABLES + (("tabla_que_no_existe", "id", ()),)
+try:
+    db.init(); print("NO_ERROR")
+except Exception as e:
+    print("FALLO_ESPERADO", type(e).__name__)
+c = sqlite3.connect(str(DATA_DIR / "app.db"))
+print("USERS", c.execute("SELECT count(*) FROM users").fetchone()[0], "ARCHIVO",
+      c.execute("SELECT count(*) FROM legacy_archive").fetchone()[0], "MARCA",
+      c.execute("SELECT count(*) FROM platform_meta").fetchone()[0])
+""")
+        self.assertIn("FALLO_ESPERADO", r.stdout, r.stderr[-1500:])
+        self.assertIn("USERS 1 ARCHIVO 0 MARCA 0", r.stdout)
+
+    def test_fresh_database_is_marked_new(self):
+        r = _fresh_py("import sys; sys.path.insert(0, sys.argv[1]); from radar import db; db.init(); "
+                      "db._ready = False; db.init(); print(db.platform_status())")
+        self.assertIn("'initialized': 'nueva'", r.stdout, r.stderr[-1500:])
+        self.assertIn("'platform': '2.1'", r.stdout)
+
+    def test_extra_admin_in_database_is_retired_at_boot(self):
+        """Una segunda cuenta con is_admin (escrita a mano en la base) pierde el rol al arrancar: un único administrador."""
+        r = _fresh_py(r"""
+import sys
+sys.path.insert(0, sys.argv[1])
+from radar import auth, db
+db.init(); auth.ensure_admin()
+uid = auth._create("colado.admin", "clave del colado 2026 x", "active", is_admin=1)
+tok = auth.login("colado.admin", "clave del colado 2026 x")[0]
+res = auth.ensure_admin()
+row = db.one("SELECT is_admin, status, disabled FROM users WHERE id = ?", (uid,))
+print("RES", res["result"], res["retirados"], "ROW", row["is_admin"], row["status"], row["disabled"],
+      "SES", auth.session(tok) is None, "N", db.one("SELECT count(*) AS n FROM users WHERE is_admin <> 0", ())["n"])
+""")
+        self.assertIn("RES verificado 1 ROW 0 rejected 1 SES True N 1", r.stdout, r.stderr[-1500:])
+
+    def test_new_users_never_get_admin(self):
+        r = _fresh_py(r"""
+import sys
+sys.path.insert(0, sys.argv[1])
+from radar import auth, db
+db.init(); auth.ensure_admin()
+out = []
+for name in ("admin", "root", "soporte", "administrador", "jefe.t30"):
+    try:
+        auth.request_access(name, "clave del intruso 2026 x", consent=auth.POLICY_VERSION, ip=f"10.9.{len(out)}.1")
+        out.append(name + ":ACEPTADO")
+    except auth.AuthError as e:
+        out.append(name + ":" + str(e.code))
+uid = auth.request_access("normal.t30", "clave del normal 2026 x", consent=auth.POLICY_VERSION, ip="10.9.9.9")
+adm = auth.get_user(db.one("SELECT id FROM users WHERE is_admin = 1", ())["id"])
+adm["totp_enabled"] = 1          # (solo en memoria: admin_ok exige TOTP)
+auth.admin_set_status(adm, uid, "approve", "elite", 30)
+auth.admin_create(adm, "creado.t30", "clave del creado 2026 x", "pro", 30)
+u = auth.get_user(uid)
+auth.save_user_settings(uid, {"is_admin": 1, "plan": "elite", "status": "active"})
+print("|".join(out), "N", db.one("SELECT count(*) AS n FROM users WHERE is_admin <> 0", ())["n"],
+      "NORMAL", auth.get_user(uid)["is_admin"], "OK_ADMIN", auth.admin_ok(auth.get_user(uid)))
+""", {"CRYPTO_RADAR_ADMIN_USER": "jefe.t30"})
+        self.assertIn("admin:409|root:409|soporte:409", r.stdout, r.stdout + r.stderr[-1500:])
+        self.assertIn("jefe.t30:409", r.stdout)
+        self.assertIn("N 1 NORMAL 0 OK_ADMIN False", r.stdout)
+
+    def test_insecure_config_blocks_startup_without_leaking(self):
+        from radar import pilot
+        k1, k2 = "a" * 40, "b" * 40
+        base = {"CRYPTO_RADAR_TOTP_KEY": k1, "CRYPTO_RADAR_BACKUP_KEY": k2, "RENDER": "true",
+                "DATABASE_URL": "postgresql://u:SECRETO_DB@ep-x.neon.tech/db?sslmode=require", "CRYPTO_RADAR_PAYMENTS": "off", "CRYPTO_RADAR_ADMIN_TOTP": "required"}
+        cases = {"misma clave": {"CRYPTO_RADAR_BACKUP_KEY": k1}, "clave corta": {"CRYPTO_RADAR_TOTP_KEY": "corta"},
+                 "sin clave": {"CRYPTO_RADAR_TOTP_KEY": ""}, "live": {"CRYPTO_RADAR_PAYMENTS": "live"},
+                 "sandbox en Render": {"CRYPTO_RADAR_PAYMENTS": "sandbox"}, "TOTP opcional": {"CRYPTO_RADAR_ADMIN_TOTP": "optional"},
+                 "sin TLS": {"DATABASE_URL": "postgresql://u:SECRETO_DB@ep-x.neon.tech/db"},
+                 "SQLite forzado": {"CRYPTO_RADAR_ALLOW_SQLITE": "1"}}
+        with mock.patch.dict(os.environ, base):
+            self.assertEqual(pilot.startup_errors(True), [])
+            for name, extra in cases.items():
+                with mock.patch.dict(os.environ, extra):
+                    errs = pilot.startup_errors(True)
+                    self.assertTrue(errs, name)
+                    joined = " ".join(errs)
+                    for secret in (k1, k2, "SECRETO_DB", "corta"):
+                        self.assertNotIn(secret, joined, name)
+
+    def test_serve_refuses_before_touching_the_database(self):
+        r = _fresh_py(r"""
+import sys, os
+sys.path.insert(0, sys.argv[1])
+from radar import server
+from radar.config import DATA_DIR
+try:
+    server.serve(0, schedule=False); print("ARRANCO")
+except SystemExit as e:
+    print("NO_ARRANCA", "SECRETO_LIVE" not in str(e), "live" in str(e))
+print("BASE_CREADA", (DATA_DIR / "app.db").exists())
+""", {"CRYPTO_RADAR_PAYMENTS": "live", "WOMPI_PRIVATE_KEY": "SECRETO_LIVE", "CRYPTO_RADAR_HOST": "127.0.0.1"})
+        self.assertIn("NO_ARRANCA True True", r.stdout, r.stdout + r.stderr[-1500:])
+        self.assertIn("BASE_CREADA False", r.stdout)
+
+
+from radar import backup  # noqa: E402  (T31)
+
+
+class T31_CopiasExtremos(unittest.TestCase):
+    """Fase C: clave ausente o errónea, copia manipulada o incompleta, restauración interrumpida o repetida."""
+
+    def setUp(self):
+        import sqlite3
+        self.tmp = Path(tempfile.mkdtemp(prefix="cr-t31-"))
+        self.src = str(self.tmp / "o.db")
+        c = sqlite3.connect(self.src); backup._ensure_schema(c, False)
+        for i in range(50):
+            c.execute("INSERT INTO users(id, email, pw_hash, created_at) VALUES (?, ?, 'x', 1)", (f"u{i}", f"user{i}"))
+        c.execute("INSERT INTO platform_meta(k, v, at) VALUES ('platform', '2.1', 1), ('initialized', 'nueva', 1)")
+        c.commit(); c.close()
+        self.d = backup.create(self.src, self.tmp)
+
+    def test_missing_and_wrong_key(self):
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_BACKUP_KEY": ""}):
+            self.assertRaisesRegex(backup.BackupError, "Falta CRYPTO_RADAR_BACKUP_KEY", backup.verify, self.d)
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_BACKUP_KEY": "otra clave distinta de 32 caracteres o mas"}):
+            self.assertRaisesRegex(backup.BackupError, "Firma HMAC inválida", backup.verify, self.d)
+
+    def test_tampered_backup(self):
+        f = self.d / "users.jsonl"
+        f.write_text(f.read_text().replace("user7", "user7x"))
+        self.assertRaises(backup.BackupError, backup.verify, self.d)
+
+    def test_incomplete_backup(self):
+        (self.d / "positions.jsonl").unlink()
+        self.assertRaisesRegex(backup.BackupError, "positions: falta el archivo", backup.verify, self.d)
+        d2 = backup.create(self.src, self.tmp)
+        lines = (d2 / "users.jsonl").read_text().splitlines()
+        (d2 / "users.jsonl").write_text("\n".join(lines[:20]) + "\n")              # copia cortada a medias
+        self.assertRaisesRegex(backup.BackupError, "users: 20 filas", backup.verify, d2)
+
+    def test_interrupted_restore_leaves_target_empty_and_retry_works(self):
+        import sqlite3
+        target = str(self.tmp / "r.db")
+        real = backup.json.loads
+        calls = {"n": 0}
+
+        def boom(x, *a, **k):
+            calls["n"] += 1
+            if calls["n"] == 30:
+                raise KeyboardInterrupt("corte a mitad de la restauración")
+            return real(x, *a, **k)
+        with mock.patch.object(backup.json, "loads", boom):
+            with self.assertRaises(KeyboardInterrupt):
+                backup.restore(self.d, target)
+        c = sqlite3.connect(target)
+        self.assertEqual(c.execute("SELECT count(*) FROM users").fetchone()[0], 0)        # transacción: nada a medias
+        c.close()
+        self.assertEqual(backup.restore(self.d, target)["users"], 50)                     # se puede repetir
+        self.assertRaisesRegex(backup.BackupError, "no está vacío", backup.restore, self.d, target)   # y no dos veces
+
+    def test_restored_copy_keeps_platform_marker_and_boots(self):
+        target = str(self.tmp / "r2.db")
+        backup.restore(self.d, target)
+        r = _fresh_py(r"""
+import sys, shutil
+sys.path.insert(0, sys.argv[1])
+from radar.config import DATA_DIR
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+shutil.copy(sys.argv[2] if len(sys.argv) > 2 else "", DATA_DIR / "app.db")
+""".replace('sys.argv[2] if len(sys.argv) > 2 else ""', repr(target)) + r"""
+from radar import db
+db.init()
+print("ESTADO", db.platform_status()["initialized"], "USERS", db.one("SELECT count(*) AS n FROM users", ())["n"])
+""")
+        self.assertIn("ESTADO nueva USERS 50", r.stdout, r.stderr[-1500:])      # no la toma por una base heredada
+
+    @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "requiere PostgreSQL de prueba")
+    def test_restore_killed_on_postgres(self):
+        """Proceso de restauración matado con SIGKILL a mitad: la base queda vacía y la restauración se puede repetir."""
+        import psycopg, signal
+        import sqlite3
+        c = sqlite3.connect(self.src)
+        c.executemany("INSERT INTO activity(id, user_id, at, action) VALUES (?, 'u1', 1, 'x')", [(f"a{i}",) for i in range(150000)])
+        c.commit(); c.close()
+        d = backup.create(self.src, self.tmp)
+        adm = os.environ["TEST_DATABASE_URL"]; name = f"cr_t31_{secrets.token_hex(3)}"
+        with psycopg.connect(adm, autocommit=True) as a:
+            a.execute(f"CREATE DATABASE {name}")
+        url = adm.rsplit("/", 1)[0] + "/" + name
+        try:
+            env = dict(os.environ); env.pop("DATABASE_URL", None)
+            p = subprocess.Popen([sys.executable, str(ROOT / "main.py"), "backup", "restore", str(d), "--target", url],
+                                 env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            t0 = time.time()
+            with psycopg.connect(url, autocommit=True) as w:     # espera a que empiece a insertar y lo mata
+                while time.time() - t0 < 60:
+                    n = w.execute("SELECT count(*) FROM pg_stat_activity WHERE datname = %s AND query ILIKE 'INSERT%%'",
+                                  (name,)).fetchone()[0]
+                    if n:
+                        break
+                    time.sleep(0.05)
+            p.send_signal(signal.SIGKILL); p.wait(10)
+            time.sleep(1)
+            with psycopg.connect(url, autocommit=True) as w:
+                left = sum(w.execute(f"SELECT count(*) FROM {t}").fetchone()[0] for t in ("users", "activity"))
+            self.assertEqual(left, 0)
+            self.assertEqual(backup.restore(d, url)["activity"], 150000)
+        finally:
+            with psycopg.connect(adm, autocommit=True) as a:
+                a.execute(f"DROP DATABASE IF EXISTS {name} WITH (FORCE)")
+
+
+class T32_PagosPiloto(unittest.TestCase):
+    """Fase G: durante el piloto cerrado no hay cobros reales ni planes sin autorización."""
+    PROD = {"WOMPI_PUBLIC_KEY": "pub_prod_abc", "WOMPI_INTEGRITY_SECRET": "i", "WOMPI_EVENTS_SECRET": "e",
+            "COP_PER_USD": "4000", "NOWPAYMENTS_API_KEY": "k", "NOWPAYMENTS_IPN_SECRET": "s", "CRYPTO_RADAR_PAYMENTS": "live"}
+
+    def test_live_with_production_keys_is_off_in_pilot(self):
+        from radar import billing
+        with mock.patch.dict(os.environ, self.PROD):
+            os.environ.pop("CRYPTO_RADAR_PILOT", None)
+            self.assertEqual(billing.payments_mode(), "off")
+            self.assertFalse(billing.wompi_enabled()); self.assertFalse(billing.nowpayments_enabled())
+            self.assertNotIn("production", billing.wompi_api()); self.assertNotIn("api.nowpayments.io", billing.nowp_api())
+            self.assertTrue(billing.status()["pilot"])
+
+    def test_checkout_and_webhooks_refused_and_nothing_granted(self):
+        from radar import billing
+        db.init()
+        uid = auth._create(f"pago{random.randint(0, 10**9)}", "clave del cliente 2026 x", "active")
+        u = auth.get_user(uid)
+        before = db.one("SELECT count(*) AS n FROM payments", ())["n"]
+        with mock.patch.dict(os.environ, self.PROD):
+            for prov in ("wompi", "crypto"):
+                with self.assertRaises(auth.AuthError) as e:
+                    billing.checkout(u, "pro", "month", prov, "https://x")
+                self.assertEqual(e.exception.code, 503)
+            self.assertEqual(billing.wompi_webhook({"data": {"transaction": {"reference": "x", "status": "APPROVED"}}})[0], 503)
+            self.assertEqual(billing.nowpayments_ipn({"order_id": "x", "payment_status": "finished"}, "sig")[0], 503)
+        self.assertEqual(db.one("SELECT count(*) AS n FROM payments", ())["n"], before)
+        self.assertEqual(auth.get_user(uid)["plan"], "free")
+        with self.assertRaises(auth.AuthError):                       # concesión manual: solo administradores con TOTP
+            billing.admin_grant(u, u["email"], "elite", 30, "intento")
+
+    def test_startup_refuses_live_and_render_sandbox(self):
+        from radar import pilot
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_PAYMENTS": "live"}):
+            self.assertTrue(any("live" in e for e in pilot.startup_errors(False)))
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_PAYMENTS": "sandbox", "RENDER": "true"}):
+            self.assertTrue(any("sandbox" in e for e in pilot.startup_errors(False)))
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_PAYMENTS": "off", "RENDER": "true"}):
+            self.assertEqual(pilot.startup_errors(False), [])
+
+    def test_interface_never_simulates_a_successful_charge(self):
+        app = (ROOT / "web" / "app.js").read_text(encoding="utf-8")
+        landing = (ROOT / "web" / "landing.html").read_text(encoding="utf-8")
+        entrar = (ROOT / "web" / "entrar.html").read_text(encoding="utf-8")
+        for bad in ("Pago exitoso", "pago aprobado", "Pago aprobado", "¡Gracias por tu compra"):
+            self.assertNotIn(bad, app + landing)
+        self.assertIn("if (r.url) location.href = r.url", app)          # solo redirige al proveedor
+        self.assertIn("piloto cerrado", landing.lower()); self.assertIn("No se cobra nada", landing)
+        self.assertNotIn("Reservar cupo de fundador", landing)
+        self.assertIn("Piloto cerrado.", entrar)
+
+    def test_no_promises_of_returns(self):
+        txt = " ".join((ROOT / "web" / f).read_text(encoding="utf-8") for f in ("landing.html", "entrar.html", "index.html"))
+        for bad in ("hundir la cuenta", "ganancias garantizadas", "rentabilidad garantizada", "100% de acierto", "infalible"):
+            self.assertNotIn(bad, txt.lower())
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2 if "-v" in sys.argv else 1, argv=[sys.argv[0]] + [a for a in sys.argv[1:] if a != "-v"])

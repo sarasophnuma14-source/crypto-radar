@@ -532,7 +532,7 @@ async function loadSettings(){
       $("#plansBox").innerHTML = `<div class="plans">${[["pro", "Pro"], ["elite", "Élite"]].map(([k, l]) => `<div class="card"><h3>${l}</h3><p>US$${P[k + "_month"]}/mes · US$${P[k + "_year"]}/año</p>
         <div class="row">${b.wompi ? `<button class="btn a" data-buy="${k}" data-per="month" data-prov="wompi">Mensual con tarjeta/PSE</button><button class="btn" data-buy="${k}" data-per="year" data-prov="wompi">Anual</button>` : ""}
         ${b.crypto ? `<button class="btn" data-buy="${k}" data-per="month" data-prov="crypto">Mensual con USDT</button>` : ""}</div></div>`).join("")}</div>
-        ${can ? "" : `<p class="note">Los pagos aún no están habilitados en este servidor. Ningún plan se activa sin un pago confirmado por el proveedor.</p>`}`;
+        ${can ? "" : `<p class="note">${b.pilot ? "<b>Piloto cerrado:</b> los pagos están desactivados y no se cobra nada. " : "Los pagos aún no están habilitados en este servidor. "}Ningún plan se activa sin un pago confirmado por el proveedor; durante el piloto los planes los asigna el administrador.</p>`}`;
     } catch (e) {}
     const us = ME.settings || {}, f = $("#userSet");
     f.capital_usd.value = us.capital_usd ?? ""; f.risk_per_trade_pct.value = us.risk_per_trade_pct ?? ""; f.watchlist.value = (us.watchlist || []).join(", "); f.alerts_telegram.checked = us.alerts_telegram !== false;

@@ -5,8 +5,9 @@ Uso:  PG_ADMIN_URL=postgresql://radar@127.0.0.1:55432/radar python tests/piloto/
 
 1. `git worktree` de la versión antigua en un directorio temporal (no cambia el repositorio de trabajo).
 2. La versión antigua crea su esquema en una base temporal y escribe datos (documentos kv, usuario y actividad).
-3. La versión nueva arranca sobre esa base: migraciones, verificación de esquema, administrador, cifrado TOTP.
-4. Se comprueba que los datos antiguos siguen intactos, que el esquema queda completo y que se puede repetir el
+3. La versión nueva arranca sobre esa base: migraciones, verificación de esquema, archivado de las cuentas de 2.0.0
+   (plataforma nueva), administrador, cifrado TOTP.
+4. Se comprueba que las cuentas antiguas ya no están en la autenticación y sí en el archivo, que el esquema queda completo y que se puede repetir el
    arranque (migración idempotente). `preflight --db` sobre el resultado.
 """
 import json
@@ -69,7 +70,9 @@ db.init()
 adm = auth.ensure_admin()
 r = auth.encrypt_totp_secrets()
 print(json.dumps({"admin": adm["result"], "cifrado": r, "latest": storage.read("latest.json", {}),
-                  "viejo": db.one("SELECT email, status, totp_enabled FROM users WHERE id = 'viejo1'", ())}))
+                  "viejo": db.one("SELECT email, status, totp_enabled FROM users WHERE id = 'viejo1'", ()),
+                  "archivo": db.one("SELECT data FROM legacy_archive WHERE source_table = 'users' AND source_id = 'viejo1'", ()),
+                  "plataforma": db.platform_status()}))
 """
 
 
@@ -98,8 +101,11 @@ def main(out=None, ref="origin/main"):
         res = json.loads(p.stdout.strip().splitlines()[-1]) if p.returncode == 0 else {}
         step("La versión nueva migra, verifica el esquema y crea el administrador", p.returncode == 0 and res.get("admin") == "creado",
              f"{R['migracion_s']} s; " + (json.dumps(res.get("cifrado")) if res else p.stderr[-600:]))
-        step("Los datos antiguos siguen intactos", res.get("latest", {}).get("nota", "").startswith("informe escrito") and
-             (res.get("viejo") or {}).get("email") == "usuario.antiguo", json.dumps(res.get("viejo")))
+        arc = (res.get("archivo") or {}).get("data") or ""
+        step("Plataforma nueva: la cuenta de 2.0.0 sale de la autenticación y queda archivada sin contraseña; los "
+             "informes (kv) se conservan", res.get("latest", {}).get("nota", "").startswith("informe escrito") and
+             res.get("viejo") is None and "usuario.antiguo" in arc and "scrypt" not in arc and
+             (res.get("plataforma") or {}).get("initialized") == "archivada_2_0", json.dumps(res.get("plataforma")))
         cols1 = {t: c for t, c in pg("SELECT table_name, count(*) FROM information_schema.columns WHERE table_schema = "
                                       "current_schema() GROUP BY table_name", True)}
         step("Esquema nuevo completo", all(t in cols1 for t in ("rate_limits", "admin_enroll_tokens")) and cols1["users"] > cols0.get("users", 0),
@@ -114,7 +120,7 @@ def main(out=None, ref="origin/main"):
         dbl = [x for x in pf.stdout.splitlines() if any(k in x for k in ("Esquema", "Administrador en la base",
                                                                           "TOTP del administrador en la base", "Secretos TOTP"))]
         step("`preflight --db` tras migrar: esquema OK; TOTP del administrador pendiente (aviso esperado)",
-             any(x.startswith("[OK") and "Esquema" in x for x in dbl), " | ".join(dbl))
+             any(x.startswith("[APROBADO") and "Esquema" in x for x in dbl), " | ".join(dbl))
     finally:
         try:
             pg(f"DROP DATABASE IF EXISTS {DB} WITH (FORCE)")

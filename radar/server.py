@@ -548,6 +548,12 @@ def serve(port=None, host=None, schedule=True):
     if host != "127.0.0.1" and not ACCOUNTS and not os.environ.get("CRYPTO_RADAR_PASSWORD"):
         raise SystemExit("Por seguridad, define CRYPTO_RADAR_PASSWORD (o activa cuentas con CRYPTO_RADAR_ACCOUNTS=1) "
                          "antes de exponer el panel a internet.")
+    from . import pilot
+    errs = pilot.startup_errors(ACCOUNTS)            # solo entorno, antes de abrir la base; nunca muestra valores
+    if errs:
+        raise SystemExit("No arranco: configuración de seguridad no válida:\n  - " + "\n  - ".join(errs))
+    for w in pilot.startup_warnings():
+        print("AVISO:", w, flush=True)
     if ACCOUNTS:
         # En modo cuentas el administrador es obligatorio: sin él nadie aprueba solicitudes ni gestiona usuarios,
         # y un servidor así no debe quedar expuesto. Se comprueba antes de tocar la base.
@@ -562,14 +568,18 @@ def serve(port=None, host=None, schedule=True):
                              "en DATABASE_URL.")
         try:
             db.init()                                   # crea, migra y comprueba el esquema completo
-        except db.SchemaError as e:
+        except (db.SchemaError, db.PlatformError) as e:
             raise SystemExit(f"No arranco: {e}")
         print(f"Modo cuentas activo · base de datos {db.backend()} · esquema verificado", flush=True)
+        ps = db.platform_status()
+        print(f"Plataforma {ps.get('platform')} · inicialización: {ps.get('initialized')} · archivado de 2.0.0: "
+              f"{ps.get('legacy_archived')}" + (" · piloto cerrado" if pilot.closed() else ""), flush=True)
         from . import auth
         adm = auth.ensure_admin()                       # AdminBootstrapError (SystemExit) si el entorno no es válido
         if not adm or not adm.get("user"):
             raise SystemExit("No arranco: no se pudo confirmar el administrador del modo cuentas.")
-        print(f"Administrador: {adm['user']} · {adm['result']}", flush=True)
+        print(f"Administrador: {adm['user']} · {adm['result']}" +
+              (f" · {adm['retirados']} administradores anteriores retirados" if adm.get("retirados") else ""), flush=True)
         st = auth.register_env_enroll_token()
         if st:
             print(f"Código de alta del administrador (CRYPTO_RADAR_ADMIN_ENROLL_TOKEN): {st}", flush=True)

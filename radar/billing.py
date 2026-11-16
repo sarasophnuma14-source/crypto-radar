@@ -35,7 +35,11 @@ def _env(k):
 
 def payments_mode():
     m = _env("CRYPTO_RADAR_PAYMENTS").lower() or "off"
-    return m if m in MODES else "off"
+    m = m if m in MODES else "off"
+    from . import pilot
+    if m == "live" and pilot.closed():      # piloto cerrado: nunca cobros reales, aunque se salte el arranque
+        return "off"
+    return m
 
 
 def wompi_api():
@@ -66,7 +70,8 @@ def nowpayments_enabled():
 
 
 def status():
-    return {"mode": payments_mode(), "wompi": wompi_enabled(), "crypto": nowpayments_enabled(),
+    from . import pilot
+    return {"mode": payments_mode(), "wompi": wompi_enabled(), "crypto": nowpayments_enabled(), "pilot": pilot.closed(),
             "prices_usd": {f"{p}_{per}": v for (p, per), v in PRICES_USD.items()}}
 
 

@@ -282,9 +282,9 @@ def ensure_admin():
                        (hash_password(pw), row["id"]))
             logout_all(row["id"])
             log(row["id"], "admin_bootstrap_password_reset", {"user": u, "source": "entorno", "totp_reset": True})
-            return {"user": u, "result": "restablecido"}
+            return {"user": u, "result": "restablecido", "retirados": _single_admin(row["id"])}
         log(row["id"], "admin_bootstrap_verified", {"user": u})
-        return {"user": u, "result": "verificado"}
+        return {"user": u, "result": "verificado", "retirados": _single_admin(row["id"])}
     result = "creado"
     if row:   # alguien reservó el nombre del administrador con una cuenta normal
         detail = {"user": u, "squatter_id": row["id"], "squatter_status": row["status"],
@@ -303,7 +303,21 @@ def ensure_admin():
         result = "cuarentena"
     uid = _create(u, pw, "active", is_admin=1, by="entorno")
     log(uid, "admin_bootstrap_created", {"user": u, "after_quarantine": result == "cuarentena"})
-    return {"user": u, "result": result}
+    return {"user": u, "result": result, "retirados": _single_admin(uid)}
+
+
+def _single_admin(keep_id):
+    """Un único administrador: el del entorno. Cualquier otra cuenta con privilegios (p. ej. el administrador anterior
+    si se cambió CRYPTO_RADAR_ADMIN_USER) pierde el rol, queda desactivada y sin sesiones. Devuelve cuántas."""
+    others = db.all_("SELECT id, email FROM users WHERE is_admin <> 0 AND id <> ?", (keep_id,))
+    for o in others:
+        db.execute("UPDATE users SET is_admin = 0, status = 'rejected', disabled = 1 WHERE id = ?", (o["id"],))
+        logout_all(o["id"])
+        log(o["id"], "admin_bootstrap_demoted", {"user": o["email"], "kept": keep_id})
+    n = (db.one("SELECT COUNT(*) AS n FROM users WHERE is_admin <> 0", ()) or {}).get("n", 0)
+    if n != 1:
+        raise AdminBootstrapError(f"Debe existir exactamente un administrador y hay {n}")
+    return len(others)
 
 
 # ---------------------------------------------------------------- administración de cuentas
