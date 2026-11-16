@@ -50,7 +50,7 @@ Incidencias resueltas durante el despliegue:
 | Proteger 2.0 antes de cualquier merge a main | PATRON | `crypto-radar` y `crypto-radar-ventas` despliegan desde `main` con Auto-Deploy on: pasar a `production-2.0.0` y Auto-Deploy off. Hasta entonces **no se fusiona nada en main** |
 | Rotar la contraseña de `radar_app` | PATRON | Pasó por el chat. Reset en Neon y sustituirla en `DATABASE_URL` de Render |
 | Telegram | PATRON | Falta un bot nuevo (@BotFather) para 2.1: `TELEGRAM_BOT_TOKEN` y `TELEGRAM_CHAT_ID`. No probado |
-| Paper trading D_volmom | Decisión | El almacenamiento del paper trading es de archivos locales y el disco de Render se borra en cada despliegue: no persistiría. No iniciado |
+| Paper trading D_volmom_L28 | Automático | Activado con `PAPER_TRADING=1` (02:27Z). Estrategia congelada sin cambios; diario encadenado guardado en la tabla `kv` de Neon (persiste entre despliegues). Primer paso a las 00:20 UTC del día siguiente; resultados simulados, nunca órdenes reales. Comprobar el primer paso y su persistencia tras un reinicio |
 | Copias periódicas | PATRON | Requieren una máquina de confianza con `CRYPTO_RADAR_BACKUP_KEY` propia; la copia de prueba se hizo en la sesión de trabajo (efímera) |
 | Repositorio privado | PATRON | Sigue público |
 | G-16 privacidad | Abogado | 11 marcas COMPLETAR: impide abrir al público |
