@@ -37,6 +37,10 @@ class FakeStore:
         self.reads += 1
         return {"at": self.at, "sources": {"klines": "Binance (70 activos)"}} if self.at else default
 
+    def read_fields(self, name, keys):
+        doc = self.read(name, {}) or {}
+        return {k: doc.get(k) for k in keys}
+
 
 def iso(hours_ago):
     return (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours_ago)).isoformat()
@@ -183,6 +187,51 @@ class EstadoPublico(unittest.TestCase):
         blk = src[src.index('if p == "/api/public/status":'):src.index('if p == "/api/billing/status":')]
         for k in ('"verdict"', '"regime"', '"regime_label"'):
             self.assertNotIn(k, blk)
+
+
+LECTOR = r"""
+import json, sys
+from radar import storage
+big = {"at": "2026-11-16T02:27:00+00:00", "sources": {"klines": "Binance"}, "n": 3, "assets": ["x" * 500] * 400}
+storage.write("latest.json", big)
+print(json.dumps({"f": storage.read_fields("latest.json", ["at", "sources", "n", "falta"]),
+                  "vacio": storage.read_fields("no-existe.json", ["at"])}))
+"""
+
+
+class LecturaParcial(unittest.TestCase):
+    """El planificador consulta la fecha del último escaneo cada 30 s: debe extraerla en la base, no descargar el informe."""
+
+    def run_backend(self, env_extra):
+        import subprocess
+        env = dict(os.environ, CRYPTO_RADAR_HOME=tempfile.mkdtemp(prefix="cr-rf-"),
+                   CRYPTO_RADAR_DATA=tempfile.mkdtemp(prefix="cr-rf-data-"), **env_extra)
+        env.pop("CRYPTO_RADAR_ACCOUNTS", None)
+        out = subprocess.run([sys.executable, "-c", LECTOR], cwd=str(ROOT), env=env,
+                             capture_output=True, text=True, timeout=60)
+        self.assertEqual(out.returncode, 0, out.stderr[-2000:])
+        return json.loads(out.stdout.strip().splitlines()[-1])
+
+    def check(self, r):
+        self.assertEqual(r["f"], {"at": "2026-11-16T02:27:00+00:00", "sources": {"klines": "Binance"},
+                                  "n": 3, "falta": None})
+        self.assertEqual(r["vacio"], {"at": None})
+
+    def test_archivos(self):
+        self.check(self.run_backend({"DATABASE_URL": "", "CRYPTO_RADAR_STORAGE": "file"}))
+
+    def test_sqlite(self):
+        self.check(self.run_backend({"DATABASE_URL": "", "CRYPTO_RADAR_STORAGE": "db"}))
+
+    @unittest.skipUnless(os.environ.get("TEST_DATABASE_URL"), "sin TEST_DATABASE_URL")
+    def test_postgres(self):
+        self.check(self.run_backend({"DATABASE_URL": os.environ["TEST_DATABASE_URL"]}))
+
+    def test_planificador_no_lee_el_informe_entero(self):
+        with mock.patch.object(storage, "read", side_effect=AssertionError("lectura completa")), \
+             mock.patch.object(storage, "read_fields", return_value={"at": None}) as rf:
+            server.next_scan_time()
+        rf.assert_called_once_with("latest.json", ["at"])
 
 
 if __name__ == "__main__":

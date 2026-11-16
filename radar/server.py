@@ -36,7 +36,8 @@ def now():
 
 def next_scan_time():
     s = load_settings()
-    last = (storage.read("latest.json", {}) or {}).get("at")
+    # Solo la fecha, extraída en la base: el planificador pregunta cada 30 s y antes descargaba el informe entero
+    last = storage.read_fields("latest.json", ["at"]).get("at")
     if not last:
         # sin escaneos previos: escanear ya (fecha en el pasado; antes devolvía now() y la
         # comparación now() >= now() fallaba por microsegundos, así que nunca arrancaba)

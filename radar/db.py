@@ -361,5 +361,32 @@ def get_kv(name, default=None):
         return default
 
 
+def get_kv_fields(name, keys):
+    """Solo algunas claves de primer nivel de un documento kv, extraídas EN la base.
+
+    Evita descargar el documento entero (latest.json pesa cientos de KB) cuando solo hace falta su fecha:
+    la transferencia de red de Neon cuenta para la cuota del plan (docs/UNIT_ECONOMICS.md §Neon).
+    Devuelve {clave: valor}; las claves ausentes valen None. Los valores no escalares vuelven decodificados."""
+    keys = [str(k) for k in keys]
+    if IS_PG:
+        cols = ", ".join(f"(value::jsonb) -> %s::text AS k{i}" for i in range(len(keys)))
+        r = one(f"SELECT {cols} FROM kv WHERE name = %s".replace("%s", "?"), tuple(keys) + (name,))
+    else:
+        cols = ", ".join(f"json_extract(value, ?) AS k{i}" for i in range(len(keys)))
+        r = one(f"SELECT {cols} FROM kv WHERE name = ?", tuple("$." + k for k in keys) + (name,))
+    out = {k: None for k in keys}
+    if not r:
+        return out
+    for i, k in enumerate(keys):
+        v = r.get(f"k{i}")
+        if isinstance(v, str) and IS_PG is False and v[:1] in "[{":
+            try:
+                v = json.loads(v)
+            except Exception:
+                pass
+        out[k] = v
+    return out
+
+
 def backend():
     return "postgresql" if IS_PG else "sqlite"

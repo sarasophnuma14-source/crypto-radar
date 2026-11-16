@@ -36,7 +36,7 @@ def _report_summary(storage):
     with _cache_lock:
         if _cache["v"] is not None and time.time() - _cache["t"] < SUMMARY_TTL_S:
             return _cache["v"]
-    rep = storage.read("latest.json", {}) or {}
+    rep = storage.read_fields("latest.json", ["generated_at", "at", "sources"])   # sin descargar el informe
     v = {"last_scan": rep.get("generated_at") or rep.get("at"), "sources": rep.get("sources")}
     with _cache_lock:
         _cache.update(t=time.time(), v=v)
