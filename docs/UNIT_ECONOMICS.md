@@ -16,7 +16,8 @@ Cada cifra lleva una etiqueta:
 > **Resumen.**
 > - Con 40 % de clientes en plan anual, el ingreso medio es **US$13,97 por usuario y mes** (SUPUESTO de mezcla).
 > - Después de comisiones y del tiempo de soporte quedan **US$10,93**. Si el precio incluye IVA, quedan **US$8,70**.
-> - Los costos fijos mínimos para poder cobrar legalmente por los datos son unos **US$62 al mes**: Render, licencia comercial de CoinGecko y Neon Launch.
+> - **Gasto actual verificado: US$14 al mes** (Render 2.1 y Render 2.0, US$7 cada uno). Neon, la cuota del workspace de Render y lo demás están **pendientes**, no en cero (§6.1).
+> - Los costos fijos mínimos **estimados** para poder cobrar legalmente por los datos son unos **US$62 al mes**: Render, licencia comercial de CoinGecko y Neon Launch (§6.3). Es una estimación, no un gasto.
 > - El equilibrio está entre 6 y 65 usuarios de pago, según lo que cuesten contador y abogado, que hoy **no están cotizados**.
 > - Nada de esto dice si alguien pagará. Eso solo lo mide el piloto (`PLAN_PILOTO_90_DIAS.md`).
 
@@ -136,27 +137,66 @@ Fuente de precios: PÚBLICO, [neon.com/pricing](https://neon.com/pricing), consu
 
 ## 6. Costos fijos y escenarios
 
-### Costos fijos mínimos para cobrar
+Auditoría correctiva H6 (16-nov-2026): las cifras se separan por etapa. Ninguna fila «PENDIENTE» vale cero: es un
+costo que existe o puede existir y que todavía no tiene cifra. Ningún total de esta sección incluye los pendientes.
+
+### 6.1 Gasto actual (hoy, piloto sin abrir)
 
 | Concepto | US$/mes | Tipo |
 |---|---|---|
 | Render, web `crypto-radar-2-1` (starter) | 7,00 | MEDIDO (plan) + PÚBLICO (precio) |
-| Render, servicio 2.0 (todavía activo) | 7,00 | MEDIDO. **Se elimina al suspender la 2.0**; no se cuenta |
+| Render, servicio 2.0 `crypto-radar-z133` (starter, **todavía activo**) | 7,00 | MEDIDO. Se paga mientras siga activo; suspenderlo es la acción R-25 del propietario, después de respaldar |
+| Render, cuota del workspace | ? | PENDIENTE (no visible con el conector) |
+| Neon (proyecto `mute-sky-79699743`) | ? | **PENDIENTE: costo real sin verificar** (R-23). Puede ser 0 si el plan es Free y el consumo cabe, o más si no |
+| CoinGecko | 0 | MEDIDO: se usa sin clave. **Sujeto a licencia y plan**: el uso sin clave no incluye uso comercial |
+| Telegram Bot API, alternative.me | 0 | PÚBLICO |
+| **Total verificado** | **14,00** | Más los pendientes de esta tabla |
+
+### 6.2 Estimación del piloto (60 a 90 días, gratuito, pagos apagados)
+
+| Concepto | US$/mes | Tipo |
+|---|---|---|
+| Render 2.1 | 7,00 | MEDIDO |
+| Render 2.0 | 0 a 7,00 | 7,00 mientras siga activo; 0 después de R-25 |
+| Neon | ? | PENDIENTE (R-23). Con la PR #12 el sondeo deja de leer el informe entero (§5); el consumo real se mide en la consola |
+| CoinGecko | 0 a 35,00 | PENDIENTE de la licencia: si el piloto gratuito se considera uso comercial, hace falta Basic desde el inicio |
+| Respaldos independientes (almacenamiento y servicio de latidos, `RESPALDOS_INDEPENDIENTES.md`) | ? | PENDIENTE: sin cotizar |
+| Abogado para la política de privacidad (G-16, requisito para encender métricas) | ? | PENDIENTE: sin cotizar; pago único |
+| **Total estimado conocido** | **7,00 a 49,00** | Más los pendientes |
+
+### 6.3 Estimación de comercialización (mínimo para cobrar)
+
+| Concepto | US$/mes | Tipo |
+|---|---|---|
+| Render, web `crypto-radar-2-1` (starter) | 7,00 | MEDIDO (plan) + PÚBLICO (precio) |
+| Render, servicio 2.0 | 0 | Se supone suspendido antes de cobrar (R-25); si no, +7,00 |
 | Render, cuota del workspace | 0 o 25 | PENDIENTE (no visible con el conector) |
 | CoinGecko Basic (licencia comercial) | 35,00 | PÚBLICO. Obligatorio para cobrar mientras se use CoinGecko. El límite de llamadas del plan debe verificarse contra el uso real |
 | Neon Launch | 19,70 | SUPUESTO (§5) |
 | Binance, Bybit (velas y derivados) | ? | **PENDIENTE.** No hay respuesta oficial sobre uso comercial; hace falta confirmación escrita o un proveedor con licencia |
+| Respaldos independientes | ? | PENDIENTE: sin cotizar |
 | alternative.me (Fear & Greed) | 0 | PÚBLICO: uso comercial permitido con atribución junto al dato |
 | Telegram Bot API | 0 | PÚBLICO |
-| **Total mínimo conocido** | **61,70** | |
+| **Total mínimo conocido** | **61,70** | ESTIMACIÓN: incluye un SUPUESTO (Neon) y excluye los pendientes |
 
-### Costos de negocio sin cotizar (PENDIENTE)
+### 6.4 Costos variables (por usuario de pago)
+
+| Concepto | Valor | Tipo |
+|---|---|---|
+| Comisiones de cobro (mezcla Wompi / NOWPayments) | 3,8 % del ARPU (US$0,54) | PÚBLICO (tarifas) + SUPUESTO (mezcla 70/30) |
+| Soporte | US$2,50 por usuario y mes | SUPUESTO: 15 min a US$10/h |
+| IVA, si aplica | 19 % dentro del precio | PENDIENTE: lo decide el contador |
+| Infraestructura adicional por escalón de usuarios | ver escenarios | SUPUESTO; las pruebas de carga fueron locales |
+
+### 6.5 Costos de negocio sin cotizar (PENDIENTE)
 
 - contador y facturación electrónica DIAN;
 - abogado para términos y privacidad (G-16);
 - dominio y correo;
 - registro de marca;
-- tiempo del responsable.
+- licencias de datos de Binance y Bybit (o proveedor alternativo);
+- almacenamiento externo de respaldos y servicio de latidos;
+- operación: tiempo del responsable, guardias, soporte fuera de horario.
 
 **No se inventan.** En §7 se tratan como una variable F de 0, 100, 250 o 500 al mes.
 

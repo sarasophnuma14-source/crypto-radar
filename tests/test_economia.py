@@ -68,6 +68,25 @@ class Formulas(unittest.TestCase):
         for v in ("US$0,54", "3,8 %", "10,93", "8,70"):
             self.assertIn(v, UE)
 
+    def test_costos_separados_por_etapa(self):
+        """Auditoría correctiva H6: gasto actual, piloto, comercialización, variables y sin cotizar, por separado."""
+        for h in ("### 6.1 Gasto actual", "### 6.2 Estimación del piloto", "### 6.3 Estimación de comercialización",
+                  "### 6.4 Costos variables", "### 6.5 Costos de negocio sin cotizar"):
+            self.assertIn(h, UE)
+        actual = UE[UE.index("### 6.1"):UE.index("### 6.2")]
+        self.assertIn("| **Total verificado** | **14,00** |", actual)
+        self.assertEqual(7 + 7, 14)                                            # Render 2.1 + Render 2.0
+        for k in ("Neon", "**PENDIENTE: costo real sin verificar**", "Sujeto a licencia y plan", "todavía activo"):
+            self.assertIn(k, actual)
+        pil = UE[UE.index("### 6.2"):UE.index("### 6.3")]
+        self.assertIn("**7,00 a 49,00**", pil)
+        self.assertEqual((7 + 0 + 0, 7 + 7 + 35), (7, 49))
+        com = UE[UE.index("### 6.3"):UE.index("### 6.4")]
+        self.assertIn("ESTIMACIÓN", com)
+        self.assertIn("Contribución no es utilidad neta", UE)
+        for pend in ("contador", "abogado", "licencias de datos de Binance y Bybit", "operación"):
+            self.assertIn(pend, UE[UE.index("### 6.5"):])
+
     def test_costos_fijos(self):
         self.assertEqual(round(FIXED, 2), 61.70)
         self.assertIn("61,70", UE)
