@@ -76,6 +76,9 @@ def main():
     elif cmd == "backup":
         from radar import backup
         sys.exit(backup.cli(sys.argv[2:]))
+    elif cmd == "offsite":                       # respaldos independientes (radar/respaldo_externo.py); desactivado por defecto
+        from radar import respaldo_externo
+        sys.exit(respaldo_externo.cli(sys.argv[2:]))
     elif cmd == "preflight":
         from radar import preflight
         sys.exit(preflight.cli())
