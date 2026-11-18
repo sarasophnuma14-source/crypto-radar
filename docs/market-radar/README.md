@@ -18,3 +18,17 @@ Fecha: 18-nov-2026. Rama: `claude/project-thread-dclqgc` (desde `release-2.1`). 
 | 12 | [RISK_REGISTER.md](RISK_REGISTER.md) | Riesgos con probabilidad, impacto y mitigación |
 | 13 | [IMPLEMENTATION_BACKLOG.md](IMPLEMENTATION_BACKLOG.md) | Épicas e historias por fase |
 | 14 | [DECISION_LOG.md](DECISION_LOG.md) | Decisiones aprobadas, propuestas y pendientes |
+
+## Segunda entrega · Revisión de arquitectura y preparación (18-nov-2026)
+
+Revisión crítica de los 14 documentos anteriores, que no se editaron (el análisis de brechas actúa como fe de erratas).
+
+| # | Documento | Contenido |
+|---|---|---|
+| 15 | [SPECIFICATION_GAP_ANALYSIS.md](SPECIFICATION_GAP_ANALYSIS.md) | 53 hallazgos, 8 bloqueantes para I-1 con su resolución |
+| 16 | [ARCHITECTURE_REVIEW.md](ARCHITECTURE_REVIEW.md) | 12 decisiones: Mantener / Modificar / Rechazar con impacto, riesgo y alternativa |
+| 17 | [DATA_QUALITY_TEST_PLAN.md](DATA_QUALITY_TEST_PLAN.md) | Reglas de calidad con umbrales, fixtures sintéticos, cobertura por incremento |
+| 18 | [QUANT_VALIDATION_REVIEW.md](QUANT_VALIDATION_REVIEW.md) | Separación de datos, holdout, sesgos, costos, potencia estadística |
+| 19 | [ECONOMIC_REVIEW.md](ECONOMIC_REVIEW.md) | Escenarios recalculados, costos omitidos, sensibilidad |
+| 20 | [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) | Incremento I-1: núcleo de activos y contratos, sin proveedores ni señales |
+| 21 | [READINESS_VERDICT.md](READINESS_VERDICT.md) | Veredicto: READY FOR FOUNDATION (condicionado); 0 líneas de código existen |
