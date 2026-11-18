@@ -1,5 +1,7 @@
 # Market Radar · Veredicto de preparación (segunda entrega, §8)
 
+> **Actualización 18-nov (cierre de revisión):** tras las seis correcciones obligatorias el veredicto para el primer incremento es **READY FOR I-1**, pendiente de la autorización del propietario. Ver [I1_READINESS_REPORT.md](I1_READINESS_REPORT.md). Este documento se conserva como estaba, salvo las cifras económicas corregidas.
+
 Fecha: 18-nov-2026. Rama: `claude/project-thread-dclqgc`. Base revisada: commit `e5a488f` (14 documentos de la primera entrega).
 
 ## 1. Veredicto
@@ -73,7 +75,7 @@ Condiciones para que el veredicto sea válido:
 ## 6. Advertencias que el veredicto no cambia
 
 - **Investigación:** NO EDGE sigue vigente (v3: 35 configuraciones, holdout usado una vez). Un holdout de 24 meses solo detecta Sharpe ≥ 1,76 ([QUANT_VALIDATION_REVIEW.md](QUANT_VALIDATION_REVIEW.md)). Market Radar no debe venderse como señal.
-- **Economía:** el equilibrio del escenario S2 pasa de 52 a 186 suscriptores con supuestos adversos combinados, y a 773 si un distribuidor cobra licencia de display ([ECONOMIC_REVIEW.md](ECONOMIC_REVIEW.md)). Ninguna cifra de proveedor es cotización.
+- **Economía:** el equilibrio del escenario S2 pasa de 52 a ~~186~~ **181** suscriptores con supuestos adversos combinados, y a ~~773~~ **751** si un distribuidor cobra licencia de display (corregido el 18-nov, FOR-05) ([ECONOMIC_REVIEW.md](ECONOMIC_REVIEW.md)). Ninguna cifra de proveedor es cotización.
 - **Control de cambios:** esta entrega no modificó `radar/`, la 2.1, precios, pagos, secretos, holdouts ni el paper trading, y no fusionó ni desplegó nada.
 
 ## 7. Decisión que se pide al propietario

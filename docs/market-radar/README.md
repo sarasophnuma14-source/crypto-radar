@@ -32,3 +32,11 @@ Revisión crítica de los 14 documentos anteriores, que no se editaron (el anál
 | 19 | [ECONOMIC_REVIEW.md](ECONOMIC_REVIEW.md) | Escenarios recalculados, costos omitidos, sensibilidad |
 | 20 | [PHASE_1_IMPLEMENTATION_PLAN.md](PHASE_1_IMPLEMENTATION_PLAN.md) | Incremento I-1: núcleo de activos y contratos, sin proveedores ni señales |
 | 21 | [READINESS_VERDICT.md](READINESS_VERDICT.md) | Veredicto: READY FOR FOUNDATION (condicionado); 0 líneas de código existen |
+
+## Cierre de revisión · Preparación de I-1 (18-nov-2026)
+
+Seis correcciones obligatorias aplicadas sobre `ARCHITECTURE_REVIEW`, `SPECIFICATION_GAP_ANALYSIS`, `PHASE_1_IMPLEMENTATION_PLAN` (v2), `DECISION_LOG` (D-021…D-027) y `ECONOMIC_REVIEW` (§7), con trazabilidad por Id.
+
+| # | Documento | Contenido |
+|---|---|---|
+| 22 | [I1_READINESS_REPORT.md](I1_READINESS_REPORT.md) | Informe final A–H: correcciones, pendientes, riesgos, arquitectura, estimación, archivos, veredicto **READY FOR I-1** y solicitud de autorización |

@@ -20,17 +20,19 @@ Severidad: **B** = bloquea el primer incremento técnico (I-1) · **F** = debe r
 
 ## Resumen
 
-| Tipo | Hallazgos | Bloqueantes para I-1 |
-|---|---|---|
-| CON | 9 | 3 |
-| INC | 9 | 2 |
-| JUS | 4 | 1 |
-| DEP | 7 | 1 |
-| RSK | 9 | 0 |
-| FOR | 4 | 0 |
-| AMB | 6 | 1 |
-| VER | 5 | 0 |
-| **Total** | **53** | **8** |
+| Tipo | Hallazgos (rev. 1) | Bloqueantes (rev. 1) | Hallazgos (rev. 2) | Bloqueantes (rev. 2) |
+|---|---|---|---|---|
+| CON | 9 | 3 | 9 | 3 |
+| INC | 9 | 2 | 13 | 7 |
+| JUS | 4 | 1 | 4 | 1 |
+| DEP | 7 | 1 | 8 | 2 |
+| RSK | 9 | 0 | 10 | 1 |
+| FOR | 4 | 0 | 6 | 0 |
+| AMB | 6 | 1 | 6 | 1 |
+| VER | 5 | 0 | 5 | 0 |
+| **Total** | **53** | **8** | **61** | **15** |
+
+Revisión 2 (cierre, 18-nov-2026): 8 hallazgos nuevos y 1 cambio de severidad (INC-03 pasa de F a **B**). Detalle en §11; estado de todos en §12.
 
 Los 8 bloqueantes tienen una corrección propuesta en este documento y se incorporan al plan de I-1 (`PHASE_1_IMPLEMENTATION_PLAN.md`). Ninguno exige tocar producción.
 
@@ -56,7 +58,7 @@ Los 8 bloqueantes tienen una corrección propuesta en este documento y se incorp
 |---|---|---|---|---|
 | INC-01 | **B** | `ASSET_DATA_MODEL` §4 `asset_identifiers` | La clave única (`scheme`,`value`,`provider_id`,`valid_from`) permite **rangos de vigencia solapados**: el mismo ticker podría resolver a dos instrumentos a la vez | Restricción de exclusión con `tstzrange(valid_from, valid_to)` y `btree_gist`; prueba de colisión |
 | INC-02 | **B** | `ASSET_DATA_MODEL` §5 `candles` + `PRODUCT_REQUIREMENTS` NF-04 | NF-04 exige reproducir un `scan_run` con los mismos datos, pero `candles` se actualiza en sitio: una corrección del proveedor borra la versión anterior | Persistencia **bitemporal**: `recorded_at` y `superseded_at` por fila; cada `scan_run` guarda una marca de agua de datos (`data_watermark`). Ver `ARCHITECTURE_REVIEW` §8 |
-| INC-03 | F | `ASSET_DATA_MODEL` §5 | No hay regla de **fuente primaria** por instrumento cuando dos proveedores entregan la misma vela | Tabla `instrument_sources` (instrumento, proveedor, prioridad, vigencia); los motores leen solo la primaria; las demás sirven para validación cruzada |
+| INC-03 | ~~F~~ **B** (rev. 2) | `ASSET_DATA_MODEL` §5 | No hay regla de **fuente primaria** por instrumento cuando dos proveedores entregan la misma vela | Tabla `instrument_sources` (instrumento, proveedor, prioridad, vigencia); los motores leen solo la primaria; las demás sirven para validación cruzada |
 | INC-04 | F | `PRODUCT_REQUIREMENTS` RA-05 | Los nueve estados están nombrados pero **no definidos**: no hay reglas de entrada ni de salida, ni histéresis | Especificación de la máquina de estados antes de la Fase 3, con tabla de transiciones y casos de prueba |
 | INC-05 | F | `PRODUCT_REQUIREMENTS` RB-03 | "Soportes y resistencias estimados" sin algoritmo | Definir el método (pivotes confirmados, como `radar/quant/features.py`) y su versión |
 | INC-06 | F | `ASSET_DATA_MODEL` §5 `corporate_actions` | Los tipos no cubren eventos cripto: migración de token, redenominación, cambio de ticker por *rebrand*, *airdrop* de nuevo token, deslistado por exchange | Añadir `token_migration`, `redenomination`, `rebrand` |
@@ -83,13 +85,13 @@ Los 8 bloqueantes tienen una corrección propuesta en este documento y se incorp
 | DEP-04 | F | Monitor externo de disponibilidad para NF-01 (99 %) | NF-01 | Render no publica disponibilidad por servicio; hace falta un sondeo externo |
 | DEP-05 | F | Historial de composición de índices (p. ej. miembros del S&P 500 por fecha) para universos sin sesgo de supervivencia y "amplitud" | Fase 3–6, investigación | Es dato licenciado del proveedor del índice; añadir a la matriz de licencias |
 | DEP-06 | F | `coverage.py` (o similar) para NF-08 "cobertura ≥ 90 %" | CI | Dependencia de desarrollo; no entra en producción |
-| DEP-07 | m | `btree_gist` (extensión de PostgreSQL) para INC-01 | I-1 | Disponible en PostgreSQL 16 y en Neon (**NO VERIFICADO en Neon**; en I-1 solo se usa local) |
+| DEP-07 | m (sustituido por DEP-08 en rev. 2) | `btree_gist` (extensión de PostgreSQL) para INC-01 | I-1 | Disponible en PostgreSQL 16 y en Neon (**NO VERIFICADO en Neon**; en I-1 solo se usa local) |
 
 ## 5. Riesgos no identificados (RSK)
 
 | Id | Riesgo | Por qué importa | Mitigación propuesta |
 |---|---|---|---|
-| RSK-01 | **Moneda**: ingresos en COP vía Wompi, costos de datos en USD | Una devaluación del COP sube el equilibrio sin que cambie nada más | Escenario de sensibilidad (ECONOMIC_REVIEW §6) |
+| RSK-01 | **Moneda**: ingresos en COP vía Wompi, costos de datos en USD | Una devaluación del COP sube el equilibrio sin que cambie nada más | Escenario de sensibilidad (~~ECONOMIC_REVIEW §6~~ ECONOMIC_REVIEW §4 y §7; fórmula corregida en FOR-05) |
 | RSK-02 | **Regulatorio**: que un producto de estados y scores se considere asesoría de inversión en Colombia u otros países | Puede exigir licencia o cambiar la oferta | Consulta legal antes de cualquier oferta pública (**NO VERIFICADO**) |
 | RSK-03 | **Persona clave**: un propietario y asistentes de IA; nadie más conoce el sistema | Continuidad | Runbooks y documentación operacional en la tercera entrega |
 | RSK-04 | **Cláusulas de destrucción**: algunos términos obligan a destruir copias al terminar (FRED lo exige para su API) | Reproducibilidad de la investigación tras cancelar un proveedor | Registrar en `provider_licenses` si los datos sobreviven a la cancelación |
@@ -143,7 +145,48 @@ Los 8 bloqueantes tienen una corrección propuesta en este documento y se incorp
 | JUS-01 | I-1 solo usa PostgreSQL local; ninguna conexión a Neon |
 | DEP-01 | Migraciones SQL versionadas con checksum y `down` |
 | AMB-01 | Criterio de equivalencia numérica (se aplica en I-2, no en I-1, pero se fija ya) |
+| INC-03 | Fuentes primarias con prioridad, vigencia y exclusión de empates (rev. 2) |
+| INC-10 | Secuencia de escritura bajo candado como marca de agua (rev. 2) |
+| INC-11 | Bytes originales separados de la representación canónica (rev. 2) |
+| INC-12 | Prueba sin red que permite loopback y socket Unix (rev. 2) |
+| INC-13 | Guardia de conexión solo local (rev. 2) |
+| DEP-08 | `btree_gist` explícita en 0001, sin superusuario, probada desde base vacía (rev. 2) |
+| RSK-10 | Licencias sintéticas limitadas a mercados ficticios por la base; sin variable de entorno (rev. 2) |
 
 ## 10. Qué no se cambió
 
 Los 14 documentos originales **no se editaron**: este análisis funciona como fe de erratas. Si el propietario aprueba las correcciones, se aplicarán en un commit aparte con referencia a cada Id.
+
+En la revisión 2 se editaron solo los documentos de la segunda entrega que pidió el propietario (`ARCHITECTURE_REVIEW`, este, `PHASE_1_IMPLEMENTATION_PLAN`, `ECONOMIC_REVIEW`) y `DECISION_LOG` (entradas nuevas D-021…D-027). Los textos sustituidos se conservan tachados con el Id que los corrige.
+
+
+---
+
+## 11. Revisión 2 · Hallazgos nuevos (cierre, 18-nov-2026)
+
+Origen: correcciones obligatorias del propietario (1–6) y lo que apareció al resolverlas. «Sandbox» = consultas SQL desechables en PostgreSQL 16.15 local temporal, no código de I-1.
+
+| Id | Sev. | Dónde | Hallazgo | Resolución documentada | Decisión |
+|---|---|---|---|---|---|
+| INC-10 | **B** | `ARCHITECTURE_REVIEW` §8; plan v1 §4.6 | La marca de agua `MAX(recorded_at)` no reproduce lecturas con escrituras concurrentes: una transacción lenta confirma filas con hora anterior a una marca ya leída. Sandbox: 11/60 relecturas distintas | Secuencia `mr.write_seq` asignada después de `pg_advisory_xact_lock`; as-of por secuencia; disparador que exige `begin_write`. Sandbox: 0/60. Plan v2 §5.3, prueba 6.10 con control negativo | D-021 |
+| DEP-08 | **B** | Plan v1 §8; DEP-07 | La instalación de `btree_gist` no estaba en ninguna migración ni se sabía si exigía superusuario | 0001 la instala `WITH SCHEMA mr` si no existe; es extensión confiable en PG16 (sandbox, rol no superusuario); `down` la quita solo si la creó; prueba desde base vacía | D-022 |
+| RSK-10 | **B** | Plan v1 §4.5 | `MARKET_RADAR_ENV=test` habilitaba la licencia sintética: una variable mal puesta en producción la activaría | Sin variables en el `LicenseGuard`; sintética ⇔ `synthetic.*` ⇔ solo mercados `zz-test-*`, por `CHECK` y claves foráneas compuestas; proveedor sintético solo en `tests/`. Sandbox: 5/5 combinaciones prohibidas rechazadas | D-023 |
+| INC-11 | **B** | `ARCHITECTURE_REVIEW` §7; plan v1 §5 | `raw_candles.payload jsonb` «normalizado» no es el contenido recibido (`jsonb` reordena claves, quita duplicados, no guarda espacios ni forma de números) | `raw_payloads` con bytes exactos y `body_sha256`; `candles` canónica con `canonical_sha256`, `payload_id` y `locator`; `reparse` en la conformidad | D-024 |
+| INC-03 | ~~F~~ **B** | `ASSET_DATA_MODEL` §5 | Ya registrado. Sube a bloqueante porque I-1 expone `primary_source` sin reglas de prioridad, vigencia, desempate ni ausencia | Plan v2 §4.2 y §5.2: exclusiones sin empates, elegibilidad por licencia y cuarentena, `FALLBACK`, `NO_SOURCE` | D-025 |
+| INC-12 | **B** | Plan v1 §6.9 | La prueba «sin red» bloqueaba `socket.socket` entero, incompatible con PostgreSQL local por TCP | Bloqueo que permite solo socket Unix y loopback, con prueba de control | D-026 |
+| INC-13 | **B** | Plan v1 §2 | «Ninguna conexión a Neon» era una regla escrita, sin mecanismo | Guardia de conexión: DSN no local rechazado antes de conectar; prueba 6.13 | D-026 |
+| FOR-05 | F | `ECONOMIC_REVIEW` §4 | La sensibilidad cambiaria aplicaba la devaluación al ingreso y no a la comisión (también en COP), no definía «devaluación 20 %» y omitía el diferencial bancario y la moneda del soporte | Fórmula y tabla en `ECONOMIC_REVIEW` §7; cifras corregidas: 70 → 69, 186 → 181, 773 → 751 | D-027 |
+| FOR-06 | m | `ECONOMIC_REVIEW` §1 | Comisión de cobro fija en 3,8 %; por componentes (2,65 % + COP 700 + IVA) da 4,07 % con la mezcla 60/40 y *k* = 4.100 | Se añade como sensibilidad (equilibrio S2: 53); la base no cambia hasta conocer tarifa vigente y mezcla de pagos (PENDIENTE) | D-027 |
+
+## 12. Estado de todos los hallazgos tras la revisión 2
+
+«Resuelto» significa **resuelto en documentación**: ninguno está implementado, porque no existe código.
+
+| Estado | Ids |
+|---|---|
+| Resuelto en documentación; se verifica al implementar I-1 (15 bloqueantes) | CON-01, CON-02, CON-03, INC-01, INC-02, INC-03, INC-10, INC-11, INC-12, INC-13, JUS-01, DEP-01, DEP-08, RSK-10, AMB-01 (este último se aplica en I-2) |
+| Resuelto en documentación, no bloqueante | JUS-04 (estimación de I-1 con desglose), FOR-01…FOR-05 (fórmulas escritas), DEP-07 (sustituido por DEP-08 salvo Neon) |
+| **Pendiente, antes de la fase que lo usa** | CON-04, CON-05, CON-08 · INC-04, INC-05, INC-06, INC-07 · JUS-02 · DEP-02, DEP-03, DEP-04, DEP-05, DEP-06 · AMB-02, AMB-03, AMB-04 · VER-01…VER-05 |
+| **Pendiente, menor** | CON-06, CON-07, CON-09 · INC-08, INC-09 · JUS-03 · AMB-05, AMB-06 · FOR-06 |
+| **Riesgos abiertos** (mitigación propuesta, no ejecutada) | RSK-01 (moneda), RSK-02 (regulatorio, NO VERIFICADO), RSK-03 (persona clave), RSK-04 (destrucción de datos), RSK-05 (contaminación del holdout), RSK-06 (datos personales hacia IA), RSK-07 (base compartida; cubierto en I-1 por JUS-01 y la guardia, abierto para Fase 2), RSK-08 (conflictos de ramas), RSK-09 (repositorio público) |
+| Dependen de un tercero o del propietario | DEP-07/DEP-08 en Neon (NO VERIFICADO), licencia cripto F0-11, tarifas de Wompi y bancarias (FOR-06) |

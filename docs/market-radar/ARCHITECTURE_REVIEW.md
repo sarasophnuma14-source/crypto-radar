@@ -11,10 +11,10 @@ Veredictos posibles: **Mantener** · **Modificar** · **Rechazar**. Cada uno con
 | 2 | Monolito modular | **Mantener** |
 | 3 | Separación activo / instrumento / serie | **Mantener**, con 2 añadidos |
 | 4 | Esquema PostgreSQL `mr` en la base de la 2.1 | **Modificar** (base separada hasta Fase 3) |
-| 5 | Contrato de proveedores | **Modificar** (precisar semántica) |
+| 5 | Contrato de proveedores | **Modificar** (precisar semántica; en revisión 2, bytes originales y fuentes primarias) |
 | 6 | Calendarios | **Modificar** (no escribirlos a mano) |
-| 7 | Normalización | **Modificar** (capa cruda y capa normalizada) |
-| 8 | Persistencia histórica | **Modificar** (bitemporal) |
+| 7 | Normalización | **Modificar** (bytes originales + capa canónica; corregido en revisión 2, D-024) |
+| 8 | Persistencia histórica | **Modificar** (bitemporal por secuencia de escritura; corregido en revisión 2, D-021) |
 | 9 | Workers | **Modificar** (cola en base; separación también por secretos) |
 | 10 | Escalabilidad | **Mantener** los criterios, **corregir** las cifras |
 | 11 | Observabilidad | **Modificar** (SLO concretos y sondeo externo) |
@@ -103,7 +103,7 @@ La interfaz de `TARGET_ARCHITECTURE` §5 es correcta en espíritu. Faltan precis
 | | |
 |---|---|
 | Problema | `candles` mezcla el dato recibido con el dato procesado (`processing_version` en la misma fila). No se puede auditar qué envió el proveedor ni reprocesar |
-| Nueva regla | Dos capas. **Cruda** (`raw_candles`): exactamente lo recibido, con hash del contenido, solo inserción. **Normalizada** (`candles`): unidades, moneda, zona horaria y sesión resueltas; enlaza con la fila cruda. Ajustes por acciones corporativas y series continuas se calculan como **derivados versionados** sobre la capa normalizada, nunca sobrescribiéndola |
+| Nueva regla | ~~Dos capas. **Cruda** (`raw_candles`): exactamente lo recibido, con hash del contenido, solo inserción.~~ **[Revisión 2, INC-11]** `raw_candles` guardaba JSON «normalizado», que no es lo recibido. Sustituido por `raw_payloads` (bytes) + `candles` (canónica): ver §R2-4. Se mantiene: **Normalizada** (`candles`): unidades, moneda, zona horaria y sesión resueltas; enlaza con la fila cruda. Ajustes por acciones corporativas y series continuas se calculan como **derivados versionados** sobre la capa normalizada, nunca sobrescribiéndola |
 | Retención | La capa cruda respeta `max_storage_days` de la licencia igual que la normalizada |
 | Impacto | ~1,6–2× almacenamiento de velas (ECONOMIC_REVIEW §5: céntimos al mes con los volúmenes previstos) |
 | Riesgo | Más tablas que mantener |
@@ -114,7 +114,7 @@ La interfaz de `TARGET_ARCHITECTURE` §5 es correcta en espíritu. Faltan precis
 | | |
 |---|---|
 | Problema | NF-04 (reproducibilidad) es imposible si las velas se actualizan en sitio (INC-02) |
-| Nueva regla | **Bitemporal**: cada fila normalizada tiene `recorded_at` y `superseded_at` (nulo si vigente). Una corrección inserta una fila nueva y cierra la anterior. Cada `scan_run` guarda `data_watermark = max(recorded_at)` leído; reproducir = leer filas con `recorded_at ≤ watermark` y (`superseded_at` nulo o > watermark) |
+| Nueva regla | **Bitemporal**: cada fila normalizada tiene `recorded_at` y `superseded_at` (nulo si vigente). Una corrección inserta una fila nueva y cierra la anterior. ~~Cada `scan_run` guarda `data_watermark = max(recorded_at)` leído; reproducir = leer filas con `recorded_at ≤ watermark` y (`superseded_at` nulo o > watermark)~~ **[Revisión 2, INC-10]** No es reproducible con escrituras concurrentes (demostrado: 11/60 relecturas distintas). Sustituido por secuencia de escritura: ver §R2-1 |
 | Índices | Índice parcial sobre filas vigentes (`WHERE superseded_at IS NULL`) para las lecturas normales |
 | Particionado | No en I-1. Particionar por rango de `bar_start` cuando `candles` supere ~10 M filas o las consultas p95 > 300 ms |
 | Investigación | Exportación a Parquet fuera de producción (sin cambios) |
@@ -162,5 +162,72 @@ Se mantiene D-005. Criterios de entrada numéricos en `TARGET_ARCHITECTURE` §9,
 |---|---|---|
 | Código portado de `radar/quant` diverge del original | Medio | Pruebas de equivalencia numérica en I-2 |
 | Fuente de calendarios inexacta | Medio | DQ-SES y comparación con calendario oficial |
-| Bitemporalidad mal implementada | Medio | Pruebas de reproducción en I-1 |
+| Bitemporalidad mal implementada | Medio → **Bajo** (revisión 2) | Secuencia bajo candado + ensayo concurrente con control negativo (prueba 6.10) |
+| La garantía «candado liberado después de commit visible» depende del orden interno de PostgreSQL, no de una promesa del manual | Bajo | Ensayo concurrente en cada ejecución de la suite; si una versión futura la rompe, la prueba falla |
+| Escrituras versionadas serializadas | Bajo en I-1/I-2 | Medir espera del candado; umbral 50 ms p95 |
+| Licencia sintética en una base real | **Bajo** (revisión 2) | Restricciones declarativas sintética ⇔ mercado ficticio; ningún interruptor de entorno |
 | Base separada aumenta costo y operación | Bajo | Escala a cero; se reevalúa en Fase 3 |
+
+
+---
+
+## Revisión 2 · Cierre de revisión (18-nov-2026)
+
+El propietario pidió seis correcciones obligatorias. Cada una tiene un hallazgo en `SPECIFICATION_GAP_ANALYSIS.md` §11 y una decisión en `DECISION_LOG.md`. Las pruebas citadas como «sandbox» son consultas SQL desechables en un PostgreSQL 16.15 local temporal, no código de I-1.
+
+### R2-1 · Bitemporalidad bajo concurrencia (INC-10 → D-021) — **Modificar §8**
+
+| | |
+|---|---|
+| Problema | `MAX(recorded_at)` como marca de agua no es reproducible: una transacción lenta confirma filas con hora anterior a una marca ya leída. Sandbox: 8 escritores × 25 lotes, 60 lecturas → **11/60** relecturas distintas |
+| Nueva regla | Secuencia global `mr.write_seq` asignada por `mr.begin_write()` **después** de tomar `pg_advisory_xact_lock`, que se mantiene hasta el fin de la transacción. Orden de secuencia = orden de confirmación. Marca de agua = `max(write_seq)` de `mr.write_log`, leída en la misma transacción `REPEATABLE READ` que los datos. As-of(W): `write_seq ≤ W AND (superseded_seq IS NULL OR superseded_seq > W)`. Un disparador rechaza escrituras que no pasen por `begin_write` |
+| Evidencia | Sandbox con el mismo ensayo: **0/60** relecturas distintas |
+| Impacto | Escrituras versionadas serializadas (milisegundos por lote) |
+| Riesgo | La visibilidad del commit antes de liberar el candado es comportamiento interno de PostgreSQL, no garantía documentada → prueba concurrente con control negativo en cada ejecución |
+| Alternativas descartadas | `txid`/`pg_current_snapshot()` como marca: correcto pero difícil de guardar y comparar entre bases y copias; hora lógica híbrida: complejidad sin beneficio con un solo nodo; tablas de preparación + publicación corta: queda como plan B si la espera supera 50 ms p95 |
+
+### R2-2 · `btree_gist` explícita (DEP-08 → D-022) — **Precisa §4**
+
+| | |
+|---|---|
+| Regla | La migración 0001 instala `btree_gist` `WITH SCHEMA mr` si no existe; si existe, la usa y lo anota. `down` la elimina solo si la creó |
+| Evidencia | Sandbox: es extensión confiable (`trusted = true`), instalable por el dueño de la base sin superusuario; las exclusiones funcionan con `search_path = pg_catalog`; `DROP SCHEMA mr CASCADE` la elimina |
+| Prueba | 6.7: base nueva desde `template0`, rol no superusuario, `up` → `down` → `up`, variante con extensión preexistente; el runner exige PostgreSQL 16 y rechaza superusuario |
+| Pendiente | Disponibilidad en Neon: **NO VERIFICADO** (no se usa en I-1) |
+
+### R2-3 · Licencias sintéticas sin interruptor (RSK-10 → D-023) — **Modifica §5 (Licencia)**
+
+| | |
+|---|---|
+| Problema | v1 permitía la licencia sintética con `MARKET_RADAR_ENV=test`: una variable mal puesta en producción la habilitaría |
+| Nueva regla | Sin variables ni banderas en el `LicenseGuard`. Sintética ⇔ proveedor `synthetic.*` ⇔ solo mercados `zz-test-*`, impuesto por `CHECK` y claves foráneas compuestas (`license_markets`), y repetido en código y disparador de escritura. El proveedor sintético vive solo en `tests/` |
+| Evidencia | Sandbox: las 5 combinaciones prohibidas fueron rechazadas por la base |
+| Riesgo residual | Alguien podría crear un mercado real con prefijo `zz-test-`: la convención se documenta y la habilitación de mercados reales (§18) exige revisión |
+
+### R2-4 · Bytes originales frente a representación canónica (INC-11 → D-024) — **Modifica §7**
+
+| | |
+|---|---|
+| Problema | `raw_candles.payload jsonb` «normalizado a JSON canónico» no conserva lo recibido: `jsonb` reordena claves, elimina duplicados y no guarda espacios ni la forma de los números |
+| Nueva regla | `mr.raw_payloads`: bytes exactos tras decodificar el transporte, `body_sha256`, huella de la petición sin secretos, licencia, versión del adaptador, retención por licencia, purga que deja la huella. `mr.candles`: representación canónica (codificación `c1`, `canonical_sha256`) que apunta a `payload_id` + `locator`. El adaptador expone `reparse(bytes)` y la conformidad exige el mismo hash canónico |
+| Impacto | Almacenamiento: el cuerpo HTTP suele ser mayor que la suma de velas; estimación pendiente hasta conocer el formato de un proveedor real (I-2). La retención por licencia lo acota |
+| Alternativa | Archivo externo (objeto) para cuerpos grandes: se reconsidera si los cuerpos superan 8 MiB o el almacenamiento crudo supera el 50 % de la base |
+
+### R2-5 · Fuentes primarias (INC-03 → D-025) — **Modifica §5 y §3**
+
+| | |
+|---|---|
+| Regla | `instrument_sources` con prioridad 1–9, vigencia semiabierta, motivo obligatorio y versionado por secuencia. Exclusiones: no hay dos filas vigentes con la misma prioridad ni el mismo proveedor solapadas → **no hay empates en ejecución**. Selección: candidata vigente en `bar_start`, elegible por licencia (`STORE`, y `DISPLAY` si se muestra) y sin cuarentena; menor prioridad gana. Si no es la de prioridad mínima → `FALLBACK`, vela `DEGRADED`, evento. Ninguna elegible → `NO_SOURCE`, vela `MISSING`, no se muestra nada. Sin mezcla silenciosa: cada vela lleva su proveedor y los cambios dentro de una ventana se marcan `source_switch` |
+| Impacto | Antes, «fuente primaria» era una frase; ahora es una función pura con 16 pruebas |
+| Riesgo | Cambios de fuente frecuentes rompen la continuidad de series: se medirá en I-2 |
+
+### R2-6 · Sensibilidad cambiaria — ver `ECONOMIC_REVIEW.md` §7 (FOR-05, FOR-06 → D-027)
+
+No es una decisión de arquitectura; se documenta en la revisión económica.
+
+### Otros cambios detectados en esta revisión
+
+| Id | Cambio |
+|---|---|
+| INC-12 | La prueba «sin red» de v1 bloqueaba `socket.socket` por completo, incompatible con PostgreSQL local. Ahora: solo socket Unix y loopback |
+| INC-13 | Guardia de conexión en código: cualquier DSN no local se rechaza antes de conectar |

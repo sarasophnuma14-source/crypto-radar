@@ -24,6 +24,13 @@ Formato: cada decisión tiene estado **Aprobada** (por PATRON, con referencia), 
 | D-018 | — | Proveedor de IA y presupuesto mensual | **Pendiente** | Fase 7 |
 | D-019 | — | Marco legal de privacidad aplicable y datos del responsable | **Pendiente** | PATRON + abogado |
 | D-020 | — | Uso público del nombre "Market Radar" | **Pendiente** | Búsqueda de marca |
+| D-021 | 18-nov-2026 | Bitemporalidad por **secuencia de escritura** asignada bajo `pg_advisory_xact_lock`; marca de agua = `max(write_seq)`; `recorded_at` solo informativo. Sustituye la marca `MAX(recorded_at)` de ARCHITECTURE_REVIEW §8 | **Propuesta** | INC-10; ARCHITECTURE_REVIEW R2-1; plan I-1 v2 §5.3 |
+| D-022 | 18-nov-2026 | `btree_gist` instalada por la migración 0001 en el esquema `mr` (o reutilizada si ya existe), sin superusuario; runner exige PostgreSQL 16 y rol no superusuario | **Propuesta** | DEP-08; R2-2; plan §5.1 |
+| D-023 | 18-nov-2026 | Licencias sintéticas solo para mercados ficticios `zz-test-*`, impuesto por la base; sin variables de entorno en el `LicenseGuard`; proveedor sintético solo en `tests/`. Precisa D-010 | **Propuesta** | RSK-10; R2-3; plan §4.5, §5.2 |
+| D-024 | 18-nov-2026 | Conservar los **bytes originales** de cada respuesta (`raw_payloads`) separados de la representación canónica (`candles`, codificación `c1`); retención por licencia | **Propuesta** | INC-11; R2-4; plan §4.4, §5.4 |
+| D-025 | 18-nov-2026 | Fuentes por instrumento con prioridad 1–9, vigencia semiabierta, sin empates (exclusión en base), respaldo marcado `DEGRADED` y `NO_SOURCE` → `MISSING` | **Propuesta** | INC-03; R2-5; plan §4.2, §5.2 |
+| D-026 | 18-nov-2026 | En pruebas, red bloqueada salvo socket Unix y loopback; en código, guardia que rechaza cualquier DSN no local durante I-1 | **Propuesta** | INC-12, INC-13; plan §3, §6.9, §6.13 |
+| D-027 | 18-nov-2026 | La sensibilidad económica se calcula con la fórmula de ECONOMIC_REVIEW §7 (*f* = `COP_PER_USD` / TRM, diferencial bancario, moneda del soporte); cifras corregidas 70→69, 186→181, 773→751. No cambia precios | **Propuesta** | FOR-05, FOR-06; ECONOMIC_REVIEW §7 |
 
 ## Detalle de decisiones propuestas
 
@@ -44,3 +51,17 @@ Formato: cada decisión tiene estado **Aprobada** (por PATRON, con referencia), 
 ### D-012 · Holdout por clase
 - **Contexto:** el holdout cripto se usó una vez (v3) y quedan 58 pruebas acumuladas.
 - **Consecuencias:** cualquier mirada al tramo holdout de una clase antes del pre-registro lo invalida y debe declararse.
+
+### D-021 · Secuencia de escritura como marca de agua
+- **Contexto:** reproducir un escaneo (NF-04) exige que «lo que se sabía en W» no cambie después. Con horas de inserción y transacciones concurrentes cambia (sandbox: 11/60 relecturas distintas).
+- **Alternativas:** instantánea de transacción (`pg_current_snapshot`), correcta pero difícil de guardar y comparar; hora lógica híbrida, innecesaria con un nodo; tablas de preparación con publicación corta, plan B si la espera del candado supera 50 ms p95.
+- **Consecuencias:** escrituras versionadas serializadas; marca de agua entera; prueba concurrente con control negativo en cada ejecución (sandbox con el diseño: 0/60).
+
+### D-023 · Licencias sintéticas sin interruptor
+- **Contexto:** una variable de entorno que habilita licencias de prueba es un riesgo de configuración en producción.
+- **Alternativas:** marcar la base como «test/prod» al crearla (sigue siendo configuración); quitar la licencia sintética y probar sin licencias (no prueba el camino real).
+- **Consecuencias:** la regla la impone el esquema; una licencia sintética no puede autorizar un mercado real en ninguna base, aunque se cuele.
+
+### D-024 · Bytes originales y representación canónica
+- **Contexto:** auditar o disputar un dato con el proveedor, o re-procesar con otra versión de adaptador, exige lo recibido exactamente.
+- **Consecuencias:** más almacenamiento (acotado por la retención de la licencia); el adaptador debe poder re-procesar sus propios bytes con el mismo resultado.

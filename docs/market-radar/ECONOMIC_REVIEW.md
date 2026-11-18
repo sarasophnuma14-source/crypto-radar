@@ -17,7 +17,7 @@ No se cambian precios, no se contrata nada y no se pidió ninguna cotización.
 > 2. Faltaban costos que pueden ser mayores que el propio plan de datos: las **tarifas de bolsa**. Ejemplo público verificado: Nasdaq Basic cobra US$1,00 por usuario no profesional y tiene tarifas de distribuidor externo de US$2.140 y de licencia de datos derivados de US$1.500 por empresa. Si recayeran sobre el proyecto, el equilibrio de acciones/ETF pasaría de **52 a 273–424 usuarios**.
 > 3. El costo de Neon no es fijo: el plan Launch no tiene mínimo y cobra por uso. Con el worker manteniendo la base despierta, 0,25 CU todo el mes ≈ US$19,35.
 > 4. La IA es barata frente a los datos: entre US$0,05 y 2,00 por usuario y mes según modelo y uso (SUPUESTO de uso).
-> 5. Con una devaluación del 20 % del COP o con IVA sobre servicios importados, el equilibrio sube 10–25 %.
+> 5. ~~Con una devaluación del 20 % del COP o con IVA sobre servicios importados, el equilibrio sube 10–25 %.~~ **[Corregido 18-nov, FOR-05]** Si la TRM sube 20–25 % sin actualizar `COP_PER_USD`, el equilibrio de S2 pasa de 52 a 63–69 (+21–33 %); con IVA sobre servicios importados, a 62 (+19 %). Ver §7.
 > 6. **Ningún escenario multiactivo es viable sin cotizaciones escritas.** La única cifra sólida es cripto: 6–8 usuarios para costos de datos e infraestructura, 15–65 con costos de negocio.
 
 ---
@@ -166,12 +166,14 @@ US$2,50/usuario (SUPUESTO heredado) supone 15 min al mes. Un producto con 8 merc
 | Soporte | 2,50 | 5,00 | 68 |
 | IA (Sonnet 5.5, asistente) | 0 | 1,00/usuario | 58 |
 | Tarifa de bolsa por usuario | 0 | 1,00/usuario | 58 |
-| COP se deprecia 20 % (ingreso en COP, costos en USD) | c = 10,94 | c ≈ 13,97 × 0,8 − 0,53 − 2,50 = 8,15 | 70 |
+| TRM +25 % sin actualizar `COP_PER_USD` (ingreso y comisión en COP, soporte y costos en USD) | c = 10,94 | ~~c ≈ 13,97 × 0,8 − 0,53 − 2,50 = 8,15 → 70~~ c = 0,8 × (13,97 − 0,531) − 2,50 = 8,25 (FOR-05) | **69** |
 | IVA sobre servicios importados | 0 % | 19 % | 62 |
-| **Todo lo anterior junto** | — | c = 13,97 × 0,8 − 0,53 − 5,00 − 1,00 − 1,00 = 3,65; F = 675,56 | **186** |
-| + distribuidor externo Nasdaq | — | F = 675,56 + 2.140 | **773** |
+| **Todo lo anterior junto** | — | ~~c = 13,97 × 0,8 − 0,53 − 5,00 − 1,00 − 1,00 = 3,65 → 186~~ c = 0,8 × (13,97 − 0,531) − 5,00 − 1,00 − 1,00 = 3,75; F = 675,56 (FOR-05) | **181** |
+| + distribuidor externo Nasdaq | — | F = 675,56 + 2.140; c = 3,75 | ~~773~~ **751** |
 
 La variable que más mueve el resultado es la tarifa de distribuidor; la segunda, la combinación de soporte y moneda.
+
+Nota (18-nov, FOR-05): la fila de moneda y las dos filas combinadas se recalcularon porque la versión anterior aplicaba la devaluación al ingreso pero no a la comisión de cobro, que también se paga en COP. La definición de «devaluación» y las variantes están en §7.
 
 ## 5. Escenario mínimo recomendado para decidir
 
@@ -183,3 +185,72 @@ La variable que más mueve el resultado es la tarifa de distribuidor; la segunda
 ## 6. Conclusión
 
 El primer incremento técnico (I-1) **no tiene costo de datos ni de infraestructura**: se ejecuta en local con PostgreSQL y datos sintéticos. La decisión económica real llega antes de la Fase 3 y depende de cotizaciones que hoy no existen.
+
+
+## 7. Sensibilidad cambiaria (añadida 18-nov, FOR-05 y FOR-06)
+
+### 7.1 En qué moneda está cada partida
+
+| Partida | Moneda | Fuente | Etiqueta |
+|---|---|---|---|
+| Precio de lista | USD | Decisión del propietario del 14-nov (todos los precios en USD); D-003 | Hecho del proyecto (precio hipotético; no se cambia) |
+| Cobro con Wompi | **COP**: precio USD × `COP_PER_USD` | `docs/INSTALACION_Y_DESPLIEGUE.md`: tasa fija configurada por el propietario; no se actualiza sola. Hoy vacía (pagos apagados) | Hecho del código |
+| Cobro con USDT | USDT ≈ USD | Plan de pagos del 14-nov | SUPUESTO: paridad 1:1; comisión del procesador PENDIENTE |
+| Comisión de Wompi | COP: 2,65 % + COP 700 + IVA sobre la comisión | Investigación del 14-nov | PÚBLICO (no reverificado hoy) |
+| Datos, Render, Neon, IA | USD | Páginas de precios | PÚBLICO |
+| Diferencial de cambio y comisión bancaria al pagar en USD desde Colombia (s) | % sobre los costos en USD | — | **PENDIENTE** (banco) |
+| Soporte | USD o COP según quién lo haga | Supuesto heredado de US$10/h | SUPUESTO |
+| Mezcla de pago Wompi/USDT | — | — | **PENDIENTE**. Esta sección supone el peor caso: 100 % Wompi |
+
+### 7.2 Fórmula
+
+Definiciones: *k* = `COP_PER_USD` configurado; *T* = TRM cuando los pesos se convierten para pagar costos en USD; *f* = *k* / *T*; *s* = diferencial bancario.
+
+- Ingreso por usuario en USD equivalentes = *f* × ARPU
+- Comisión en USD equivalentes ≈ *f* × comisión (la parte porcentual escala exactamente con *f*; los COP 700 fijos pesan 700 × 1,19 / *T*)
+- Soporte = 2,50 si se paga en USD, o *f* × 2,50 si se paga en COP
+- Costos fijos efectivos = F × (1 + *s*)
+- **Equilibrio N = ⌈ F (1 + *s*) / c(*f*) ⌉**, con c(*f*) = *f* × (ARPU − comisión) − soporte
+
+«El COP se deprecia 20 %» tiene dos lecturas, y la versión anterior no decía cuál usaba:
+
+| Lectura | *f* |
+|---|---|
+| La TRM sube 20 % (de 4.000 a 4.800) | 1 / 1,2 = 0,833 |
+| El peso pierde 20 % de su valor en USD (la TRM sube 25 %, de 4.000 a 5.000) | 0,8 |
+
+### 7.3 Resultados para S2 (F = 567,70, sin IVA)
+
+| Caso | c | Equilibrio |
+|---|---|---|
+| Base (*f* = 1, *s* = 0) | 10,94 | 52 |
+| TRM +20 %, soporte en USD | 8,70 | 66 |
+| TRM +20 %, soporte en COP | 9,12 | 63 |
+| TRM +25 %, soporte en USD | 8,25 | **69** (la versión anterior decía 70) |
+| TRM +25 %, soporte en COP | 8,75 | 65 |
+| Diferencial bancario *s* = 2 % / 3 % / 5 % (*f* = 1) | 10,94 | 53 / 54 / 55 |
+| Combinado (TRM +25 %, soporte 5,00, IA 1,00, bolsa 1,00, IVA importado 19 %) | 3,75 | **181** (antes 186) |
+| Igual con TRM +20 % | 4,20 | 161 |
+| Combinado + distribuidor Nasdaq (F + 2.140) | 3,75 | **751** (antes 773) |
+| Igual con TRM +20 % | 4,20 | 671 |
+
+Una TRM que **baja** produce el efecto contrario (*f* > 1). Si el propietario actualiza `COP_PER_USD` a la TRM, *f* vuelve a 1 y el equilibrio en USD no cambia, pero el cliente paga más pesos: eso es un **cambio de precio** y le corresponde al propietario. Esta revisión no lo propone ni lo hace.
+
+### 7.4 Comisión de Wompi por componentes (FOR-06)
+
+La contribución base usa 3,8 % de comisión como mezcla. Calculada por componentes con *k* = 4.100 (ejemplo de la documentación, no una tasa vigente):
+
+| Plan | Cobro en COP | Comisión con IVA | % |
+|---|---|---|---|
+| Mensual US$15 | 61.500 | (2,65 % × 61.500 + 700) × 1,19 = 2.772 | 4,51 % |
+| Anual US$149 | 610.900 | (2,65 % × 610.900 + 700) × 1,19 = 20.098 | 3,29 % |
+| Mezcla 60/40 ponderada por ingreso | — | US$0,569 por usuario y mes | **4,07 %** |
+
+Con 4,07 %, c = 10,90 y el equilibrio de S2 pasa de 52 a **53**. Se deja como sensibilidad, no como nueva base, hasta conocer la tarifa vigente y la mezcla real de medios de pago (PENDIENTE). Con USDT la comisión sería otra (PENDIENTE).
+
+### 7.5 Qué sigue pendiente
+
+- Tarifa vigente de Wompi y si el IVA de la comisión es descontable (contador).
+- Diferencial bancario *s* real del medio con que se pagan Render, Neon y proveedores.
+- Mezcla de cobro Wompi/USDT y comisión del procesador de USDT.
+- Política de actualización de `COP_PER_USD` (decisión de precio del propietario).
