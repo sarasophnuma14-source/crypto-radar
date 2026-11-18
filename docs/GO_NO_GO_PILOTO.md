@@ -8,6 +8,19 @@ recomendación escrita no basta.
 
 ## Veredicto: **NO-GO**
 
+> **Actualización 18-nov-2026 (auditoría correctiva, `AUDITORIA_CORRECTIVA_2026-11-16.md`): sigue NO-GO.** Se
+> corrigieron 7 hallazgos en las PR #12, #13, #14 y #15, sin fusionar ni desplegar. Requisitos nuevos:
+>
+> | ID | Descripción | Estado | Evidencia |
+> | --- | --- | --- | --- |
+> | G-27 | Fencing transaccional del líder (H3) | PENDIENTE: probado en local, falta desplegar la PR #12 | `FencingGeneracion` 7/7 sobre PG16, con reinicio real |
+> | G-28 | La app usa el endpoint directo de Neon (H4) | PENDIENTE: confirmación del propietario (R-23) | `preflight` falla con `-pooler` |
+> | G-29 | Métricas del piloto con denominadores correctos (H1, H2) | CERRADO en código (PR #14); la instrumentación sigue apagada | `ActivacionH1`, `IntencionDePagoH2` |
+> | G-30 | Respaldos independientes con simulacro y alertas (H5) | **BLOQUEANTE**: código listo y desactivado (PR #15); faltan proveedor, claves y el primer simulacro | `test_respaldo_externo` 12/12 |
+> | G-31 | Política de privacidad coherente con la instrumentación (H7) | Ligado a G-16 (BLOQUEANTE): falta el plazo de retención y la revisión jurídica | `PrivacidadH7` 8/8 |
+>
+> Que las pruebas locales pasen **no** cambia el veredicto.
+
 Estado técnico: **PREPARADO PARA PILOTO.** No queda ningún bloqueante técnico:
 - el código está corregido y la suite completa se ejecutó;
 - la migración no permite acceso heredado;

@@ -218,3 +218,21 @@ No se desactivó ni se debilitó ninguna prueba.
 2. **Equipo, tras la decisión:** PR de copias automáticas sin activar; volver a copiar la landing si el #11 cambia.
 3. **PATRON:** autorizar el despliegue. Después: R-20, R-19 y la verificación en producción (sin «vigente» en los registros, `/healthz` con la base sana, raíz sin promesas, un solo «Instancia líder» en los registros).
 4. **Con G-16 cerrado:** encender `CRYPTO_RADAR_PILOT_METRICS`, abrir el piloto por tandas y seguir `PLAN_PILOTO_90_DIAS.md`.
+
+
+## 12. Auditoría correctiva independiente (16–18 nov 2026)
+
+Informe completo: `AUDITORIA_CORRECTIVA_2026-11-16.md`.
+
+| Hallazgo | PR | Estado |
+|---|---|---|
+| H1 activación sobre aprobados elegibles | #14 | Corregido y probado |
+| H2 intención de pago sobre elegibles a 30 días | #14 | Corregido y probado |
+| H3 fencing transaccional por generación | #12 | Corregido y probado (con reinicio real de PG16) |
+| H4 endpoint directo frente al pooler | #12 | Corregido; falta la confirmación del propietario (R-23) |
+| H5 respaldos independientes | #15 (nueva) | Código listo y **desactivado**; faltan las decisiones del propietario |
+| H6 costos por etapa | #13 | Corregido |
+| H7 privacidad de la instrumentación | #14 | Corregido; falta G-16 |
+
+Orden de fusión propuesto, sin cambios: #12 → #14 → #13. La #15 es independiente. **Ninguna fusión ni despliegue sin
+autorización escrita.** Veredicto del piloto: **NO-GO**. Veredicto comercial: **NO-GO**.
