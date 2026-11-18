@@ -1,0 +1,9 @@
+# PLANTILLA — NO ACTIVA. Respaldos independientes de Crypto Radar (docs/RESPALDOS_INDEPENDIENTES.md).
+# Solo el propietario la instala, en una máquina de confianza que NO sea Render ni GitHub, después de:
+#   1) crear el almacenamiento externo y su clave de SOLO ESCRITURA, 2) generar las claves age (§4 del documento),
+#   3) dar de alta los dos latidos en el servicio de avisos, 4) un simulacro manual con resultado OK.
+# Las variables (CRYPTO_RADAR_BACKUP_*) van en un archivo con permisos 600, nunca en este archivo ni en el repositorio.
+#
+# m  h  dom mon dow  orden
+# 15 4  *   *   *    cd /opt/crypto-radar && set -a && . ./respaldo.env && set +a && python3 main.py offsite job >> respaldo.log 2>&1
+# 30 5  1   *   *    cd /opt/crypto-radar && set -a && . ./simulacro.env && set +a && python3 main.py offsite drill --target "$SIMULACRO_DB_URL" --identity "$AGE_IDENTITY" >> simulacro.log 2>&1
