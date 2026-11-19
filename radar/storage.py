@@ -31,6 +31,15 @@ def read(name, default=None):
         return default
 
 
+def read_fields(name, keys):
+    """Claves de primer nivel de un documento sin leerlo entero desde la base (ver db.get_kv_fields)."""
+    if USE_DB:
+        from . import db
+        return db.get_kv_fields(name, keys)
+    doc = read(name, {}) or {}
+    return {k: doc.get(k) if isinstance(doc, dict) else None for k in keys}
+
+
 def write(name, data):
     with _lock:
         if USE_DB:

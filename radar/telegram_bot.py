@@ -154,8 +154,12 @@ def fanout(kind, text):
 def poll_forever():
     if not token():
         return
+    from . import leader
     offset = 0
     while True:
+        if not leader.is_leader():       # Telegram solo admite un getUpdates a la vez (409 a la segunda instancia)
+            time.sleep(10)
+            continue
         try:
             r = api("getUpdates", {"offset": offset, "timeout": 30, "allowed_updates": json.dumps(["message"])}, 40)
             for up in r.get("result", []):

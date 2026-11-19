@@ -2217,7 +2217,7 @@ class T23_Backup(unittest.TestCase):
 
 # ================================================================== 24. Revisión previa a producción (preflight)
 class T24_Preflight(unittest.TestCase):
-    GOOD = {"CRYPTO_RADAR_ACCOUNTS": "1", "DATABASE_URL": "postgresql://u:SuperSecretaDB99@ep-x-pooler.neon.tech/db?sslmode=require",
+    GOOD = {"CRYPTO_RADAR_ACCOUNTS": "1", "DATABASE_URL": "postgresql://u:SuperSecretaDB99@ep-x-directo.neon.tech/db?sslmode=require",
             "CRYPTO_RADAR_ADMIN_USER": "jefe", "CRYPTO_RADAR_ADMIN_PASSWORD": "ClaveAdminUltraSecreta 2026",
             "CRYPTO_RADAR_TOTP_KEY": "clave de cifrado TOTP de preflight 123456"}
 
@@ -2256,10 +2256,17 @@ class T24_Preflight(unittest.TestCase):
         r = self.results({"DATABASE_URL": ""})
         self.assertEqual((r["Modo cuentas"], r["Base de datos"], r["Administrador"]), ("fail", "fail", "fail"))
 
+    def test_pooler_de_neon_es_fallo(self):
+        """Auditoría correctiva H4: la app usa estado de sesión; el pooler (modo transacción) no lo conserva."""
+        r = self.results(self.GOOD)
+        self.assertEqual(r["Conexión Neon"], "ok")
+        r = self.results(dict(self.GOOD, DATABASE_URL="postgresql://u:p@ep-x-pooler.neon.tech/db?sslmode=require"))
+        self.assertEqual(r["Conexión Neon"], "fail")
+
     def test_output_never_shows_secrets(self):
         p = self.run_pf(self.GOOD)
         self.assertEqual(p.returncode, 1)                              # falla por los textos legales pendientes
-        for secret in ("SuperSecretaDB99", "ClaveAdminUltraSecreta", "ep-x-pooler"):
+        for secret in ("SuperSecretaDB99", "ClaveAdminUltraSecreta", "ep-x-directo"):
             self.assertNotIn(secret, p.stdout + p.stderr)
         self.assertIn("NO listo para producción", p.stdout)
 

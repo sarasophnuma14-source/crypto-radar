@@ -40,11 +40,14 @@ def check_env():
         add("ok" if ssl in ("require", "verify-ca", "verify-full") else "fail", "TLS con la base",
             f"sslmode={ssl or '(sin definir)'}")
         if host.endswith(".neon.tech"):
-            # una instancia con 16 hilos usa ~20 conexiones: caben en la conexión directa. El pooler (PgBouncer en modo
-            # transacción) y las sentencias preparadas de psycopg no se probaron (docs/AUDITORIA_ESTRES_INTEGRAL.md §4)
-            add("warn" if "-pooler." in host else "ok", "Conexión Neon",
-                "endpoint -pooler: sin probar con esta app; usa el endpoint directo o pruébalo antes en una rama de Neon"
-                if "-pooler." in host else "endpoint directo (recomendado: ~20 conexiones por instancia)")
+            # docs/ARQUITECTURA_CONEXIONES_NEON.md: la app usa estado de SESIÓN (SET client_encoding al conectar,
+            # pg_advisory_lock/unlock del arranque en sentencias separadas, candado del líder). El pooler de Neon es
+            # PgBouncer en modo transacción, que no conserva nada de eso entre sentencias: con -pooler el candado del
+            # arranque podría quedar tomado en otra conexión del pooler. Por eso es un fallo, no un aviso.
+            add("fail" if "-pooler." in host else "ok", "Conexión Neon",
+                "endpoint -pooler (modo transacción): incompatible con los candados de sesión de esta app; usa el "
+                "endpoint directo (mismo host sin «-pooler»)"
+                if "-pooler." in host else "endpoint directo (~23 conexiones por instancia; ver ARQUITECTURA_CONEXIONES_NEON.md)")
     if _e("CRYPTO_RADAR_ALLOW_SQLITE"):
         add("fail", "SQLite forzado", "CRYPTO_RADAR_ALLOW_SQLITE está definido; quítalo en producción")
 

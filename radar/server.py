@@ -18,12 +18,12 @@ import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse, parse_qs
 from http.cookies import SimpleCookie
-from . import storage, scanner, alerts, memes, __version__
+from . import storage, scanner, alerts, memes, health, leader, __version__
 from .config import WEB_DIR, ROOT, ACCOUNTS, load_settings, save_settings
 
 COOKIE = "cr_session"
 LEGAL_PAGES = {"/privacidad": "privacidad.html", "/aviso-de-riesgo": "aviso-de-riesgo.html"}
-PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/api/public/status", "/api/billing/status") + tuple(LEGAL_PAGES)
+PUBLIC_GET = ("/", "/index.html", "/entrar", "/app", "/healthz", "/livez", "/readyz", "/api/public/status", "/api/billing/status") + tuple(LEGAL_PAGES)
 PUBLIC_POST = ("/api/auth/register", "/api/auth/request", "/api/auth/login", "/api/billing/wompi/webhook", "/api/billing/nowpayments/ipn")
 
 WATCH_EVERY_S = 15 * 60
@@ -36,7 +36,8 @@ def now():
 
 def next_scan_time():
     s = load_settings()
-    last = (storage.read("latest.json", {}) or {}).get("at")
+    # Solo la fecha, extraída en la base: el planificador pregunta cada 30 s y antes descargaba el informe entero
+    last = storage.read_fields("latest.json", ["at"]).get("at")
     if not last:
         # sin escaneos previos: escanear ya (fecha en el pasado; antes devolvía now() y la
         # comparación now() >= now() fallaba por microsegundos, así que nunca arrancaba)
@@ -58,25 +59,40 @@ def keepalive():
             pass
 
 
+_SCHED = {"on": False}
+HEALTH_PATHS = ("/healthz", "/livez", "/readyz")
+
+
 def scheduler():
     last_watch = 0.0
     last_meme = 0.0
     while True:
+        health.beat("scheduler")
+        if not leader.is_leader():          # otra instancia (p. ej. la anterior durante un despliegue) hace el trabajo
+            time.sleep(30)
+            continue
         try:
             if time.time() - last_meme >= MEME_EVERY_S and load_settings().get("meme_strategy", True) and not scanner.status["scanning"]:
                 last_meme = time.time()
-                memes.run()
+                with leader.job() as ok:              # fencing: cada escritura confirma la generación del líder
+                    if ok:
+                        memes.run()
             if now() >= next_scan_time() and not scanner.status["scanning"]:
-                print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
-                scanner.run_scan()
-                print(f"[{now():%Y-%m-%d %H:%M}] Escaneo terminado. {scanner.status['last_error'] or ''}", flush=True)
-                if scanner.status["last_error"]:
+                with leader.job() as ok:
+                    if ok:
+                        print(f"[{now():%Y-%m-%d %H:%M}] Escaneo programado…", flush=True)
+                        scanner.run_scan()
+                        health.invalidate()
+                        print(f"[{now():%Y-%m-%d %H:%M}] Escaneo terminado. {scanner.status['last_error'] or ''}", flush=True)
+                if ok and scanner.status["last_error"]:
                     # reintento en 20 min si falló (p. ej. sin internet al despertar el Mac)
                     time.sleep(20 * 60)
                     continue
             if time.time() - last_watch >= WATCH_EVERY_S and not scanner.status["scanning"]:
                 last_watch = time.time()
-                scanner.price_watch()
+                with leader.job() as ok:
+                    if ok:
+                        scanner.price_watch()
         except Exception:
             traceback.print_exc()
         time.sleep(30)
@@ -187,7 +203,7 @@ class Handler(BaseHTTPRequestHandler):
 
     def _authorized(self):
         pw = os.environ.get("CRYPTO_RADAR_PASSWORD")
-        if not pw or self.path == "/healthz":
+        if not pw or urlparse(self.path).path in HEALTH_PATHS:
             return True
         ip = self._client_ip()
         if _too_many_fails(ip):
@@ -267,15 +283,16 @@ class Handler(BaseHTTPRequestHandler):
         u = urlparse(self.path)
         q = {k: v[0] for k, v in parse_qs(u.query).items()}
         p = u.path
-        if p == "/healthz":
-            # diagnóstico mínimo sin datos privados: si el escaneo corre, cuándo terminó y el último error
-            rep = storage.read("latest.json", {}) or {}
-            err = scanner.status.get("last_error")
-            return self._send(200, {"ok": True, "scanning": scanner.status.get("scanning"),
-                                    "progress": scanner.status.get("progress"),
-                                    "last_scan": rep.get("generated_at") or rep.get("at"),
-                                    "last_error": (str(err)[:300] if err else None),
-                                    "sources": rep.get("sources")})
+        if p == "/livez":
+            code, body = health.liveness(__version__)
+            return self._send(code, body)
+        if p in ("/healthz", "/readyz"):
+            # readiness: 503 si la base o el planificador no sirven; "degradado" (200) si el escaneo va atrasado.
+            # Solo campos públicos, sin secretos ni trazas (radar/health.py).
+            code, body = health.readiness(storage=storage, scanner_status=scanner.status,
+                                          scan_every_hours=load_settings()["scan_every_hours"],
+                                          uses_db=storage.USE_DB, scheduler_expected=_SCHED["on"], version=__version__)
+            return self._send(code, body)
         if p in ("/", "/index.html", "/app"):
             return self._static("index.html")
         if p == "/entrar":
@@ -332,7 +349,15 @@ class Handler(BaseHTTPRequestHandler):
         if p == "/api/scan":
             if scanner.status["scanning"]:
                 return self._send(200, {"ok": False, "msg": "Ya hay un escaneo en curso"})
-            threading.Thread(target=scanner.run_scan, daemon=True).start()
+            if not leader.is_leader():
+                # el escaneo manual también escribe resultados: solo en la instancia líder y con su generación
+                return self._send(409, {"ok": False, "msg": "Otra instancia está a cargo del escaneo; inténtalo en unos segundos"})
+
+            def _manual():
+                with leader.job() as ok:
+                    if ok:
+                        scanner.run_scan()
+            threading.Thread(target=_manual, daemon=True).start()
             return self._send(200, {"ok": True})
         if p == "/api/settings":
             if str(b.get("telegram_bot_token", "")).startswith("•••"):
@@ -426,13 +451,17 @@ def paper_scheduler():
         if nxt <= n:
             nxt += dt.timedelta(days=1)
         time.sleep((nxt - n).total_seconds())
-        try:
-            from .paper_trading import storage as ps
-            if not ps.open_store(name).read_json("spec.json"):
-                engine.init(name)
-            engine.step_live(name, log=None); report.write(name)
-        except BaseException as e:                                         # SystemExit incluido: se registra y se sigue
-            print("paper trading:", e, flush=True)
+        with leader.job() as ok:                  # fencing por generación (radar/leader.py): sin cambiar el motor
+            if not ok:
+                print("paper trading: otra instancia es la líder; este paso lo procesa ella", flush=True)
+                continue
+            try:
+                from .paper_trading import storage as ps
+                if not ps.open_store(name).read_json("spec.json"):
+                    engine.init(name)
+                engine.step_live(name, log=None); report.write(name)
+            except BaseException as e:                                     # SystemExit incluido: se registra y se sigue
+                print("paper trading:", e, flush=True)
 
 
 ADMIN_ENV = ("CRYPTO_RADAR_ADMIN_USER", "CRYPTO_RADAR_ADMIN_PASSWORD")
@@ -566,6 +595,8 @@ def serve(port=None, host=None, schedule=True):
             raise SystemExit("Modo cuentas en Render sin DATABASE_URL: el disco es efímero y se perderían cuentas, "
                              "sesiones, pagos y límites de intentos en cada reinicio. Configura PostgreSQL (p. ej. Neon) "
                              "en DATABASE_URL.")
+        if db.endpoint_warning():                       # antes de init(): su candado de arranque es de sesión
+            print(db.endpoint_warning(), flush=True)
         try:
             db.init()                                   # crea, migra y comprueba el esquema completo
         except (db.SchemaError, db.PlatformError) as e:
@@ -603,7 +634,10 @@ def serve(port=None, host=None, schedule=True):
             print(f"AVISO: {ts['en_claro']} secretos TOTP sin cifrar. Define CRYPTO_RADAR_TOTP_KEY.", flush=True)
         if schedule:
             telegram_bot.start()
+    if schedule or os.environ.get("PAPER_TRADING") == "1":
+        leader.start()                                  # instancia única para el trabajo de fondo (radar/leader.py)
     if schedule:
+        _SCHED["on"] = True
         threading.Thread(target=scheduler, daemon=True).start()
     if os.environ.get("PAPER_TRADING") == "1":
         threading.Thread(target=paper_scheduler, daemon=True).start()
