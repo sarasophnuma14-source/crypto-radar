@@ -3422,5 +3422,60 @@ class T32_PagosPiloto(unittest.TestCase):
             self.assertNotIn(bad, txt.lower())
 
 
+# ================================================================== 40. Instrumentación del piloto por HTTP (radar/piloto.py)
+class T40_InstrumentacionPiloto(T13_SaaS):
+    def setUp(self):
+        super().setUp()
+        from radar import piloto
+        piloto.reset_cache()
+
+    def test_apagada_no_registra_y_me_lo_indica(self):
+        os.environ.pop("CRYPTO_RADAR_PILOT_METRICS", None)
+        op, csrf, username = self.signup()
+        uid = db.one("SELECT id FROM users WHERE email = ?", (username,))["id"]
+        st, me, _ = self.call(op, "/api/me")
+        self.assertEqual(me["pilot"], {"metrics": False, "survey": None})
+        st, r, _ = self.call(op, "/api/piloto/evento", {"event": "export_csv"}, {"X-CSRF-Token": csrf})
+        self.assertEqual((st, r["recorded"]), (200, False))
+        n = db.one("SELECT COUNT(*) AS n FROM activity WHERE user_id = ? AND action IN ('visit', 'export_csv')", (uid,))["n"]
+        self.assertEqual(n, 0)
+
+    def test_encendida_registra_una_vez_por_dia_con_csrf(self):
+        with mock.patch.dict(os.environ, {"CRYPTO_RADAR_PILOT_METRICS": "1"}):
+            op, csrf, username = self.signup()
+            uid = db.one("SELECT id FROM users WHERE email = ?", (username,))["id"]
+            for _ in range(3):
+                self.call(op, "/api/state")
+            st, me, _ = self.call(op, "/api/me")
+            self.assertTrue(me["pilot"]["metrics"])
+            st, r, _ = self.call(op, "/api/piloto/evento", {"event": "tab", "tab": "market"})          # sin CSRF
+            self.assertEqual(st, 403)
+            for _ in range(2):
+                st, r, _ = self.call(op, "/api/piloto/evento", {"event": "tab", "tab": "market"}, {"X-CSRF-Token": csrf})
+            self.assertEqual(st, 200)
+            st, r, _ = self.call(self.client(), "/api/piloto/evento", {"event": "export_csv"})             # sin sesión
+            self.assertEqual(st, 401)
+        acts = sorted(r["action"] for r in db.all_("SELECT action FROM activity WHERE user_id = ? AND action IN ('visit', 'export_csv') OR (user_id = ? AND action LIKE 'tab:%')", (uid, uid)))
+        self.assertEqual(acts, ["tab:market", "visit"])
+
+    def test_informe_solo_para_administrador_y_sin_datos_personales(self):
+        op, csrf, username = self.signup()
+        st, r, _ = self.call(op, "/api/admin/piloto")
+        self.assertEqual(st, 403)
+        aop = self.client()
+        st, r, _ = self.call(aop, "/api/auth/login", {"username": "admin", "password": os.environ["CRYPTO_RADAR_ADMIN_PASSWORD"]})
+        self.assertEqual(st, 200, r)
+        st, rep, _ = self.call(aop, "/api/admin/piloto")
+        self.assertEqual(st, 200, rep)
+        self.assertIn("compuerta_b", rep)
+        self.assertNotIn(username, json.dumps(rep))
+        self.assertNotIn("@", json.dumps(rep))
+
+
+for _n in [n for n in dir(T13_SaaS) if n.startswith("test_")]:
+    if _n not in T40_InstrumentacionPiloto.__dict__:
+        setattr(T40_InstrumentacionPiloto, _n, None)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2 if "-v" in sys.argv else 1, argv=[sys.argv[0]] + [a for a in sys.argv[1:] if a != "-v"])

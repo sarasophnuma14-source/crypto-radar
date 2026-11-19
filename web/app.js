@@ -1,7 +1,14 @@
 // Crypto Radar · panel. JavaScript sin dependencias.
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
-let CSRF = "", ME = null, ACCOUNTS = false;
+let CSRF = "", ME = null, ACCOUNTS = false, PILOT = {metrics: false, survey: null};
+// Instrumentación del piloto (radar/piloto.py): solo si el servidor la tiene encendida; sin terceros, una vez por día
+const PILOT_SENT = new Set();
+function pilotEvent(body){
+  const k = new Date().toISOString().slice(0, 10) + JSON.stringify(body);
+  if (!PILOT.metrics || !CSRF || PILOT_SENT.has(k)) return;
+  PILOT_SENT.add(k); post("/api/piloto/evento", body).catch(() => PILOT_SENT.delete(k));
+}
 async function api(p, o) {
   const r = await fetch(p, Object.assign({credentials: "same-origin"}, o));
   let j = null; try { j = await r.json(); } catch (e) {}
@@ -132,6 +139,7 @@ function show(v){
   $("#exportBtn").classList.toggle("hidden", !["dash", "market", "perf"].includes(v));
   window.scrollTo(0, 0);
   LOADERS[v]?.();
+  pilotEvent({event: "tab", tab: v});
   if (v === "alerts") { lastAlertSeen = new Date().toISOString(); lsSet("seenAlert", lastAlertSeen); setCount(0); }
   try { history.replaceState(null, "", "#" + v); } catch (e) {}
 }
@@ -519,6 +527,7 @@ $("#exportBtn").onclick = () => {
   const csv = rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\n");
   const a = Object.assign(document.createElement("a"), {href: URL.createObjectURL(new Blob(["﻿" + csv], {type: "text/csv"})), download: `crypto-radar-${VIEW}-${new Date().toISOString().slice(0, 10)}.csv`});
   document.body.append(a); a.click(); a.remove();
+  pilotEvent({event: "export_csv"});
 };
 
 /* ---------- 11. Configuración ---------- */
@@ -590,6 +599,7 @@ function renderMfa(){
 }
 async function loadAdmin(){
   $("#adminBox").classList.remove("hidden");
+  $("#pilotBox")?.classList.remove("hidden"); loadPilotMetrics();
   if (ME && ME.totp_setup_required) { $("#adminUsers").innerHTML = `<p class="note">Activa la verificación en dos pasos (arriba, en Cuenta) para gestionar usuarios y solicitudes.</p>`; return; }
   let u; try { u = await api("/api/admin/users"); } catch (e) { return; }
   if (!Array.isArray(u)) { $("#adminUsers").innerHTML = `<p class="note">${esc(u?.error || "No disponible")}</p>`; return; }
@@ -678,12 +688,80 @@ async function boot(){
     ACCOUNTS = !!st?.accounts;
   } catch (e) {}
   if (ACCOUNTS) {
-    try { const me = await api("/api/me"); if (me?.user) { ME = me.user; CSRF = me.csrf; } } catch (e) {}
+    try { const me = await api("/api/me"); if (me?.user) { ME = me.user; CSRF = me.csrf; PILOT = me.pilot || PILOT; } } catch (e) {}
     if (!ME) { showAuth(); return; }
   }
   hideAuth(); applyUser();
   const start = (location.hash || "").slice(1);
   show(TITLES[start] ? start : "dash");
   refresh(); setInterval(refresh, 20000);
+  if (PILOT.survey) renderSurvey(PILOT.survey);
+  if (PILOT.metrics) {
+    $("#pilotPrivacy")?.classList.remove("hidden");
+    const b = $("#pilotWithdraw");
+    if (b) b.onclick = async () => {
+      const r = await post("/api/piloto/encuesta/retirar", {});
+      $("#pilotWithdrawMsg").textContent = r?.ok ? `Listo: ${r.retiradas} respuesta(s) retirada(s).` : (r?.error || "No se pudo");
+    };
+  }
+}
+
+/* ---------- Encuesta del piloto (solo con CRYPTO_RADAR_PILOT_SURVEYS=1) ---------- */
+const OPT = {seguro_si: "Seguro que sí", probable_si: "Probablemente sí", no_se: "No sé", probable_no: "Probablemente no",
+  seguro_no: "Seguro que no", mensual: "Mensual", anual: "Anual", ninguno: "Ninguno", muy: "Muy decepcionado",
+  algo: "Algo decepcionado", nada: "Nada decepcionado", si: "Sí", no: "No",
+  historial_auditable: "Historial auditable de señales, con resultados negativos incluidos", alertas_personalizadas: "Alertas con umbrales propios por activo y métrica",
+  mas_activos: "Más activos o escaneo más frecuente", api_webhook: "Acceso por API o webhook al ranking",
+  equipos: "Varias carteras o cuentas de equipo", soporte_prioritario: "Soporte con tiempo de respuesta escrito"};
+function renderSurvey(s){
+  const box = $("#surveyBox"); if (!box) return;
+  const q = s.preguntas.map(p => {
+    const lab = `<span>${esc(p.texto)}</span>`;
+    if (p.tipo === "texto") return `<label>${lab}<textarea name="${p.id}" maxlength="500" rows="2"></textarea></label>`;
+    if (p.tipo === "usd") return `<label>${lab}<input name="${p.id}" type="number" min="0" max="10000" step="0.5" inputmode="decimal" placeholder="US$"></label>`;
+    if (p.tipo === "escala") return `<fieldset><legend>${esc(p.texto)}</legend>${[1,2,3,4,5].map(n => `<label class="chk"><input type="radio" name="${p.id}" value="${n}">${n}</label>`).join("")}</fieldset>`;
+    if (p.tipo === "opcion") return `<fieldset><legend>${esc(p.texto)}</legend>${p.opciones.map(o => `<label class="chk"><input type="radio" name="${p.id}" value="${o}">${esc(OPT[o] || o)}</label>`).join("")}</fieldset>`;
+    if (p.tipo === "orden") return `<fieldset><legend>${esc(p.texto)}</legend>${p.opciones.map(o => `<label class="chk"><input type="number" min="1" max="${p.opciones.length}" name="${p.id}:${o}" class="rank-in" aria-label="Orden de ${esc(OPT[o] || o)}">${esc(OPT[o] || o)}</label>`).join("")}</fieldset>`;
+    return "";
+  }).join("");
+  box.innerHTML = `<h3 class="h3">${esc(s.titulo)}</h3><p class="note">Encuesta del piloto. Es voluntaria y puedes omitirla. Tus respuestas ayudan a decidir qué construir; no hay premios ni descuentos por responder.</p>
+    <form id="surveyForm" class="fgrid">${q}<div class="row"><button class="btn a" type="submit">Enviar</button><button class="btn" type="button" id="surveySkip">Omitir</button><span class="msg" id="surveyMsg"></span></div></form>`;
+  box.classList.remove("hidden");
+  const send = async (skipped) => {
+    const f = $("#surveyForm"), ans = {};
+    if (!skipped) s.preguntas.forEach(p => {
+      if (p.tipo === "orden") {
+        const v = p.opciones.map(o => [o, +f.elements[p.id + ":" + o].value]).filter(x => x[1] > 0).sort((a, b) => a[1] - b[1]).map(x => x[0]);
+        if (v.length) ans[p.id] = v;
+      } else {
+        const el = f.elements[p.id]; const v = el && (el.value ?? "");
+        if (v !== "" && v != null) ans[p.id] = p.tipo === "usd" || p.tipo === "escala" ? +v : v;
+      }
+    });
+    const r = await post("/api/piloto/encuesta", {survey: s.id, answers: ans, skipped});
+    if (r?.ok) { box.innerHTML = `<p class="note">Gracias.</p>`; setTimeout(() => box.classList.add("hidden"), 2500); }
+    else $("#surveyMsg").textContent = r?.error || "No se pudo enviar";
+  };
+  $("#surveyForm").onsubmit = ev => { ev.preventDefault(); send(false); };
+  $("#surveySkip").onclick = () => send(true);
+}
+
+/* ---------- Métricas del piloto (administrador) ---------- */
+const pctCI = r => r && r.tasa != null ? `${nf1.format(r.tasa * 100)} % <span class="muted">(${r.numerador}/${r.denominador}; IC95 ${nf0.format(r.ic95[0] * 100)}–${nf0.format(r.ic95[1] * 100)} %${r.pendientes ? "; " + r.pendientes + " pendientes" : ""})</span>` : `<span class="muted">sin datos${r && r.pendientes ? " · " + r.pendientes + " pendientes" : ""}</span>`;
+async function loadPilotMetrics(){
+  const box = $("#pilotBox"); if (!box) return;
+  let r; try { r = await api("/api/admin/piloto"); } catch (e) { return; }
+  if (!r || r.error) { box.querySelector("div").innerHTML = `<p class="note">${esc(r?.error || "No disponible")}</p>`; return; }
+  const t = r.total, s = r.solicitudes;
+  const coh = Object.entries(r.cohortes).map(([k, c]) => `<tr><td>${esc(k)}</td><td>${c.aprobados}</td><td>${c.elegibles}</td><td>${c.pendientes}</td><td>${c.activados}</td><td>${c.no_activados}</td><td>${pctCI(c.activacion)}</td><td>${pctCI(c.retencion_30d)}</td><td>${pctCI(c.retencion_60d)}</td></tr>`).join("");
+  const pi = t.intencion_de_pago;
+  box.querySelector("div").innerHTML = `${r.avisos.map(a => `<p class="note amb">${esc(a)}</p>`).join("")}
+    <p class="note">Generado ${new Date(r.generado_utc).toLocaleString()} · solicitudes ${s.total} · aprobadas ${s.aprobadas} · rechazadas ${s.rechazadas} · pendientes ${s.pendientes}</p>
+    <table class="tbl"><tbody><tr><th>Activación</th><td>${pctCI(t.activacion)}</td></tr><tr><th>Retención 30 d</th><td>${pctCI(t.retencion_30d)}</td></tr>
+    <tr><th>Retención 60 d</th><td>${pctCI(t.retencion_60d)}</td></tr><tr><th>Telegram vinculado</th><td>${pctCI(t.telegram_vinculado)}</td></tr>
+    <tr><th>Activos semanales (7 d)</th><td>${r.uso.activos_semanales_ultimos_7_dias}</td></tr><tr><th>Intención de pago (sobre ${pi.elegibles_30d} elegibles a 30 d; usa B5)</th><td>${pctCI(pi.tasa_sobre_elegibles)}</td></tr>
+    <tr><th>Intención entre respondientes</th><td>${pctCI(pi.tasa_entre_respondientes)}</td></tr><tr><th>Participación (respondieron / no respondieron)</th><td>${pctCI(pi.participacion)} · ${pi.respondieron} / ${pi.no_respondieron}${pi.aviso ? ` <span class="amb">${esc(pi.aviso)}</span>` : ""}</td></tr>
+    <tr><th>Muy decepcionado</th><td>${pctCI(r.encuestas.dia45.muy_decepcionado)}</td></tr><tr><th>Compuerta B</th><td>${esc(r.compuerta_b.lectura)}</td></tr></tbody></table>
+    <table class="tbl"><thead><tr><th>Cohorte (semana de aprobación)</th><th>Aprob.</th><th>Elegibles</th><th>Pend.</th><th>Activados</th><th>No activ.</th><th>Activación</th><th>Ret. 30 d</th><th>Ret. 60 d</th></tr></thead><tbody>${coh || `<tr><td colspan="9" class="muted">Sin cohortes</td></tr>`}</tbody></table>`;
 }
 boot();
